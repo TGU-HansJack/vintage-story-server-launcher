@@ -14,11 +14,113 @@
         <vm:ConfigViewModel />
     </Design.DataContext>
 
-    <Border Padding="16" BorderBrush="Gray" BorderThickness="1" CornerRadius="8">
-        <StackPanel Spacing="8">
-            <TextBlock FontSize="24" FontWeight="Bold" Text="{Binding Title}" />
-            <TextBlock Text="{Binding Description}" />
-        </StackPanel>
-    </Border>
-</UserControl>
+    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="10">
+        <Border Grid.Row="0" Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
+            <Grid ColumnDefinitions="2.6*,Auto,Auto,Auto" ColumnSpacing="8">
+                <ComboBox Grid.Column="0" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
 
+                <Button Grid.Column="1" Width="90" Command="{Binding RefreshCommand}" Content="刷新" />
+                <Button Grid.Column="2" Width="90" Command="{Binding SaveCommand}" Content="保存" />
+                <Button Grid.Column="3" Width="110" Command="{Binding EditAdvancedJsonCommand}" Content="高级JSON" />
+            </Grid>
+        </Border>
+
+        <TextBlock Grid.Row="1" Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+
+        <Grid Grid.Row="2">
+            <ScrollViewer IsVisible="{Binding HasProfiles}">
+                <StackPanel Spacing="10">
+                    <Border Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
+                        <StackPanel Spacing="10">
+                            <TextBlock FontSize="16" FontWeight="SemiBold" Text="服务器基础配置" />
+                            <Grid ColumnDefinitions="Auto,2*,Auto,2*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="8">
+                                <TextBlock VerticalAlignment="Center" Text="服务器名称" />
+                                <TextBox Grid.Column="1" Text="{Binding ServerName, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="IP" />
+                                <TextBox Grid.Column="3" Text="{Binding Ip, UpdateSourceTrigger=PropertyChanged}" />
+
+                                <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="端口" />
+                                <NumericUpDown Grid.Row="1" Grid.Column="1" Minimum="1" Maximum="65535" Value="{Binding Port}" />
+                                <TextBlock Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" Text="最大玩家" />
+                                <NumericUpDown Grid.Row="1" Grid.Column="3" Minimum="1" Maximum="200" Value="{Binding MaxClients}" />
+
+                                <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="密码" />
+                                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Password, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Grid.Row="2" Grid.Column="2" VerticalAlignment="Center" Text="白名单模式" />
+                                <NumericUpDown Grid.Row="2" Grid.Column="3" Minimum="0" Maximum="2" Value="{Binding WhitelistMode}" />
+
+                                <CheckBox Grid.Row="3" Content="公开服务器" IsChecked="{Binding AdvertiseServer}" />
+                                <CheckBox Grid.Row="3" Grid.Column="1" Content="允许 PVP" IsChecked="{Binding AllowPvP}" />
+                                <CheckBox Grid.Row="3" Grid.Column="2" Content="允许火势蔓延" IsChecked="{Binding AllowFireSpread}" />
+                                <CheckBox Grid.Row="3" Grid.Column="3" Content="允许落石" IsChecked="{Binding AllowFallingBlocks}" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
+                        <StackPanel Spacing="10">
+                            <TextBlock FontSize="16" FontWeight="SemiBold" Text="世界配置" />
+                            <Grid ColumnDefinitions="Auto,2*,Auto,2*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="8">
+                                <TextBlock VerticalAlignment="Center" Text="种子" />
+                                <TextBox Grid.Column="1" Text="{Binding Seed, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="世界名称" />
+                                <TextBox Grid.Column="3" Text="{Binding WorldName, UpdateSourceTrigger=PropertyChanged}" />
+
+                                <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="存档文件" />
+                                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SaveFileLocation, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" Text="玩法" />
+                                <TextBox Grid.Row="1" Grid.Column="3" Text="{Binding PlayStyle, UpdateSourceTrigger=PropertyChanged}" />
+
+                                <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="世界类型" />
+                                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding WorldType, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Grid.Row="2" Grid.Column="2" VerticalAlignment="Center" Text="世界高度" />
+                                <NumericUpDown Grid.Row="2" Grid.Column="3" Minimum="64" Maximum="2048" Value="{Binding WorldHeight}" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
+                        <StackPanel Spacing="10">
+                            <TextBlock FontSize="16" FontWeight="SemiBold" Text="世界规则" />
+                            <Border Padding="10,8" CornerRadius="6,6,0,0" BorderBrush="Gray" BorderThickness="1">
+                                <Grid ColumnDefinitions="1.6*,2.4*" ColumnSpacing="8">
+                                    <TextBlock FontWeight="SemiBold" Text="规则" />
+                                    <TextBlock Grid.Column="1" FontWeight="SemiBold" Text="值" />
+                                </Grid>
+                            </Border>
+                            <Border Padding="0,8,0,0" CornerRadius="0,0,6,6" BorderBrush="Gray" BorderThickness="1">
+                                <ItemsControl ItemsSource="{Binding WorldRules}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:ConfigWorldRuleItemViewModel">
+                                            <Border Margin="8,0,8,8" Padding="10,8" CornerRadius="6" BorderBrush="#555555" BorderThickness="1">
+                                                <Grid ColumnDefinitions="1.6*,2.4*" ColumnSpacing="8">
+                                                    <TextBlock VerticalAlignment="Center" Text="{Binding Label}" />
+                                                    <TextBox Grid.Column="1" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" />
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <TextBlock
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                FontSize="16"
+                FontWeight="SemiBold"
+                IsVisible="{Binding HasNoProfiles}"
+                Text="暂无档案，请先到实例/创建创建档案"
+                />
+        </Grid>
+    </Grid>
+</UserControl>

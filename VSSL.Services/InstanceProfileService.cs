@@ -1,7 +1,8 @@
+using System.IO.Compression;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using VSSL.Abstractions.Services;
 using VSSL.Domains.Models;
-using System.IO.Compression;
 
 namespace VSSL.Services;
 
@@ -14,39 +15,25 @@ public class InstanceProfileService : IInstanceProfileService
     {
         WriteIndented = true
     };
-    private string WorkspaceRoot => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "VSSL",
-        "workspace");
-
-    private string ProfilesIndexPath => Path.Combine(WorkspaceRoot, "profiles.json");
-
-    private string ServersRoot => Path.Combine(WorkspaceRoot, "servers", "windows");
-
-    private string PackagesRoot => Path.Combine(WorkspaceRoot, "packages");
-
-    private string TempRoot => Path.Combine(WorkspaceRoot, ".tmp");
-
-    private string DataRoot => Path.Combine(WorkspaceRoot, "data");
 
     /// <inheritdoc />
     public string GetWorkspaceRoot()
     {
-        EnsureWorkspace();
-        return WorkspaceRoot;
+        WorkspacePathHelper.EnsureWorkspace();
+        return WorkspacePathHelper.WorkspaceRoot;
     }
 
     /// <inheritdoc />
     public IReadOnlyList<string> GetInstalledVersions()
     {
-        EnsureWorkspace();
+        WorkspacePathHelper.EnsureWorkspace();
         var versions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        if (!Directory.Exists(PackagesRoot)) return [];
+        if (!Directory.Exists(WorkspacePathHelper.PackagesRoot)) return [];
 
-        foreach (var zipFilePath in Directory.GetFiles(PackagesRoot, "vs_server_win-x64_*.zip",
+        foreach (var zipFilePath in Directory.GetFiles(WorkspacePathHelper.PackagesRoot, "vs_server_win-x64_*.zip",
                      SearchOption.AllDirectories))
         {
-            var version = TryExtractVersionFromPackageName(Path.GetFileName(zipFilePath));
+            var version = WorkspacePathHelper.TryExtractVersionFromPackageName(Path.GetFileName(zipFilePath));
             if (!string.IsNullOrWhiteSpace(version))
                 versions.Add(version);
         }
@@ -59,31 +46,52 @@ public class InstanceProfileService : IInstanceProfileService
     /// <inheritdoc />
     public IReadOnlyList<InstanceProfile> GetProfiles()
     {
-        EnsureWorkspace();
+        WorkspacePathHelper.EnsureWorkspace();
         var index = ReadProfileIndex();
+        var normalized = false;
+        foreach (var profile in index.Profiles)
+            normalized |= NormalizeProfile(profile);
+        if (normalized) WriteProfileIndex(index);
+
         return index.Profiles
-            .OrderByDescending(p => p.CreatedAtUtc)
+            .OrderByDescending(p => p.LastUpdatedUtc)
             .ToList();
+    }
+
+    /// <inheritdoc />
+    public InstanceProfile? GetProfileById(string profileId)
+    {
+        WorkspacePathHelper.EnsureWorkspace();
+        if (string.IsNullOrWhiteSpace(profileId)) return null;
+
+        var index = ReadProfileIndex();
+        var profile = index.Profiles.FirstOrDefault(x => x.Id.Equals(profileId.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (profile is null) return null;
+        if (NormalizeProfile(profile)) WriteProfileIndex(index);
+        return profile;
     }
 
     /// <inheritdoc />
     public InstanceProfile CreateProfile(string profileName, string version)
     {
-        EnsureWorkspace();
+        WorkspacePathHelper.EnsureWorkspace();
         if (string.IsNullOrWhiteSpace(profileName))
             throw new InvalidOperationException("档案名称不能为空。");
         if (string.IsNullOrWhiteSpace(version))
             throw new InvalidOperationException("请先选择已安装服务端版本。");
 
         var selectedVersion = version.Trim();
-        var installPath = Path.Combine(ServersRoot, selectedVersion);
+        var installPath = Path.Combine(WorkspacePathHelper.ServersRoot, selectedVersion);
         if (!Directory.Exists(installPath))
             installPath = EnsureVersionInstalledFromPackage(selectedVersion);
 
         var profileId = Guid.NewGuid().ToString("N");
-        var profileDirectory = Path.Combine(DataRoot, profileId);
+        var profileDirectory = WorkspacePathHelper.GetProfileDataPath(profileId);
+        var saveDirectory = WorkspacePathHelper.GetProfileSavesPath(profileId);
+        var defaultSaveFile = WorkspacePathHelper.GetProfileDefaultSaveFile(profileId);
+
         Directory.CreateDirectory(profileDirectory);
-        Directory.CreateDirectory(Path.Combine(profileDirectory, "Saves"));
+        Directory.CreateDirectory(saveDirectory);
         Directory.CreateDirectory(Path.Combine(profileDirectory, "Mods"));
         Directory.CreateDirectory(Path.Combine(profileDirectory, "Logs"));
 
@@ -93,8 +101,13 @@ public class InstanceProfileService : IInstanceProfileService
             Name = profileName.Trim(),
             Version = selectedVersion,
             DirectoryPath = profileDirectory,
-            CreatedAtUtc = DateTimeOffset.UtcNow
+            ActiveSaveFile = defaultSaveFile,
+            SaveDirectory = saveDirectory,
+            CreatedAtUtc = DateTimeOffset.UtcNow,
+            LastUpdatedUtc = DateTimeOffset.UtcNow
         };
+
+        EnsureServerConfig(profile);
 
         var index = ReadProfileIndex();
         index.Profiles.Add(profile);
@@ -103,9 +116,32 @@ public class InstanceProfileService : IInstanceProfileService
     }
 
     /// <inheritdoc />
+    public void UpdateProfile(InstanceProfile profile)
+    {
+        WorkspacePathHelper.EnsureWorkspace();
+        if (string.IsNullOrWhiteSpace(profile.Id))
+            throw new InvalidOperationException("档案 Id 不能为空。");
+
+        var index = ReadProfileIndex();
+        var current = index.Profiles.FirstOrDefault(x => x.Id.Equals(profile.Id, StringComparison.OrdinalIgnoreCase));
+        if (current is null)
+            throw new InvalidOperationException("档案不存在。");
+
+        current.Name = profile.Name.Trim();
+        current.Version = profile.Version.Trim();
+        current.DirectoryPath = profile.DirectoryPath;
+        current.ActiveSaveFile = profile.ActiveSaveFile;
+        current.SaveDirectory = profile.SaveDirectory;
+        current.LastUpdatedUtc = DateTimeOffset.UtcNow;
+
+        NormalizeProfile(current);
+        WriteProfileIndex(index);
+    }
+
+    /// <inheritdoc />
     public int DeleteProfiles(IReadOnlyCollection<string> profileIds)
     {
-        EnsureWorkspace();
+        WorkspacePathHelper.EnsureWorkspace();
         if (profileIds.Count == 0) return 0;
 
         var profileIdSet = new HashSet<string>(
@@ -125,27 +161,25 @@ public class InstanceProfileService : IInstanceProfileService
         WriteProfileIndex(index);
 
         foreach (var profile in deletingProfiles)
+        {
             TryDeleteProfileDirectory(profile.DirectoryPath, profile.Id);
+            TryDeleteProfileDirectory(profile.SaveDirectory, profile.Id);
+
+            var activeSaveDirectory = Path.GetDirectoryName(profile.ActiveSaveFile);
+            if (!string.IsNullOrWhiteSpace(activeSaveDirectory))
+                TryDeleteProfileDirectory(activeSaveDirectory, profile.Id);
+        }
 
         return deletingProfiles.Count;
     }
 
-    private void EnsureWorkspace()
-    {
-        Directory.CreateDirectory(WorkspaceRoot);
-        Directory.CreateDirectory(ServersRoot);
-        Directory.CreateDirectory(PackagesRoot);
-        Directory.CreateDirectory(TempRoot);
-        Directory.CreateDirectory(DataRoot);
-    }
-
     private InstanceProfileIndex ReadProfileIndex()
     {
-        if (!File.Exists(ProfilesIndexPath)) return new InstanceProfileIndex();
+        if (!File.Exists(WorkspacePathHelper.ProfilesIndexPath)) return new InstanceProfileIndex();
 
         try
         {
-            var jsonText = File.ReadAllText(ProfilesIndexPath);
+            var jsonText = File.ReadAllText(WorkspacePathHelper.ProfilesIndexPath);
             return JsonSerializer.Deserialize<InstanceProfileIndex>(jsonText, JsonOptions) ?? new InstanceProfileIndex();
         }
         catch
@@ -157,7 +191,7 @@ public class InstanceProfileService : IInstanceProfileService
     private void WriteProfileIndex(InstanceProfileIndex index)
     {
         var jsonText = JsonSerializer.Serialize(index, JsonOptions);
-        File.WriteAllText(ProfilesIndexPath, jsonText);
+        File.WriteAllText(WorkspacePathHelper.ProfilesIndexPath, jsonText);
     }
 
     private void TryDeleteProfileDirectory(string? directoryPath, string profileId)
@@ -165,12 +199,9 @@ public class InstanceProfileService : IInstanceProfileService
         if (string.IsNullOrWhiteSpace(directoryPath)) return;
 
         string fullPath;
-        string dataRootFullPath;
         try
         {
             fullPath = Path.GetFullPath(directoryPath);
-            dataRootFullPath = Path.GetFullPath(DataRoot)
-                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         }
         catch
         {
@@ -180,7 +211,25 @@ public class InstanceProfileService : IInstanceProfileService
         if (!Directory.Exists(fullPath)) return;
 
         var normalizedFullPath = fullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        if (!normalizedFullPath.StartsWith(dataRootFullPath, StringComparison.OrdinalIgnoreCase)) return;
+        var dataRootFullPath = Path.GetFullPath(WorkspacePathHelper.DataRoot)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var savesRootFullPath = Path.GetFullPath(WorkspacePathHelper.SavesRoot)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+        var inDataRoot = normalizedFullPath.StartsWith(dataRootFullPath, StringComparison.OrdinalIgnoreCase);
+        var inSavesRoot = normalizedFullPath.StartsWith(savesRootFullPath, StringComparison.OrdinalIgnoreCase);
+        if (!inDataRoot && !inSavesRoot) return;
+
+        var profileRoot = Path.GetFullPath(Path.Combine(WorkspacePathHelper.DataRoot, profileId))
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var profileSavesRoot = Path.GetFullPath(Path.Combine(WorkspacePathHelper.SavesRoot, profileId))
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        if (normalizedFullPath.Equals(profileRoot, StringComparison.OrdinalIgnoreCase) ||
+            normalizedFullPath.Equals(profileSavesRoot, StringComparison.OrdinalIgnoreCase))
+        {
+            Directory.Delete(normalizedFullPath, recursive: true);
+            return;
+        }
 
         var segments = normalizedFullPath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         if (!segments.Any(segment => segment.Equals(profileId, StringComparison.OrdinalIgnoreCase))) return;
@@ -190,14 +239,14 @@ public class InstanceProfileService : IInstanceProfileService
 
     private string EnsureVersionInstalledFromPackage(string version)
     {
-        var installPath = Path.Combine(ServersRoot, version);
+        var installPath = Path.Combine(WorkspacePathHelper.ServersRoot, version);
         if (Directory.Exists(installPath)) return installPath;
 
         var packagePath = FindPackagePathByVersion(version);
         if (string.IsNullOrWhiteSpace(packagePath))
             throw new InvalidOperationException($"未找到版本 {version} 的已下载包（packages）。");
 
-        var tempInstallRoot = Path.Combine(TempRoot, $"install-{version}-{Guid.NewGuid():N}");
+        var tempInstallRoot = Path.Combine(WorkspacePathHelper.TempRoot, $"install-{version}-{Guid.NewGuid():N}");
         var tempExtractRoot = Path.Combine(tempInstallRoot, "extract");
         Directory.CreateDirectory(tempExtractRoot);
 
@@ -220,14 +269,14 @@ public class InstanceProfileService : IInstanceProfileService
 
     private string? FindPackagePathByVersion(string version)
     {
-        if (!Directory.Exists(PackagesRoot)) return null;
+        if (!Directory.Exists(WorkspacePathHelper.PackagesRoot)) return null;
 
         return Directory
-            .GetFiles(PackagesRoot, "vs_server_win-x64_*.zip", SearchOption.AllDirectories)
+            .GetFiles(WorkspacePathHelper.PackagesRoot, "vs_server_win-x64_*.zip", SearchOption.AllDirectories)
             .Select(path => new
             {
                 Path = path,
-                Version = TryExtractVersionFromPackageName(Path.GetFileName(path)),
+                Version = WorkspacePathHelper.TryExtractVersionFromPackageName(Path.GetFileName(path)),
                 LastWriteTime = File.GetLastWriteTimeUtc(path)
             })
             .Where(item => !string.IsNullOrWhiteSpace(item.Version) &&
@@ -237,16 +286,81 @@ public class InstanceProfileService : IInstanceProfileService
             .FirstOrDefault();
     }
 
-    private static string? TryExtractVersionFromPackageName(string? fileName)
+    private static bool NormalizeProfile(InstanceProfile profile)
     {
-        if (string.IsNullOrWhiteSpace(fileName)) return null;
-        const string prefix = "vs_server_win-x64_";
-        const string suffix = ".zip";
-        if (!fileName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ||
-            !fileName.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
-            return null;
+        var changed = false;
+        if (string.IsNullOrWhiteSpace(profile.DirectoryPath))
+        {
+            profile.DirectoryPath = WorkspacePathHelper.GetProfileDataPath(profile.Id);
+            changed = true;
+        }
 
-        var version = fileName.Substring(prefix.Length, fileName.Length - prefix.Length - suffix.Length).Trim();
-        return string.IsNullOrWhiteSpace(version) ? null : version;
+        if (string.IsNullOrWhiteSpace(profile.SaveDirectory))
+        {
+            profile.SaveDirectory = WorkspacePathHelper.GetProfileSavesPath(profile.Id);
+            changed = true;
+        }
+
+        if (string.IsNullOrWhiteSpace(profile.ActiveSaveFile))
+        {
+            profile.ActiveSaveFile = WorkspacePathHelper.GetProfileDefaultSaveFile(profile.Id);
+            changed = true;
+        }
+
+        if (profile.LastUpdatedUtc == default)
+        {
+            profile.LastUpdatedUtc = profile.CreatedAtUtc == default ? DateTimeOffset.UtcNow : profile.CreatedAtUtc;
+            changed = true;
+        }
+
+        return changed;
+    }
+
+    private static void EnsureServerConfig(InstanceProfile profile)
+    {
+        var configPath = WorkspacePathHelper.GetProfileConfigPath(profile.DirectoryPath);
+        var configDirectory = Path.GetDirectoryName(configPath);
+        if (!string.IsNullOrWhiteSpace(configDirectory))
+            Directory.CreateDirectory(configDirectory);
+
+        if (File.Exists(configPath)) return;
+
+        var root = new JsonObject
+        {
+            ["ServerName"] = "Vintage Story Server",
+            ["Ip"] = null,
+            ["Port"] = 42420,
+            ["MaxClients"] = 16,
+            ["Password"] = null,
+            ["AdvertiseServer"] = false,
+            ["WhitelistMode"] = 0,
+            ["AllowPvP"] = true,
+            ["AllowFireSpread"] = true,
+            ["AllowFallingBlocks"] = true
+        };
+
+        var worldConfig = new JsonObject
+        {
+            ["Seed"] = "123456789",
+            ["WorldName"] = "A new world",
+            ["SaveFileLocation"] = profile.ActiveSaveFile,
+            ["PlayStyle"] = "surviveandbuild",
+            ["WorldType"] = "standard",
+            ["MapSizeY"] = 256
+        };
+        worldConfig["WorldConfiguration"] = new JsonObject
+        {
+            ["gameMode"] = "survival",
+            ["allowMap"] = true,
+            ["allowCoordinateHud"] = true,
+            ["allowLandClaiming"] = true,
+            ["worldWidth"] = 1024000,
+            ["worldLength"] = 1024000,
+            ["worldEdge"] = "blocked",
+            ["snowAccum"] = true
+        };
+        root["WorldConfig"] = worldConfig;
+
+        File.WriteAllText(configPath, root.ToJsonString(JsonOptions));
     }
 }

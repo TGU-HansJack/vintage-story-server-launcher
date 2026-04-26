@@ -23,11 +23,22 @@ public interface IInstanceProfileService
     IReadOnlyList<InstanceProfile> GetProfiles();
 
     /// <summary>
+    ///     根据 Id 获取档案
+    /// </summary>
+    InstanceProfile? GetProfileById(string profileId);
+
+    /// <summary>
     ///     创建档案
     /// </summary>
     /// <param name="profileName">档案名称</param>
     /// <param name="version">服务端版本</param>
     InstanceProfile CreateProfile(string profileName, string version);
+
+    /// <summary>
+    ///     更新档案
+    /// </summary>
+    /// <param name="profile">待更新档案</param>
+    void UpdateProfile(InstanceProfile profile);
 
     /// <summary>
     ///     批量删除档案
