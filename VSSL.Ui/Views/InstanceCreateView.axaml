@@ -5,6 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:vm="clr-namespace:VSSL.Ui.ViewModels"
+    x:Name="InstanceCreateRoot"
     d:DesignHeight="450"
     d:DesignWidth="800"
     x:DataType="vm:InstanceCreateViewModel"
@@ -14,11 +15,78 @@
         <vm:InstanceCreateViewModel />
     </Design.DataContext>
 
-    <Border Padding="16" BorderBrush="Gray" BorderThickness="1" CornerRadius="8">
-        <StackPanel Spacing="8">
-            <TextBlock FontSize="24" FontWeight="Bold" Text="{Binding Title}" />
-            <TextBlock Text="{Binding Description}" />
-        </StackPanel>
-    </Border>
-</UserControl>
+    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="10">
+        <!--  top controls: version / profile name / create / delete  -->
+        <Border Grid.Row="0" Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
+            <Grid ColumnDefinitions="2.2*,2.4*,Auto,Auto,Auto" ColumnSpacing="8">
+                <ComboBox
+                    Grid.Column="0"
+                    ItemsSource="{Binding InstalledVersions}"
+                    SelectedItem="{Binding SelectedVersion}"
+                    ToolTip.Tip="选择已安装服务端版本"
+                    />
 
+                <TextBox
+                    Grid.Column="1"
+                    Text="{Binding ProfileName, UpdateSourceTrigger=PropertyChanged}"
+                    Watermark="输入档案名称"
+                    />
+
+                <Button Grid.Column="2" Width="90" Command="{Binding CreateCommand}" Content="创建" />
+                <Button Grid.Column="3" Width="90" Command="{Binding DeleteSelectedCommand}" Content="删除" />
+                <Button Grid.Column="4" Width="90" Command="{Binding RefreshCommand}" Content="刷新" />
+            </Grid>
+        </Border>
+
+        <!--  status line  -->
+        <TextBlock
+            Grid.Row="1"
+            Text="{Binding StatusMessage}"
+            TextWrapping="Wrap"
+            />
+
+        <!--  profiles list  -->
+        <Grid Grid.Row="2" RowDefinitions="Auto,*">
+            <Border Grid.Row="0" Padding="10,8" CornerRadius="6,6,0,0" BorderBrush="Gray" BorderThickness="1">
+                <Grid ColumnDefinitions="52,1.4*,1.2*,4.2*,1.8*" ColumnSpacing="8">
+                    <CheckBox IsChecked="{Binding SelectAll}" />
+                    <TextBlock Grid.Column="1" FontWeight="SemiBold" Text="档案名称" />
+                    <TextBlock Grid.Column="2" FontWeight="SemiBold" Text="版本号" />
+                    <TextBlock Grid.Column="3" FontWeight="SemiBold" Text="目录" />
+                    <TextBlock Grid.Column="4" FontWeight="SemiBold" Text="时间" />
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="1" Padding="0,8,0,0" CornerRadius="0,0,6,6" BorderBrush="Gray" BorderThickness="1">
+                <Grid>
+                    <ScrollViewer IsVisible="{Binding HasProfiles}">
+                        <ItemsControl ItemsSource="{Binding Profiles}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:InstanceProfileItemViewModel">
+                                    <Border Margin="8,0,8,8" Padding="10,8" CornerRadius="6" BorderBrush="#555555" BorderThickness="1">
+                                        <Grid ColumnDefinitions="52,1.4*,1.2*,4.2*,1.8*" ColumnSpacing="8">
+                                            <CheckBox IsChecked="{Binding IsSelected}" />
+                                            <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="{Binding Version}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Grid.Column="3" VerticalAlignment="Center" Text="{Binding DirectoryPath}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Grid.Column="4" VerticalAlignment="Center" Text="{Binding CreatedAtText}" TextTrimming="CharacterEllipsis" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        FontSize="16"
+                        FontWeight="SemiBold"
+                        IsVisible="{Binding HasNoProfiles}"
+                        Text="暂无档案，请先创建"
+                        />
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

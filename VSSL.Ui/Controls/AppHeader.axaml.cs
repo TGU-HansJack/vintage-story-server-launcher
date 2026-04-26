@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using VSSL.Abstractions.Services.Ui;
 using Avalonia.Input;
+using Avalonia.VisualTree;
 using AppHeaderViewModel = VSSL.Ui.ViewModels.AppHeaderViewModel;
 
 namespace VSSL.Ui.Controls;
@@ -15,22 +16,31 @@ public partial class AppHeader : UserControl
         DataContext = ServiceLocator.GetRequiredService<AppHeaderViewModel>();
         _mainWindowService = ServiceLocator.GetRequiredService<IMainWindowService>();
 
-        PointerPressed += OnHeaderDoubleClick;
+        PointerPressed += OnHeaderPointerPressed;
     }
 
     /// <summary>
-    ///     Handle title bar double click event: set main window state to maximized or normal
+    ///     Handle title bar pointer pressed event:
+    ///     double click to maximize/restore and single click to drag window.
     /// </summary>
     /// <param name="sender"></param>
     /// <param name="e"></param>
-    private void OnHeaderDoubleClick(object? sender, PointerPressedEventArgs e)
+    private void OnHeaderPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (e.ClickCount != 2) return;
+        if (e.Pointer.Type is not PointerType.Mouse) return;
 
         var source = e.Source as Control;
-
         if (source is Button) return;
 
-        _mainWindowService.ToggleMaximize();
+        if (e.ClickCount == 2)
+        {
+            _mainWindowService.ToggleMaximize();
+            return;
+        }
+
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+
+        var window = this.GetVisualRoot() as Window;
+        window?.BeginMoveDrag(e);
     }
 }
