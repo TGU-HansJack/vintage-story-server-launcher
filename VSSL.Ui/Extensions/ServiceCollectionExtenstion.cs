@@ -2,6 +2,7 @@ using System.Reflection;
 using VSSL.Abstractions.Factories;
 using VSSL.Common.Constants;
 using VSSL.Ui.Factories;
+using VSSL.Ui.ViewModels;
 using VSSL.Ui.Views;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,6 +41,7 @@ public static class ServiceCollectionExtenstion
         serviceCollection.AddSingleton<MainWindow>();
         serviceCollection.AddSingleton<Lazy<MainWindow>>(provider =>
             new Lazy<MainWindow>(provider.GetRequiredService<MainWindow>));
+        serviceCollection.AddSingleton<WorkspaceViewModel>();
         serviceCollection.AddSingleton<IViewModelFactory, DefaultViewModelFactory>();
         serviceCollection.AddSingleton<IMessenger>(WeakReferenceMessenger.Default);
     }

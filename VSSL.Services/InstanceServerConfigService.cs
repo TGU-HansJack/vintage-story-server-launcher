@@ -201,6 +201,8 @@ public class InstanceServerConfigService : IInstanceServerConfigService
         if (!string.IsNullOrWhiteSpace(configDirectory))
             Directory.CreateDirectory(configDirectory);
 
+        TryEnsureGeneratedConfig(profile, forceRegenerate: false);
+
         if (!File.Exists(configPath))
         {
             var defaultRoot = BuildDefaultRoot(profile);
@@ -208,13 +210,47 @@ public class InstanceServerConfigService : IInstanceServerConfigService
             return defaultRoot;
         }
 
-        await using var stream = new FileStream(configPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        var node = await JsonNode.ParseAsync(stream, cancellationToken: cancellationToken);
-        if (node is JsonObject rootObject) return rootObject;
+        var parsedRoot = await TryParseRootAsync(configPath, cancellationToken);
+        if (parsedRoot is not null) return parsedRoot;
+
+        // 文件损坏时强制重新生成一份完整配置，避免启动时出现默认组缺失导致秒退。
+        TryEnsureGeneratedConfig(profile, forceRegenerate: true);
+        parsedRoot = await TryParseRootAsync(configPath, cancellationToken);
+        if (parsedRoot is not null) return parsedRoot;
 
         var fallbackRoot = BuildDefaultRoot(profile);
         await File.WriteAllTextAsync(configPath, fallbackRoot.ToJsonString(JsonWriteOptions), cancellationToken);
         return fallbackRoot;
+    }
+
+    private static async Task<JsonObject?> TryParseRootAsync(string configPath, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var stream = new FileStream(configPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            var node = await JsonNode.ParseAsync(stream, cancellationToken: cancellationToken);
+            return node as JsonObject;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static void TryEnsureGeneratedConfig(InstanceProfile profile, bool forceRegenerate)
+    {
+        try
+        {
+            var installPath = WorkspacePathHelper.GetServerInstallPath(profile.Version);
+            var serverExe = Path.Combine(installPath, "VintagestoryServer.exe");
+            if (!File.Exists(serverExe)) return;
+
+            ServerConfigBootstrapper.EnsureGenerated(installPath, profile.DirectoryPath, forceRegenerate);
+        }
+        catch
+        {
+            // 保持配置页面可用，生成失败时回落到现有逻辑。
+        }
     }
 
     private static async Task SaveRootAsync(InstanceProfile profile, JsonObject root, CancellationToken cancellationToken)

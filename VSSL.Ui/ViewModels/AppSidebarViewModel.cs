@@ -4,6 +4,7 @@ using VSSL.Abstractions.Services;
 using VSSL.Abstractions.Services.I18n;
 using VSSL.Abstractions.Services.Ui;
 using VSSL.Domains.Enums;
+using VSSL.Domains.Models;
 using VSSL.Ui.Assets.I18n;
 using VSSL.Ui.Controls;
 using VSSL.Ui.Messages;
@@ -19,6 +20,7 @@ namespace VSSL.Ui.ViewModels;
 /// </summary>
 public partial class AppSidebarViewModel : RecipientViewModelBase, IRecipient<ThemeChangedMessage>
 {
+    private readonly ILauncherPreferencesService _launcherPreferencesService;
     private readonly ILocalizationService _localizationService;
     private readonly IMainWindowService? _mainWindowService;
     private readonly IMenuService? _menuService;
@@ -120,7 +122,9 @@ public partial class AppSidebarViewModel : RecipientViewModelBase, IRecipient<Th
     [RelayCommand]
     private void ToggleTheme(string value)
     {
-        _themeService?.ToggleTheme(bool.Parse(value));
+        var isDarkMode = bool.Parse(value);
+        _themeService?.ToggleTheme(isDarkMode);
+        SavePreferences(preferences => preferences.IsDarkMode = isDarkMode);
     }
 
     [RelayCommand]
@@ -128,6 +132,7 @@ public partial class AppSidebarViewModel : RecipientViewModelBase, IRecipient<Th
     {
         _localizationService.CurrentCulture = CultureInfo.GetCultureInfo(language);
         CurrentCultureName = _localizationService.CurrentCulture.Name;
+        SavePreferences(preferences => preferences.Language = CurrentCultureName);
     }
 
     [RelayCommand]
@@ -149,8 +154,9 @@ public partial class AppSidebarViewModel : RecipientViewModelBase, IRecipient<Th
     public AppSidebarViewModel(ISidebarService sidebarService, IThemeService? themeService,
         INavigationService? navigationService,
         IMainWindowService mainWindowService, IMenuService? menuService, ILocalizationService localizationService,
-        IMessenger messenger)
+        IMessenger messenger, ILauncherPreferencesService launcherPreferencesService)
     {
+        _launcherPreferencesService = launcherPreferencesService;
         _sidebarService = sidebarService;
         _themeService = themeService;
         _navigationService = navigationService;
@@ -160,9 +166,18 @@ public partial class AppSidebarViewModel : RecipientViewModelBase, IRecipient<Th
         _messenger = messenger;
 
         CurrentCultureName = _localizationService.CurrentCulture.Name;
+        IsDarkMode = _themeService?.IsDarkMode ?? IsDarkMode;
 
         InitMenus();
     }
 
     #endregion
+
+    private void SavePreferences(Action<LauncherPreferences> updateAction)
+    {
+        var preferences = _launcherPreferencesService.Load();
+        updateAction(preferences);
+        preferences.IsOnboardingCompleted = true;
+        _launcherPreferencesService.Save(preferences);
+    }
 }

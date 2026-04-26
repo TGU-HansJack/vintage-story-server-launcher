@@ -19,7 +19,7 @@
         <value>Hello, Avalonia</value>
     </data>
     <data name="AppName" xml:space="preserve">
-        <value>VSSL</value>
+        <value>VSSL Vintage Story Server Launcher</value>
     </data>
     <data name="HomeMenuTitle" xml:space="preserve">
         <value>Dashboard</value>
@@ -55,7 +55,7 @@
         <value>Project Info</value>
     </data>
     <data name="WorkspaceMenuTitle" xml:space="preserve">
-        <value>Workspace</value>
+        <value>Console</value>
     </data>
     <data name="BugReportMenuTitle" xml:space="preserve">
         <value>Bug Report</value>

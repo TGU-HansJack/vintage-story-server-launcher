@@ -19,7 +19,7 @@
         <value>你好，Avalonia</value>
     </data>
     <data name="AppName" xml:space="preserve">
-        <value>VSSL</value>
+        <value>VSSL 复古物语服务器启动器</value>
     </data>
     <data name="AboutMenuTitle" xml:space="preserve">
         <value>关于</value>
@@ -55,7 +55,7 @@
         <value>项目信息</value>
     </data>
     <data name="WorkspaceMenuTitle" xml:space="preserve">
-        <value>工作台</value>
+        <value>控制台</value>
     </data>
     <data name="BugReportMenuTitle" xml:space="preserve">
         <value>问题反馈</value>

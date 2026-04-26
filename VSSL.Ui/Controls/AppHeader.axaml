@@ -37,6 +37,7 @@
                 DockPanel.Dock="Left"
                 FontWeight="Black"
                 Text="{Binding AppName}"
+                TextTrimming="CharacterEllipsis"
                 />
 
             <!--  project link & bug report buttons  -->

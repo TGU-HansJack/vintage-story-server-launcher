@@ -1,6 +1,5 @@
 using System.IO.Compression;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using VSSL.Abstractions.Services;
 using VSSL.Domains.Models;
 
@@ -107,7 +106,7 @@ public class InstanceProfileService : IInstanceProfileService
             LastUpdatedUtc = DateTimeOffset.UtcNow
         };
 
-        EnsureServerConfig(profile);
+        EnsureServerConfig(profile, installPath);
 
         var index = ReadProfileIndex();
         index.Profiles.Add(profile);
@@ -316,51 +315,8 @@ public class InstanceProfileService : IInstanceProfileService
         return changed;
     }
 
-    private static void EnsureServerConfig(InstanceProfile profile)
+    private static void EnsureServerConfig(InstanceProfile profile, string installPath)
     {
-        var configPath = WorkspacePathHelper.GetProfileConfigPath(profile.DirectoryPath);
-        var configDirectory = Path.GetDirectoryName(configPath);
-        if (!string.IsNullOrWhiteSpace(configDirectory))
-            Directory.CreateDirectory(configDirectory);
-
-        if (File.Exists(configPath)) return;
-
-        var root = new JsonObject
-        {
-            ["ServerName"] = "Vintage Story Server",
-            ["Ip"] = null,
-            ["Port"] = 42420,
-            ["MaxClients"] = 16,
-            ["Password"] = null,
-            ["AdvertiseServer"] = false,
-            ["WhitelistMode"] = 0,
-            ["AllowPvP"] = true,
-            ["AllowFireSpread"] = true,
-            ["AllowFallingBlocks"] = true
-        };
-
-        var worldConfig = new JsonObject
-        {
-            ["Seed"] = "123456789",
-            ["WorldName"] = "A new world",
-            ["SaveFileLocation"] = profile.ActiveSaveFile,
-            ["PlayStyle"] = "surviveandbuild",
-            ["WorldType"] = "standard",
-            ["MapSizeY"] = 256
-        };
-        worldConfig["WorldConfiguration"] = new JsonObject
-        {
-            ["gameMode"] = "survival",
-            ["allowMap"] = true,
-            ["allowCoordinateHud"] = true,
-            ["allowLandClaiming"] = true,
-            ["worldWidth"] = 1024000,
-            ["worldLength"] = 1024000,
-            ["worldEdge"] = "blocked",
-            ["snowAccum"] = true
-        };
-        root["WorldConfig"] = worldConfig;
-
-        File.WriteAllText(configPath, root.ToJsonString(JsonOptions));
+        ServerConfigBootstrapper.EnsureGenerated(installPath, profile.DirectoryPath);
     }
 }

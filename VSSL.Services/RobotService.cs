@@ -10,20 +10,25 @@ namespace VSSL.Services;
 /// </summary>
 public class RobotService : IRobotService
 {
-    private const int MaxConsoleLines = 2000;
+    private const int MaxConsoleLines = 3000;
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true
     };
 
-    private readonly SemaphoreSlim _runtimeGate = new(1, 1);
+    private readonly Vs2QQProcessService _processService;
     private readonly object _consoleGate = new();
-    private CancellationTokenSource? _runCts;
-    private Task? _runTask;
     private readonly List<string> _consoleLines = [];
-
     private RobotRuntimeStatus _status = new();
     private RobotSettings _lastLoadedSettings = new();
+
+    public RobotService(Vs2QQProcessService processService)
+    {
+        _processService = processService;
+        _status = processService.CurrentStatus;
+        _processService.OutputReceived += OnProcessOutputReceived;
+        _processService.StatusChanged += OnProcessStatusChanged;
+    }
 
     /// <inheritdoc />
     public async Task<RobotSettings> LoadSettingsAsync(CancellationToken cancellationToken = default)
@@ -94,108 +99,20 @@ public class RobotService : IRobotService
     /// <inheritdoc />
     public async Task StartAsync(RobotSettings settings, CancellationToken cancellationToken = default)
     {
-        await _runtimeGate.WaitAsync(cancellationToken);
-        try
-        {
-            if (_status.IsRunning)
-                throw new InvalidOperationException("机器人已在运行中。");
+        var normalized = NormalizeSettings(settings);
+        await SaveSettingsAsync(normalized, cancellationToken);
 
-            var normalized = NormalizeSettings(settings);
-            await SaveSettingsAsync(normalized, cancellationToken);
-
-            _runCts = new CancellationTokenSource();
-            var loopToken = _runCts.Token;
-            _runTask = Task.Run(() => RunLoopAsync(normalized, loopToken), CancellationToken.None);
-
-            _status = new RobotRuntimeStatus
-            {
-                IsRunning = true,
-                ProcessId = Environment.ProcessId,
-                StartedAtUtc = DateTimeOffset.UtcNow,
-                OneBotWsUrl = normalized.OneBotWsUrl
-            };
-
-            AppendConsoleLine($"[system] VS2QQ 已启动，OneBot={normalized.OneBotWsUrl}");
-            AppendConsoleLine($"[system] 数据库路径={normalized.DatabasePath}");
-        }
-        finally
-        {
-            _runtimeGate.Release();
-        }
+        var result = await _processService.StartAsync(normalized, cancellationToken);
+        if (!result.IsSuccess)
+            throw new InvalidOperationException(result.Message ?? "启动 VS2QQ 失败。", result.Exception);
     }
 
     /// <inheritdoc />
     public async Task StopAsync(TimeSpan gracefulTimeout, CancellationToken cancellationToken = default)
     {
-        Task? currentRunTask;
-        CancellationTokenSource? currentCts;
-
-        await _runtimeGate.WaitAsync(cancellationToken);
-        try
-        {
-            if (!_status.IsRunning)
-                return;
-
-            currentRunTask = _runTask;
-            currentCts = _runCts;
-            currentCts?.Cancel();
-        }
-        finally
-        {
-            _runtimeGate.Release();
-        }
-
-        if (currentRunTask is not null)
-        {
-            var timeoutTask = Task.Delay(gracefulTimeout, cancellationToken);
-            var completed = await Task.WhenAny(currentRunTask, timeoutTask);
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if (!ReferenceEquals(completed, currentRunTask))
-                throw new InvalidOperationException("停止机器人超时。");
-
-            await currentRunTask;
-        }
-
-        await _runtimeGate.WaitAsync(cancellationToken);
-        try
-        {
-            _runCts?.Dispose();
-            _runCts = null;
-            _runTask = null;
-            _status = new RobotRuntimeStatus
-            {
-                IsRunning = false,
-                ProcessId = null,
-                StartedAtUtc = null,
-                OneBotWsUrl = _lastLoadedSettings.OneBotWsUrl
-            };
-        }
-        finally
-        {
-            _runtimeGate.Release();
-        }
-
-        AppendConsoleLine("[system] VS2QQ 已停止。");
-    }
-
-    private async Task RunLoopAsync(RobotSettings settings, CancellationToken cancellationToken)
-    {
-        var interval = TimeSpan.FromSeconds(Math.Max(1, settings.PollIntervalSec));
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            AppendConsoleLine(
-                $"[heartbeat] {DateTimeOffset.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)} VS2QQ 运行中");
-
-            try
-            {
-                await Task.Delay(interval, cancellationToken);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                break;
-            }
-        }
+        var result = await _processService.StopAsync(gracefulTimeout, cancellationToken);
+        if (!result.IsSuccess)
+            throw new InvalidOperationException(result.Message ?? "停止 VS2QQ 失败。", result.Exception);
     }
 
     private static RobotSettings BuildDefaultSettings()
@@ -259,13 +176,28 @@ public class RobotService : IRobotService
         };
     }
 
-    private void AppendConsoleLine(string line)
+    private void OnProcessOutputReceived(object? sender, string line)
     {
         lock (_consoleGate)
         {
             _consoleLines.Add(line);
             while (_consoleLines.Count > MaxConsoleLines)
                 _consoleLines.RemoveAt(0);
+        }
+    }
+
+    private void OnProcessStatusChanged(object? sender, RobotRuntimeStatus status)
+    {
+        _status = status;
+        if (!status.IsRunning && !string.IsNullOrWhiteSpace(_lastLoadedSettings.OneBotWsUrl))
+        {
+            _status = new RobotRuntimeStatus
+            {
+                IsRunning = false,
+                ProcessId = null,
+                StartedAtUtc = null,
+                OneBotWsUrl = _lastLoadedSettings.OneBotWsUrl
+            };
         }
     }
 }

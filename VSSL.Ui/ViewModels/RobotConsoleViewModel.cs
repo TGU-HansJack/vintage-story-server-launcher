@@ -15,6 +15,7 @@ public partial class RobotConsoleViewModel : ViewModelBase
     [ObservableProperty] private string _statusMessage = string.Empty;
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private bool _isRunning;
+    [ObservableProperty] private bool _isConsoleAutoFollow = true;
     [ObservableProperty] private string _runtimeStateText = "未运行";
 
     public ObservableCollection<string> ConsoleLines { get; } = [];
@@ -41,8 +42,6 @@ public partial class RobotConsoleViewModel : ViewModelBase
             foreach (var line in lines) ConsoleLines.Add(line);
             OnPropertyChanged(nameof(HasConsoleLines));
             OnPropertyChanged(nameof(HasNoConsoleLines));
-
-            StatusMessage = $"控制台已刷新，共 {ConsoleLines.Count} 行。";
         }
         catch (Exception ex)
         {

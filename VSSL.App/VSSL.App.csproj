@@ -15,6 +15,10 @@
         <AvaloniaResource Include="Assets\**"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <EmbeddedResource Include="appsettings.json" LogicalName="VSSL.App.appsettings.json" />
+    </ItemGroup>
+
     <!--    下面这个配置是避免 AOT 发布时把一些必要的 DLL 给精简移除了-->
     <!--    <ItemGroup>-->
     <!--        <TrimmerRootAssembly Include="Avalonia.Themes.Fluent"/>-->

@@ -1,0 +1,75 @@
+name: Build Windows Packages
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    env:
+      PROJECT_PATH: VSSL.App/VSSL.App.csproj
+      CONFIGURATION: Release
+      RUNTIME: win-x64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore VSSL.sln
+
+      - name: Publish installer payload
+        run: dotnet publish $env:PROJECT_PATH -c $env:CONFIGURATION -r $env:RUNTIME --self-contained true -o artifacts/publish/win-x64
+
+      - name: Publish portable single-file
+        run: dotnet publish $env:PROJECT_PATH -c $env:CONFIGURATION -r $env:RUNTIME --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o artifacts/publish/portable
+
+      - name: Prepare portable artifact
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts/portable | Out-Null
+          Copy-Item -LiteralPath "artifacts/publish/portable/VSSL.App.exe" -Destination "artifacts/portable/VSSL-portable-win-x64.exe" -Force
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer package
+        shell: powershell
+        run: |
+          $version = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}" } else { "0.0.0-${{ github.run_number }}" }
+          if ($version.StartsWith("v")) { $version = $version.Substring(1) }
+
+          New-Item -ItemType Directory -Force -Path artifacts/installer | Out-Null
+
+          $buildDir = (Resolve-Path "artifacts/publish/win-x64").Path
+          $outputDir = (Resolve-Path "artifacts/installer").Path
+
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
+            "/DMyAppVersion=$version" `
+            "/DBuildDir=$buildDir" `
+            "/DOutputDir=$outputDir" `
+            "installer/VSSL.iss"
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VSSL-installer-win-x64
+          path: artifacts/installer/*.exe
+          if-no-files-found: error
+
+      - name: Upload portable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VSSL-portable-win-x64
+          path: artifacts/portable/VSSL-portable-win-x64.exe
+          if-no-files-found: error
+

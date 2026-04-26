@@ -27,6 +27,8 @@ internal static partial class WorkspacePathHelper
 
     public static string GetProfileDataPath(string profileId) => Path.Combine(DataRoot, profileId);
 
+    public static string GetServerInstallPath(string version) => Path.Combine(ServersRoot, version);
+
     public static string GetProfileSavesPath(string profileId) => Path.Combine(SavesRoot, profileId);
 
     public static string GetProfileDefaultSaveFile(string profileId) =>
@@ -40,6 +42,9 @@ internal static partial class WorkspacePathHelper
 
     public static string GetProfileLogsPath(string profileDataPath) =>
         Path.Combine(profileDataPath, "Logs");
+
+    public static string GetServerMainLogPath(string profileDataPath) =>
+        Path.Combine(GetProfileLogsPath(profileDataPath), "server-main.log");
 
     public static void EnsureWorkspace()
     {

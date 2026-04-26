@@ -5,32 +5,83 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:vm="clr-namespace:VSSL.Ui.ViewModels"
-    xmlns:workspace="clr-namespace:VSSL.Ui.Controls.Workspace"
+    x:Name="WorkspaceRoot"
     d:DesignHeight="450"
     d:DesignWidth="800"
     x:DataType="vm:WorkspaceViewModel"
     mc:Ignorable="d"
     >
-
     <Design.DataContext>
         <vm:WorkspaceViewModel />
     </Design.DataContext>
 
-    <Border>
-        <Grid RowDefinitions="Auto, *" RowSpacing="24">
-            <!--  user profile  -->
-            <workspace:UserProfile Grid.Row="0" Grid.Column="0" />
+    <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="10">
+        <Border Grid.Row="0" Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
+            <Grid ColumnDefinitions="2.2*,Auto,Auto,Auto,*" ColumnSpacing="8">
+                <ComboBox Grid.Column="0" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
 
-            <Grid
-                Grid.Row="1"
-                Grid.Column="0"
-                ColumnDefinitions="*, *"
-                ColumnSpacing="24"
-                >
-                <workspace:TodoList Grid.Row="0" Grid.Column="0" />
-
-                <workspace:TeamActivity Grid.Row="0" Grid.Column="1" />
+                <Button Grid.Column="1" Width="92" Command="{Binding StartServerCommand}" Content="启动服务器" />
+                <Button Grid.Column="2" Width="92" Command="{Binding StopServerCommand}" Content="停止服务器" />
+                <Button Grid.Column="3" Width="86" Command="{Binding RefreshProfilesCommand}" Content="刷新档案" />
+                <TextBlock Grid.Column="4" VerticalAlignment="Center" Text="{Binding RuntimeStateText}" TextTrimming="CharacterEllipsis" />
             </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="8">
+            <CheckBox Grid.Column="0" Content="追踪" IsChecked="{Binding IsConsoleAutoFollow}" />
+            <Button Grid.Column="1" Width="80" Command="{Binding ExportConsoleCommand}" Content="导出" />
+            <Button Grid.Column="2" Width="80" Command="{Binding ClearConsoleCommand}" Content="清空" />
+            <TextBlock Grid.Column="3" VerticalAlignment="Center" Text="{Binding StatusMessage}" TextTrimming="CharacterEllipsis" />
         </Grid>
-    </Border>
+
+        <Grid Grid.Row="2" RowDefinitions="Auto,*" RowSpacing="8">
+            <Border
+                Grid.Row="0"
+                Margin="0,0,0,4"
+                Padding="10,8"
+                CornerRadius="4"
+                BorderThickness="1"
+                BorderBrush="Gray"
+                IsVisible="{Binding IsStartupProgressVisible}"
+                >
+                <StackPanel>
+                    <TextBlock Text="{Binding StartupProgress, StringFormat=启动进度：{0:0}%}" />
+                    <ProgressBar Minimum="0" Maximum="100" Height="10" Margin="0,6,0,0" Value="{Binding StartupProgress}" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="1" CornerRadius="6" BorderBrush="Gray" BorderThickness="1" ClipToBounds="True">
+                <Grid>
+                    <ListBox
+                        x:Name="ConsoleList"
+                        ItemsSource="{Binding ConsoleLines}"
+                        FontFamily="Consolas"
+                        FontSize="12"
+                        BorderThickness="0"
+                        Padding="6"
+                        />
+
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        FontSize="16"
+                        FontWeight="SemiBold"
+                        IsVisible="{Binding HasNoConsoleLines}"
+                        Text="控制台暂无输出"
+                        />
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid Grid.Row="3" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <TextBox Grid.Column="0" Text="{Binding ConsoleInput, UpdateSourceTrigger=PropertyChanged}" />
+            <Button Grid.Column="1" Width="100" Command="{Binding SendConsoleCommandCommand}" Content="发送命令" />
+        </Grid>
+    </Grid>
 </UserControl>

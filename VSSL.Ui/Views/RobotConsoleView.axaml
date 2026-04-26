@@ -16,12 +16,13 @@
 
     <Grid RowDefinitions="Auto,Auto,*" RowSpacing="10">
         <Border Grid.Row="0" Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
-            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*" ColumnSpacing="8">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*" ColumnSpacing="8">
                 <Button Grid.Column="0" Width="90" Command="{Binding StartCommand}" Content="启动" />
                 <Button Grid.Column="1" Width="90" Command="{Binding StopCommand}" Content="停止" />
                 <Button Grid.Column="2" Width="90" Command="{Binding RefreshCommand}" Content="刷新" />
                 <Button Grid.Column="3" Width="90" Command="{Binding ClearCommand}" Content="清空" />
-                <TextBlock Grid.Column="4" VerticalAlignment="Center" Text="{Binding RuntimeStateText}" TextTrimming="CharacterEllipsis" />
+                <CheckBox Grid.Column="4" Content="追踪" IsChecked="{Binding IsConsoleAutoFollow}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="5" VerticalAlignment="Center" Text="{Binding RuntimeStateText}" TextTrimming="CharacterEllipsis" />
             </Grid>
         </Border>
 
@@ -29,15 +30,14 @@
 
         <Border Grid.Row="2" Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
             <Grid>
-                <ScrollViewer>
-                    <ItemsControl ItemsSource="{Binding ConsoleLines}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Margin="0,0,0,4" FontFamily="Consolas" Text="{Binding .}" TextWrapping="Wrap" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
+                <ListBox
+                    x:Name="RobotConsoleList"
+                    ItemsSource="{Binding ConsoleLines}"
+                    FontFamily="Consolas"
+                    FontSize="12"
+                    BorderThickness="0"
+                    Padding="6"
+                    />
 
                 <TextBlock
                     HorizontalAlignment="Center"
