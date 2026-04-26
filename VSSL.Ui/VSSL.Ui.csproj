@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia" Version="11.3.10"/>
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.10"/>
+        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+        <PackageReference Include="LiveChartsCore.SkiaSharpView.Avalonia" Version="2.0.0-rc5.4" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.1" />
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.1" />
+        <PackageReference Include="Svg.Controls.Skia.Avalonia" Version="11.3.9" />
+        <PackageReference Include="System.Reactive" Version="6.1.0"/>
+        <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.1"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\VSSL.Abstractions\VSSL.Abstractions.csproj"/>
+        <ProjectReference Include="..\VSSL.Common\VSSL.Common.csproj"/> 
+    </ItemGroup>
+
+    <ItemGroup>
+        <AdditionalFiles Include="Controls\AppHeader.axaml"/>
+        <AdditionalFiles Include="Themes\Dark.axaml"/>
+        <AdditionalFiles Include="Themes\Light.axaml"/>
+        <AdditionalFiles Include="Views\AboutView.axaml"/>
+        <AdditionalFiles Include="Views\HomeView.axaml"/>
+        <AdditionalFiles Include="Views\MainWindow.axaml"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <AvaloniaResource Include="Assets\**\*"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Update="Assets\I18n\Resources.resx">
+            <Generator>PublicResXFileCodeGenerator</Generator>
+            <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+        </EmbeddedResource>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Update="Assets\I18n\Resources.Designer.cs">
+            <DesignTime>True</DesignTime>
+            <AutoGen>True</AutoGen>
+            <DependentUpon>Resources.resx</DependentUpon>
+        </Compile>
+    </ItemGroup>
+</Project>

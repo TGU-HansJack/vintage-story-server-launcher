@@ -1,0 +1,93 @@
+﻿<root>
+    <resheader name="resmimetype">
+        <value>text/microsoft-resx</value>
+    </resheader>
+    <resheader name="version">
+        <value>1.3</value>
+    </resheader>
+    <resheader name="reader">
+        <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral,
+            PublicKeyToken=b77a5c561934e089
+        </value>
+    </resheader>
+    <resheader name="writer">
+        <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral,
+            PublicKeyToken=b77a5c561934e089
+        </value>
+    </resheader>
+    <data name="Greeting" xml:space="preserve">
+        <value>你好，Avalonia</value>
+    </data>
+    <data name="AppName" xml:space="preserve">
+        <value>VSSL</value>
+    </data>
+    <data name="AboutMenuTitle" xml:space="preserve">
+        <value>关于</value>
+    </data>
+    <data name="HomeMenuTitle" xml:space="preserve">
+        <value>总览</value>
+    </data>
+    <data name="MenuAreaPlaceholder" xml:space="preserve">
+        <value>子菜单区域...</value>
+    </data>
+    <data name="MenuSearchPlaceholder" xml:space="preserve">
+        <value>搜索菜单...</value>
+    </data>
+    <data name="ExitButtonText" xml:space="preserve">
+        <value>退出</value>
+    </data>
+    <data name="LanguageButtonText" xml:space="preserve">
+        <value>系统语言</value>
+    </data>
+    <data name="ThemesButtonText" xml:space="preserve">
+        <value>系统主题</value>
+    </data>
+    <data name="LightThemeName" xml:space="preserve">
+        <value>浅色主题</value>
+    </data>
+    <data name="DarkThemeName" xml:space="preserve">
+        <value>深色主题</value>
+    </data>
+    <data name="OverviewMenuTitle" xml:space="preserve">
+        <value>概览</value>
+    </data>
+    <data name="ProjectInfoMenuTitle" xml:space="preserve">
+        <value>项目信息</value>
+    </data>
+    <data name="WorkspaceMenuTitle" xml:space="preserve">
+        <value>工作台</value>
+    </data>
+    <data name="BugReportMenuTitle" xml:space="preserve">
+        <value>问题反馈</value>
+    </data>
+    <data name="InstanceMenuTitle" xml:space="preserve">
+        <value>实例</value>
+    </data>
+    <data name="InstanceDownloadMenuTitle" xml:space="preserve">
+        <value>下载</value>
+    </data>
+    <data name="InstanceCreateMenuTitle" xml:space="preserve">
+        <value>创建</value>
+    </data>
+    <data name="InstanceManageMenuTitle" xml:space="preserve">
+        <value>管理</value>
+    </data>
+    <data name="ConfigMenuTitle" xml:space="preserve">
+        <value>配置</value>
+    </data>
+    <data name="SaveMenuTitle" xml:space="preserve">
+        <value>存档</value>
+    </data>
+    <data name="ModMenuTitle" xml:space="preserve">
+        <value>模组</value>
+    </data>
+    <data name="RobotMenuTitle" xml:space="preserve">
+        <value>机器人</value>
+    </data>
+    <data name="RobotConfigMenuTitle" xml:space="preserve">
+        <value>配置</value>
+    </data>
+    <data name="RobotConsoleMenuTitle" xml:space="preserve">
+        <value>控制台</value>
+    </data>
+</root>

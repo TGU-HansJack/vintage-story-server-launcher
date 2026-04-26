@@ -1,0 +1,78 @@
+<UserControl
+    x:Class="VSSL.Ui.Controls.AppHeader"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:VSSL.Ui.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="clr-namespace:VSSL.Ui.ViewModels"
+    d:DesignHeight="450"
+    d:DesignWidth="800"
+    x:DataType="vm:AppHeaderViewModel"
+    mc:Ignorable="d"
+    >
+
+    <Design.DataContext>
+        <vm:AppHeaderViewModel />
+    </Design.DataContext>
+
+    <Border
+        Padding="0,8,8,8"
+        Background="{DynamicResource HeaderBgColor}"
+        BorderBrush="{DynamicResource SidebarBorderColor}"
+        BorderThickness="0,0,0,1"
+        DockPanel.Dock="Top"
+        >
+        <Grid ColumnDefinitions="80,*,Auto,Auto" ColumnSpacing="10">
+            <!--  应用 LOGO  -->
+            <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center">
+                <controls:SvgIcon IconName="Logo" />
+            </StackPanel>
+            <!--  应用名称  -->
+            <TextBlock
+                Grid.Row="0"
+                Grid.Column="1"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                DockPanel.Dock="Left"
+                FontWeight="Black"
+                Text="{Binding AppName}"
+                />
+
+            <!--  project link & bug report buttons  -->
+            <StackPanel
+                Grid.Row="0"
+                Grid.Column="2"
+                VerticalAlignment="Center"
+                Orientation="Horizontal"
+                Spacing="4"
+                >
+                <Button Background="Transparent" Command="{Binding OpenProjectPageCommand}">
+                    <controls:SvgIcon Width="16" Height="16" IconName="GitHub" />
+                </Button>
+                <Button Background="Transparent" Command="{Binding OpenBugReportPageCommand}">
+                    <controls:SvgIcon Width="16" Height="16" IconName="BugReportRounded" />
+                </Button>
+            </StackPanel>
+
+            <!--  zoom in/out & fullscreen toggle & exit buttons  -->
+            <StackPanel
+                Grid.Row="0"
+                Grid.Column="3"
+                VerticalAlignment="Center"
+                Orientation="Horizontal"
+                Spacing="4"
+                >
+                <Button Background="Transparent" Command="{Binding MinimizeCommand}">
+                    <controls:SvgIcon Width="16" Height="16" IconName="HorizontalRuleRounded" />
+                </Button>
+                <Button Background="Transparent" Command="{Binding MaximizeCommand}">
+                    <controls:SvgIcon Width="16" Height="16" IconName="{Binding MaximizeToggleButtonIcon}" />
+                </Button>
+                <Button Background="Transparent" Command="{Binding ExitCommand}">
+                    <controls:SvgIcon Width="16" Height="16" IconName="CloseRounded" />
+                </Button>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

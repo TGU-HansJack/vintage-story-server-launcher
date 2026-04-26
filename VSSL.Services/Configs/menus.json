@@ -1,0 +1,86 @@
+[
+  {
+    "title": "HomeMenuTitle",
+    "icon": "FiDashboard",
+    "children": [
+      {
+        "title": "OverviewMenuTitle",
+        "icon": "FiOverview",
+        "viewName": "Home"
+      },
+      {
+        "title": "WorkspaceMenuTitle",
+        "icon": "FiWorkspace",
+        "viewName": "Workspace"
+      }
+    ]
+  },
+  {
+    "title": "AboutMenuTitle",
+    "icon": "FiAbout",
+    "children": [
+      {
+        "title": "ProjectInfoMenuTitle",
+        "icon": "FiAbout",
+        "viewName": "About"
+      },
+      {
+        "title": "BugReportMenuTitle",
+        "icon": "FiBug",
+        "viewName": "BugReport"
+      }
+    ]
+  },
+  {
+    "title": "InstanceMenuTitle",
+    "icon": "FiInstance",
+    "children": [
+      {
+        "title": "InstanceDownloadMenuTitle",
+        "icon": "FiDownload",
+        "viewName": "InstanceDownload"
+      },
+      {
+        "title": "InstanceCreateMenuTitle",
+        "icon": "FiCreate",
+        "viewName": "InstanceCreate"
+      },
+      {
+        "title": "InstanceManageMenuTitle",
+        "icon": "FiManage",
+        "viewName": "InstanceManage"
+      }
+    ]
+  },
+  {
+    "title": "ConfigMenuTitle",
+    "icon": "FiConfig",
+    "viewName": "Config"
+  },
+  {
+    "title": "SaveMenuTitle",
+    "icon": "FiSave",
+    "viewName": "Save"
+  },
+  {
+    "title": "ModMenuTitle",
+    "icon": "FiMod",
+    "viewName": "Mod"
+  },
+  {
+    "title": "RobotMenuTitle",
+    "icon": "FiRobot",
+    "children": [
+      {
+        "title": "RobotConfigMenuTitle",
+        "icon": "FiConfig",
+        "viewName": "RobotConfig"
+      },
+      {
+        "title": "RobotConsoleMenuTitle",
+        "icon": "FiConsole",
+        "viewName": "RobotConsole"
+      }
+    ]
+  }
+]

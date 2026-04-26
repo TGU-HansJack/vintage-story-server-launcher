@@ -1,0 +1,71 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+        <ApplicationIcon>Assets\app-icon.ico</ApplicationIcon>
+        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+        <RootNamespace>VSSL.App</RootNamespace>
+        <PackageId>VSSL.App</PackageId>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <AvaloniaResource Include="Assets\**"/>
+    </ItemGroup>
+
+    <!--    下面这个配置是避免 AOT 发布时把一些必要的 DLL 给精简移除了-->
+    <!--    <ItemGroup>-->
+    <!--        <TrimmerRootAssembly Include="Avalonia.Themes.Fluent"/>-->
+    <!--    </ItemGroup>-->
+
+    <!--    AOT 编译后需要依赖的本地 DLL 库，注意修改为自己系统下面正确的路径，避免找不到文件-->
+    <!--    <ItemGroup>-->
+    <!--        <SkiaSharpNative Include="$(UserProfile)\.nuget\packages\skiasharp.nativeassets.win32\2.88.9\runtimes\win-x64\native\libSkiaSharp.dll"/>-->
+    <!--        <HarfBuzzSharpNative Include="$(UserProfile)\.nuget\packages\harfbuzzsharp.nativeassets.win32\8.3.1.1\runtimes\win-x64\native\libHarfBuzzSharp.dll"/>-->
+    <!--    </ItemGroup>-->
+
+    <!--    复制本地 DLL 库到 AOT 编译输出目录-->
+    <!--    <Target Name="CopyNativeLibs" AfterTargets="Publish">-->
+    <!--        <Copy SourceFiles="@(SkiaSharpNative)" DestinationFolder="$(PublishDir)\..\native\"/>-->
+    <!--        <Copy SourceFiles="@(HarfBuzzSharpNative)" DestinationFolder="$(PublishDir)\..\native\"/>-->
+    <!--    </Target>-->
+
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia" Version="11.3.10"/>
+        <PackageReference Include="Avalonia.Desktop" Version="11.3.10"/>
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.10"/>
+        <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
+        <PackageReference Include="Avalonia.Diagnostics" Version="11.3.10">
+            <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
+            <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="HotAvalonia" Version="3.0.2" PrivateAssets="All" Publish="True"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.1"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.1"/>
+
+        <PackageReference Include="Serilog" Version="4.3.0"/>
+
+        <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0"/>
+        <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0"/>
+        <PackageReference Include="Serilog.Settings.Configuration" Version="10.0.0"/>
+        <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1"/>
+        <PackageReference Include="Serilog.Sinks.File" Version="7.0.0"/>
+    </ItemGroup>
+
+
+    <ItemGroup>
+        <ProjectReference Include="..\VSSL.Services\VSSL.Services.csproj"/>
+        <ProjectReference Include="..\VSSL.Ui\VSSL.Ui.csproj"/>
+    </ItemGroup>
+
+
+    <!--    if set the ExcludeFromSingleFile flag to true, the config file will output to publish dir-->
+    <ItemGroup>
+        <None Update="appsettings.json" ExcludeFromSingleFile="true">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+</Project>

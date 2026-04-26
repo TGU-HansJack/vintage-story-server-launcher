@@ -1,0 +1,44 @@
+<ResourceDictionary
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:VSSL.Ui.Controls"
+    xmlns:converters="clr-namespace:VSSL.Ui.Converters">
+    <Design.PreviewWith>
+        <TabControl>
+            <TabItem Header="Dark">
+                <ThemeVariantScope RequestedThemeVariant="Dark">
+                    <Border Background="LightSkyBlue">
+                        <controls:SvgIcon IconColor="#099323" IconName="Home" />
+                    </Border>
+                </ThemeVariantScope>
+            </TabItem>
+            <TabItem Header="Light">
+                <ThemeVariantScope RequestedThemeVariant="Light">
+                    <Border Background="#FFFFFF">
+                        <controls:SvgIcon IconName="Home" />
+                    </Border>
+                </ThemeVariantScope>
+            </TabItem>
+        </TabControl>
+    </Design.PreviewWith>
+
+    <ControlTheme x:Key="{x:Type controls:SvgIcon}" TargetType="controls:SvgIcon">
+        <ControlTheme.Resources>
+            <converters:SvgIconPathConverters x:Key="SvgIconPathConverters" />
+            <converters:SvgColorConverter x:Key="SvgColorConverter" />
+        </ControlTheme.Resources>
+
+        <!--  The default icon color can be modified by setting the IconColor styled property  -->
+        <Setter Property="IconColor" Value="{DynamicResource DefaultSvgIconColor}" />
+
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Svg
+                    Width="{TemplateBinding IconWidth}"
+                    Height="{TemplateBinding IconHeight}"
+                    Css="{Binding IconColor, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource SvgColorConverter}}"
+                    Path="{Binding IconName, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource SvgIconPathConverters}}" />
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+</ResourceDictionary>

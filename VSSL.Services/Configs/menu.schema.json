@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "array",
+  "items": {
+    "$ref": "#/$defs/menuItem"
+  },
+  "$defs": {
+    "menuItem": {
+      "type": "object",
+      "description": "menu item",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "menu title"
+        },
+        "icon": {
+          "type": "string",
+          "description": "menu icon file name in VSSL.Ui/Assets/Icons/MaterialSymbols"
+        },
+        "viewName": {
+          "type": "string",
+          "description": "key name of VSSL.Ui.Services.Ui.DefaultNavigationService.ViewMappings"
+        },
+        "children": {
+          "type": "array",
+          "description": "sub menus",
+          "items": {
+            "$ref": "#/$defs/menuItem"
+          }
+        }
+      },
+      "required": [
+        "title",
+        "icon"
+      ]
+    }
+  }
+}

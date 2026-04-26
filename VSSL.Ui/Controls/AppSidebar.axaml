@@ -1,0 +1,157 @@
+<UserControl
+    x:Class="VSSL.Ui.Controls.AppSidebar"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:VSSL.Ui.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="clr-namespace:VSSL.Ui.ViewModels"
+    x:Name="AppSidebarControl"
+    d:DesignHeight="450"
+    d:DesignWidth="800"
+    x:DataType="vm:AppSidebarViewModel"
+    mc:Ignorable="d">
+    <Design.DataContext>
+        <vm:AppSidebarViewModel />
+    </Design.DataContext>
+
+    <Border
+        MinWidth="80"
+        Padding="4"
+        Background="{DynamicResource SidebarBgColor}"
+        BorderBrush="{DynamicResource SidebarBorderColor}"
+        BorderThickness="0,0,1,0">
+        <DockPanel HorizontalAlignment="Center" LastChildFill="True">
+            <!--  Toggle button  -->
+            <Button
+                HorizontalAlignment="Center"
+                Background="Transparent"
+                Command="{Binding ToggleSidebarCommand}"
+                DockPanel.Dock="Top">
+                <controls:SvgIcon Width="24" Height="24" IconName="FiNavigation" />
+            </Button>
+
+            <!--  Toolbar  -->
+            <Button HorizontalAlignment="Center" Background="Transparent" DockPanel.Dock="Bottom">
+                <Button.Styles>
+                    <!--  menu items style  -->
+                    <Style Selector="MenuItem">
+                        <Setter Property="Margin" Value="8, 4" />
+                        <Setter Property="CornerRadius" Value="4" />
+                    </Style>
+
+                    <Style Selector="MenuItem.checked">
+                        <Setter Property="Background" Value="{DynamicResource SelectedMenuItemBgColor}" />
+                    </Style>
+                </Button.Styles>
+                <Button.Flyout>
+                    <MenuFlyout HorizontalOffset="0" ItemsSource="" Placement="Top">
+                        <MenuItem Header="{Binding ThemesButtonText}">
+                            <MenuItem
+                                Classes.checked="{Binding !IsDarkMode}"
+                                Command="{Binding ToggleThemeCommand}"
+                                CommandParameter="{x:Static x:Boolean.FalseString}"
+                                Header="{Binding LightThemeName}">
+                                <MenuItem.Icon>
+                                    <controls:SvgIcon Classes.checked="{Binding !IsDarkMode}"
+                                                      IconName="FiLight" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem
+                                Classes.checked="{Binding IsDarkMode}"
+                                Command="{Binding ToggleThemeCommand}"
+                                CommandParameter="{x:Static x:Boolean.TrueString}"
+                                Header="{Binding DarkThemeName}">
+                                <MenuItem.Icon>
+                                    <controls:SvgIcon Classes.checked="{Binding !IsDarkMode}"
+                                                      IconName="FiDark" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem.Icon>
+                                <controls:SvgIcon IconName="FiPalette" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="{Binding LanguageButtonText}" Tag="zh-CN">
+                            <MenuItem
+                                Classes.checked="{Binding CurrentCultureName, Converter={StaticResource EqualToBooleanConverter}, ConverterParameter='zh-CN'}"
+                                Command="{Binding ChangeLanguageCommand}"
+                                CommandParameter="zh-CN"
+                                Header="简体中文" />
+                            <MenuItem
+                                Classes.checked="{Binding CurrentCultureName, Converter={StaticResource EqualToBooleanConverter}, ConverterParameter='en-US'}"
+                                Command="{Binding ChangeLanguageCommand}"
+                                CommandParameter="en-US"
+                                Header="English"
+                                Tag="en-US" />
+
+                            <MenuItem.Icon>
+                                <controls:SvgIcon IconName="FiTranslate" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="-" />
+                        <MenuItem Command="{Binding ExitCommand}" Header="{Binding ExitButtonText}">
+                            <MenuItem.Icon>
+                                <controls:SvgIcon IconName="FiExit" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                    </MenuFlyout>
+                </Button.Flyout>
+
+                <controls:SvgIcon Width="24" Height="24" IconName="FiSettings" />
+            </Button>
+
+            <!--  About button  -->
+            <Button
+                Margin="0,0,0,8"
+                Padding="8,4"
+                HorizontalAlignment="Center"
+                Background="Transparent"
+                Classes.active="{Binding AboutMenu.IsActive}"
+                Command="{Binding NavigateCommand}"
+                CommandParameter="{Binding AboutMenu}"
+                DockPanel.Dock="Bottom"
+                ToolTip.Tip="{Binding AboutMenu.Title}">
+                <Button.Styles>
+                    <Style Selector="Button">
+                        <Setter Property="Background" Value="Transparent" />
+                    </Style>
+                    <Style Selector="Button.active">
+                        <Setter Property="Background" Value="{DynamicResource SelectedMenuItemBgColor}" />
+                    </Style>
+                </Button.Styles>
+                <controls:SvgIcon Width="24" Height="24" IconName="{Binding AboutMenu.Icon}" />
+            </Button>
+
+            <!--  Sidebar  -->
+            <ItemsControl
+                Margin="0,10,0,10"
+                Padding="4"
+                Background="Transparent"
+                ItemsSource="{Binding Menus}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Button
+                            Margin="0,0,0,8"
+                            Padding="8,4"
+                            Classes.active="{Binding IsActive}"
+                            Command="{Binding DataContext.NavigateCommand, ElementName=AppSidebarControl, FallbackValue=null}"
+                            CommandParameter="{Binding}"
+                            ToolTip.Tip="{Binding Title}">
+                            <Button.Styles>
+                                <Style Selector="Button">
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                                <Style Selector="Button.active">
+                                    <Setter Property="Background" Value="{DynamicResource SelectedMenuItemBgColor}" />
+                                </Style>
+                            </Button.Styles>
+                            <StackPanel>
+                                <controls:SvgIcon Width="24" Height="24" IconName="{Binding Icon}" />
+                            </StackPanel>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </DockPanel>
+    </Border>
+</UserControl>

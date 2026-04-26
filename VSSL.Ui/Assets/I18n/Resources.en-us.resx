@@ -1,0 +1,93 @@
+<root>
+    <resheader name="resmimetype">
+        <value>text/microsoft-resx</value>
+    </resheader>
+    <resheader name="version">
+        <value>1.3</value>
+    </resheader>
+    <resheader name="reader">
+        <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral,
+            PublicKeyToken=b77a5c561934e089
+        </value>
+    </resheader>
+    <resheader name="writer">
+        <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral,
+            PublicKeyToken=b77a5c561934e089
+        </value>
+    </resheader>
+    <data name="Greeting" xml:space="preserve">
+        <value>Hello, Avalonia</value>
+    </data>
+    <data name="AppName" xml:space="preserve">
+        <value>VSSL</value>
+    </data>
+    <data name="HomeMenuTitle" xml:space="preserve">
+        <value>Dashboard</value>
+    </data>
+    <data name="AboutMenuTitle" xml:space="preserve">
+        <value>About</value>
+    </data>
+    <data name="MenuAreaPlaceholder" xml:space="preserve">
+        <value>Sub Menus...</value>
+    </data>
+    <data name="MenuSearchPlaceholder" xml:space="preserve">
+        <value>Search menus...</value>
+    </data>
+    <data name="ExitButtonText" xml:space="preserve">
+        <value>Exit</value>
+    </data>
+    <data name="LanguageButtonText" xml:space="preserve">
+        <value>Language</value>
+    </data>
+    <data name="ThemesButtonText" xml:space="preserve">
+        <value>Themes</value>
+    </data>
+    <data name="LightThemeName" xml:space="preserve">
+        <value>Light</value>
+    </data>
+    <data name="DarkThemeName" xml:space="preserve">
+        <value>Dark</value>
+    </data>
+    <data name="OverviewMenuTitle" xml:space="preserve">
+        <value>Overview</value>
+    </data>
+    <data name="ProjectInfoMenuTitle" xml:space="preserve">
+        <value>Project Info</value>
+    </data>
+    <data name="WorkspaceMenuTitle" xml:space="preserve">
+        <value>Workspace</value>
+    </data>
+    <data name="BugReportMenuTitle" xml:space="preserve">
+        <value>Bug Report</value>
+    </data>
+    <data name="InstanceMenuTitle" xml:space="preserve">
+        <value>Instance</value>
+    </data>
+    <data name="InstanceDownloadMenuTitle" xml:space="preserve">
+        <value>Download</value>
+    </data>
+    <data name="InstanceCreateMenuTitle" xml:space="preserve">
+        <value>Create</value>
+    </data>
+    <data name="InstanceManageMenuTitle" xml:space="preserve">
+        <value>Manage</value>
+    </data>
+    <data name="ConfigMenuTitle" xml:space="preserve">
+        <value>Config</value>
+    </data>
+    <data name="SaveMenuTitle" xml:space="preserve">
+        <value>Save</value>
+    </data>
+    <data name="ModMenuTitle" xml:space="preserve">
+        <value>Mod</value>
+    </data>
+    <data name="RobotMenuTitle" xml:space="preserve">
+        <value>Robot</value>
+    </data>
+    <data name="RobotConfigMenuTitle" xml:space="preserve">
+        <value>Config</value>
+    </data>
+    <data name="RobotConsoleMenuTitle" xml:space="preserve">
+        <value>Console</value>
+    </data>
+</root>

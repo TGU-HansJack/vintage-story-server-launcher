@@ -1,0 +1,36 @@
+<UserControl
+    x:Class="VSSL.Ui.Views.WorkspaceView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="clr-namespace:VSSL.Ui.ViewModels"
+    xmlns:workspace="clr-namespace:VSSL.Ui.Controls.Workspace"
+    d:DesignHeight="450"
+    d:DesignWidth="800"
+    x:DataType="vm:WorkspaceViewModel"
+    mc:Ignorable="d"
+    >
+
+    <Design.DataContext>
+        <vm:WorkspaceViewModel />
+    </Design.DataContext>
+
+    <Border>
+        <Grid RowDefinitions="Auto, *" RowSpacing="24">
+            <!--  user profile  -->
+            <workspace:UserProfile Grid.Row="0" Grid.Column="0" />
+
+            <Grid
+                Grid.Row="1"
+                Grid.Column="0"
+                ColumnDefinitions="*, *"
+                ColumnSpacing="24"
+                >
+                <workspace:TodoList Grid.Row="0" Grid.Column="0" />
+
+                <workspace:TeamActivity Grid.Row="0" Grid.Column="1" />
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>
