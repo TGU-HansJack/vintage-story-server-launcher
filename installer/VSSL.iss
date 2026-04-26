@@ -29,8 +29,10 @@ DisableProgramGroupPage=yes
 UninstallDisplayIcon={app}\VSSL.App.exe
 
 [Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
+#ifexist "C:\Program Files (x86)\Inno Setup 6\Languages\ChineseSimplified.isl"
 Name: "chinesesimp"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
-Name: "english"; MessagesFile: "compiler:Languages\English.isl"
+#endif
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
