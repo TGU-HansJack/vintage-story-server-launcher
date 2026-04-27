@@ -9,6 +9,7 @@
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
         <RootNamespace>VSSL.App</RootNamespace>
         <PackageId>VSSL.App</PackageId>
+        <Version Condition="'$(Version)' == ''">0.0.0-local</Version>
     </PropertyGroup>
 
     <ItemGroup>

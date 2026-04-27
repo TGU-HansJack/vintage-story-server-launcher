@@ -39,10 +39,19 @@ public partial class ServerProcessService : IServerProcessService
         await _processGate.WaitAsync(cancellationToken);
         try
         {
+            if (_process is not null && IsProcessTerminated(_process))
+            {
+                _process.Dispose();
+                _process = null;
+            }
+
             if (_process is { HasExited: false })
                 throw new InvalidOperationException("服务器已在运行中。");
 
             WorkspacePathHelper.EnsureWorkspace();
+
+            // 启动前清理工作区内残留的孤立服务端进程，避免端口/日志文件占用导致无法启动。
+            await StopOrphanWorkspaceServerProcessesAsync(cancellationToken);
 
             var installPath = WorkspacePathHelper.GetServerInstallPath(profile.Version);
             var serverExe = Path.Combine(installPath, "VintagestoryServer.exe");
@@ -116,21 +125,61 @@ public partial class ServerProcessService : IServerProcessService
         await _processGate.WaitAsync(cancellationToken);
         try
         {
-            if (_process is null || _process.HasExited)
+            var process = _process;
+            if (process is null || IsProcessTerminated(process))
+            {
+                await StopOrphanWorkspaceServerProcessesAsync(cancellationToken);
                 return;
+            }
+
+            var trackedProcessId = TryGetProcessId(process);
 
             try
             {
                 await SendCommandInternalAsync("/stop", cancellationToken);
-                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                timeoutCts.CancelAfter(gracefulTimeout);
-                await _process.WaitForExitAsync(timeoutCts.Token);
             }
-            catch (OperationCanceledException)
+            catch (Exception ex)
             {
-                _process.Kill(entireProcessTree: true);
-                await _process.WaitForExitAsync(cancellationToken);
-                OutputReceived?.Invoke(this, "[system] 服务器未在超时时间内退出，已强制终止。");
+                // stdin 写入失败时，继续走强制终止兜底，避免出现“点击停止但进程仍存活”。
+                OutputReceived?.Invoke(this, $"[system] 发送停服命令失败，将尝试强制终止：{ex.Message}");
+            }
+
+            if (!IsProcessTerminated(process))
+            {
+                try
+                {
+                    using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    timeoutCts.CancelAfter(gracefulTimeout <= TimeSpan.Zero ? TimeSpan.FromSeconds(1) : gracefulTimeout);
+                    await process.WaitForExitAsync(timeoutCts.Token);
+                }
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                {
+                    // Graceful 停止超时，继续进入强制终止。
+                }
+                catch (ObjectDisposedException)
+                {
+                    // 进程退出事件可能已释放 Process 对象，按已退出处理。
+                }
+            }
+
+            if (!IsProcessTerminated(process))
+            {
+                try
+                {
+                    process.Kill(entireProcessTree: true);
+                    await process.WaitForExitAsync(cancellationToken);
+                    OutputReceived?.Invoke(this, "[system] 服务器未在超时时间内退出，已强制终止。");
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException($"强制终止服务器进程失败：{ex.Message}", ex);
+                }
+            }
+
+            // 清理可能残留的同目录孤立服务端进程（例如应用重启后失去句柄的旧进程）。
+            if (trackedProcessId.HasValue)
+            {
+                await StopOrphanWorkspaceServerProcessesAsync(cancellationToken, trackedProcessId.Value);
             }
         }
         finally
@@ -290,6 +339,119 @@ public partial class ServerProcessService : IServerProcessService
     {
         _currentStatus = status;
         StatusChanged?.Invoke(this, status);
+    }
+
+    private static bool IsProcessTerminated(Process process)
+    {
+        try
+        {
+            return process.HasExited;
+        }
+        catch
+        {
+            return true;
+        }
+    }
+
+    private static int? TryGetProcessId(Process process)
+    {
+        try
+        {
+            return process.Id;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private async Task<int> StopOrphanWorkspaceServerProcessesAsync(
+        CancellationToken cancellationToken,
+        int? excludePid = null)
+    {
+        var serversRoot = NormalizePath(WorkspacePathHelper.ServersRoot);
+        if (string.IsNullOrWhiteSpace(serversRoot))
+            return 0;
+
+        Process[] candidates;
+        try
+        {
+            candidates = Process.GetProcessesByName("VintagestoryServer");
+        }
+        catch
+        {
+            return 0;
+        }
+
+        var killedCount = 0;
+        foreach (var candidate in candidates)
+        {
+            using (candidate)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var pid = TryGetProcessId(candidate);
+                if (!pid.HasValue)
+                    continue;
+                if (excludePid.HasValue && excludePid.Value == pid.Value)
+                    continue;
+                if (IsProcessTerminated(candidate))
+                    continue;
+                if (!IsWorkspaceServerProcess(candidate, serversRoot))
+                    continue;
+
+                try
+                {
+                    candidate.Kill(entireProcessTree: true);
+                    await candidate.WaitForExitAsync(cancellationToken);
+                    killedCount++;
+                    OutputReceived?.Invoke(this, $"[system] 已清理孤立服务端进程，PID={pid.Value}。");
+                }
+                catch
+                {
+                    // 无法访问或终止时忽略，避免阻断主流程。
+                }
+            }
+        }
+
+        return killedCount;
+    }
+
+    private static bool IsWorkspaceServerProcess(Process process, string serversRoot)
+    {
+        try
+        {
+            var executablePath = process.MainModule?.FileName;
+            if (string.IsNullOrWhiteSpace(executablePath))
+                return false;
+
+            var executableDirectory = Path.GetDirectoryName(Path.GetFullPath(executablePath));
+            var normalizedExecutableDirectory = NormalizePath(executableDirectory);
+            if (string.IsNullOrWhiteSpace(normalizedExecutableDirectory))
+                return false;
+
+            return normalizedExecutableDirectory.StartsWith(serversRoot, StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static string NormalizePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return string.Empty;
+
+        try
+        {
+            return Path.GetFullPath(path)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        }
+        catch
+        {
+            return string.Empty;
+        }
     }
 
     private void PrepareSaveFileForStart(InstanceProfile profile)

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Collections.Concurrent;
 using VSSL.Abstractions.Services;
 using VSSL.Domains.Models;
 
@@ -10,6 +11,9 @@ namespace VSSL.Services;
 /// </summary>
 public class InstanceServerConfigService : IInstanceServerConfigService
 {
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> EnsureConfigLocks =
+        new(StringComparer.OrdinalIgnoreCase);
+
     private static readonly JsonSerializerOptions JsonWriteOptions = new()
     {
         WriteIndented = true
@@ -201,7 +205,7 @@ public class InstanceServerConfigService : IInstanceServerConfigService
         if (!string.IsNullOrWhiteSpace(configDirectory))
             Directory.CreateDirectory(configDirectory);
 
-        TryEnsureGeneratedConfig(profile, forceRegenerate: false);
+        await EnsureGeneratedConfigAsync(profile, forceRegenerate: false, cancellationToken);
 
         if (!File.Exists(configPath))
         {
@@ -214,13 +218,36 @@ public class InstanceServerConfigService : IInstanceServerConfigService
         if (parsedRoot is not null) return parsedRoot;
 
         // 文件损坏时强制重新生成一份完整配置，避免启动时出现默认组缺失导致秒退。
-        TryEnsureGeneratedConfig(profile, forceRegenerate: true);
+        await EnsureGeneratedConfigAsync(profile, forceRegenerate: true, cancellationToken);
         parsedRoot = await TryParseRootAsync(configPath, cancellationToken);
         if (parsedRoot is not null) return parsedRoot;
 
         var fallbackRoot = BuildDefaultRoot(profile);
         await File.WriteAllTextAsync(configPath, fallbackRoot.ToJsonString(JsonWriteOptions), cancellationToken);
         return fallbackRoot;
+    }
+
+    private static async Task EnsureGeneratedConfigAsync(
+        InstanceProfile profile,
+        bool forceRegenerate,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var lockKey = string.IsNullOrWhiteSpace(profile.DirectoryPath)
+            ? profile.Id
+            : profile.DirectoryPath;
+        var gate = EnsureConfigLocks.GetOrAdd(lockKey, _ => new SemaphoreSlim(1, 1));
+
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            await Task.Run(() => TryEnsureGeneratedConfig(profile, forceRegenerate), cancellationToken);
+        }
+        finally
+        {
+            gate.Release();
+        }
     }
 
     private static async Task<JsonObject?> TryParseRootAsync(string configPath, CancellationToken cancellationToken)

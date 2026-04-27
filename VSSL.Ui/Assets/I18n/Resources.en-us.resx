@@ -36,6 +36,14 @@
   <data name="AboutIssuesButtonText" xml:space="preserve"><value>GitHub Issues</value></data>
   <data name="AboutProjectInfoTitle" xml:space="preserve"><value>Project Information</value></data>
   <data name="AboutFeedbackText" xml:space="preserve"><value>Feedback: https://vintagestory.top/ or GitHub Issues</value></data>
+  <data name="AboutCurrentVersionLabel" xml:space="preserve"><value>Current Version:</value></data>
+  <data name="AboutCheckUpdatesButtonText" xml:space="preserve"><value>Check Updates</value></data>
+  <data name="AboutUpdateNowButtonText" xml:space="preserve"><value>Update Now</value></data>
+  <data name="AboutUpdateStatusIdle" xml:space="preserve"><value>Click "Check Updates" to fetch latest version.</value></data>
+  <data name="AboutUpdateStatusChecking" xml:space="preserve"><value>Checking for updates...</value></data>
+  <data name="AboutUpdateStatusAvailableFormat" xml:space="preserve"><value>New version available: {0} (current {1}).</value></data>
+  <data name="AboutUpdateStatusLatestFormat" xml:space="preserve"><value>You are up to date ({0}).</value></data>
+  <data name="AboutUpdateStatusFailedFormat" xml:space="preserve"><value>Update check failed: {0}</value></data>
   <data name="CommonCreateButtonText" xml:space="preserve"><value>Create</value></data>
   <data name="CommonDeleteButtonText" xml:space="preserve"><value>Delete</value></data>
   <data name="CommonRefreshButtonText" xml:space="preserve"><value>Refresh</value></data>

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 using System.Text.Json.Nodes;
 
 namespace VSSL.Services;
@@ -31,7 +32,20 @@ internal static class ServerConfigBootstrapper
             }
         };
 
+        var stdErrorBuilder = new StringBuilder();
+        process.OutputDataReceived += (_, _) =>
+        {
+            // Drain stdout to avoid redirected stream backpressure blocking process exit.
+        };
+        process.ErrorDataReceived += (_, args) =>
+        {
+            if (!string.IsNullOrWhiteSpace(args.Data))
+                stdErrorBuilder.AppendLine(args.Data);
+        };
+
         process.Start();
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
         if (!process.WaitForExit(30000))
         {
             try
@@ -48,7 +62,8 @@ internal static class ServerConfigBootstrapper
 
         if (process.ExitCode != 0)
         {
-            var stdError = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+            var stdError = stdErrorBuilder.ToString().Trim();
             throw new InvalidOperationException(
                 $"生成 serverconfig 失败，退出码 {process.ExitCode}。{stdError}");
         }

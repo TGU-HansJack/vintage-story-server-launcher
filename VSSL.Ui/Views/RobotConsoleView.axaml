@@ -26,18 +26,42 @@
 
         <TextBlock Grid.Row="1" Text="{Binding StatusMessage}" TextWrapping="Wrap" />
 
-        <Border Grid.Row="2" Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1" Background="#000000">
+        <Border Grid.Row="2" Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1" Background="#000000" ClipToBounds="True">
             <Grid>
                 <ListBox
                     x:Name="RobotConsoleList"
                     ItemsSource="{Binding ConsoleLines}"
+                    SelectionMode="{x:Static SelectionMode.Multiple}"
                     FontFamily="Consolas"
                     FontSize="12"
-                    Foreground="#E6E6E6"
+                    Foreground="#FFFFFF"
                     Background="Transparent"
                     BorderThickness="0"
                     Padding="6"
-                    />
+                    KeyDown="RobotConsoleList_OnKeyDown"
+                    >
+                    <ListBox.Styles>
+                        <Style Selector="ListBoxItem">
+                            <Setter Property="Foreground" Value="#FFFFFF" />
+                        </Style>
+                        <Style Selector="ListBoxItem /template/ ContentPresenter">
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="Padding" Value="4,2" />
+                            <Setter Property="Margin" Value="0,1,0,0" />
+                        </Style>
+                        <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#404040" />
+                        </Style>
+                        <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#0A64D8" />
+                        </Style>
+                    </ListBox.Styles>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding .}" TextWrapping="NoWrap" />
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
 
                 <TextBlock
                     HorizontalAlignment="Center"

@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Diagnostics;
 using VSSL.Abstractions.Services;
 using VSSL.Domains.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -272,11 +273,43 @@ public partial class WorkspaceViewModel : ViewModelBase
 
             var filePath = Path.Combine(exportDirectory, $"console-{DateTime.Now:yyyyMMdd-HHmmss}.log");
             await File.WriteAllLinesAsync(filePath, ConsoleLines.ToArray());
+            TryOpenExportFolder(filePath);
             StatusMessage = LF("WorkspaceStatusExportedFormat", filePath);
         }
         catch (Exception ex)
         {
             StatusMessage = LF("WorkspaceStatusExportFailedFormat", ex.Message);
+        }
+    }
+
+    private static void TryOpenExportFolder(string filePath)
+    {
+        try
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = $"/select,\"{filePath}\"",
+                    UseShellExecute = true
+                });
+                return;
+            }
+
+            var directory = Path.GetDirectoryName(filePath);
+            if (string.IsNullOrWhiteSpace(directory))
+                return;
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = directory,
+                UseShellExecute = true
+            });
+        }
+        catch
+        {
+            // Ignore shell launch failure to keep export successful.
         }
     }
 

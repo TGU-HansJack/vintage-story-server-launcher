@@ -16,14 +16,32 @@
 
     <Grid RowDefinitions="Auto,*" RowSpacing="10">
         <Border Grid.Row="0" Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
-            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+            <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="Auto,*" RowSpacing="8" ColumnSpacing="10">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <Button Command="{Binding OpenRepositoryCommand}" Content="{Binding [AboutRepositoryButtonText]}" />
                     <Button Command="{Binding OpenCommunityCommand}" Content="{Binding [AboutCommunityButtonText]}" />
                     <Button Command="{Binding OpenIssuesCommand}" Content="{Binding [AboutIssuesButtonText]}" />
                 </StackPanel>
 
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+                    <TextBlock VerticalAlignment="Center" Text="{Binding [AboutCurrentVersionLabel]}" />
+                    <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Text="{Binding CurrentVersion}" />
+                    <Button
+                        Command="{Binding CheckUpdatesCommand}"
+                        Content="{Binding [AboutCheckUpdatesButtonText]}"
+                        IsEnabled="{Binding !IsCheckingUpdate}"
+                        />
+                    <Button
+                        Command="{Binding OpenLatestReleaseCommand}"
+                        Content="{Binding [AboutUpdateNowButtonText]}"
+                        IsVisible="{Binding IsUpdateAvailable}"
+                        />
+                </StackPanel>
+
+                <TextBlock Grid.Row="2" Text="{Binding UpdateStatusMessage}" TextWrapping="Wrap" />
+
                 <TextBlock
+                    Grid.RowSpan="3"
                     Grid.Column="1"
                     VerticalAlignment="Center"
                     Text="{Binding RepositoryUrl}"

@@ -36,6 +36,14 @@
   <data name="AboutIssuesButtonText" xml:space="preserve"><value>问题工单</value></data>
   <data name="AboutProjectInfoTitle" xml:space="preserve"><value>项目信息</value></data>
   <data name="AboutFeedbackText" xml:space="preserve"><value>问题反馈：复古物语中文社区 https://vintagestory.top/ 或 GitHub Issues</value></data>
+  <data name="AboutCurrentVersionLabel" xml:space="preserve"><value>当前版本：</value></data>
+  <data name="AboutCheckUpdatesButtonText" xml:space="preserve"><value>检查更新</value></data>
+  <data name="AboutUpdateNowButtonText" xml:space="preserve"><value>前往更新</value></data>
+  <data name="AboutUpdateStatusIdle" xml:space="preserve"><value>点击“检查更新”获取最新版本。</value></data>
+  <data name="AboutUpdateStatusChecking" xml:space="preserve"><value>正在检查更新...</value></data>
+  <data name="AboutUpdateStatusAvailableFormat" xml:space="preserve"><value>发现新版本：{0}（当前 {1}）。</value></data>
+  <data name="AboutUpdateStatusLatestFormat" xml:space="preserve"><value>已是最新版本（{0}）。</value></data>
+  <data name="AboutUpdateStatusFailedFormat" xml:space="preserve"><value>检查更新失败：{0}</value></data>
   <data name="CommonCreateButtonText" xml:space="preserve"><value>创建</value></data>
   <data name="CommonDeleteButtonText" xml:space="preserve"><value>删除</value></data>
   <data name="CommonRefreshButtonText" xml:space="preserve"><value>刷新</value></data>
