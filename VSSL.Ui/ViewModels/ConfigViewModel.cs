@@ -71,7 +71,7 @@ public partial class ConfigViewModel : ViewModelBase
             if (Profiles.Count == 0)
             {
                 SelectedProfile = null;
-                StatusMessage = "暂无档案，请先到实例/创建页面创建档案。";
+                StatusMessage = L("StatusNoProfileCreateFirst");
                 return;
             }
 
@@ -89,11 +89,11 @@ public partial class ConfigViewModel : ViewModelBase
                 await LoadSelectedProfileAsync(SelectedProfile);
             }
 
-            StatusMessage = $"已加载 {Profiles.Count} 个档案。";
+            StatusMessage = LF("StatusLoadedProfilesFormat", Profiles.Count);
         }
         catch (Exception ex)
         {
-            StatusMessage = $"刷新档案失败：{ex.Message}";
+            StatusMessage = LF("StatusRefreshProfilesFailedFormat", ex.Message);
         }
         finally
         {
@@ -108,7 +108,7 @@ public partial class ConfigViewModel : ViewModelBase
         var profile = SelectedProfile;
         if (profile is null)
         {
-            StatusMessage = "请先选择档案。";
+            StatusMessage = L("StatusSelectProfileFirst");
             return;
         }
 
@@ -149,7 +149,8 @@ public partial class ConfigViewModel : ViewModelBase
                                  ?? new WorldRuleDefinition
                                  {
                                      Key = item.Key,
-                                     LabelZh = item.Label,
+                                     LabelZh = item.LabelZh,
+                                     LabelEn = item.LabelEn,
                                      Type = item.Type
                                  };
 
@@ -168,11 +169,11 @@ public partial class ConfigViewModel : ViewModelBase
             _instanceProfileService.UpdateProfile(profile);
 
             SaveFileLocation = saveFile;
-            StatusMessage = "配置已保存。";
+            StatusMessage = L("ConfigStatusSaved");
         }
         catch (Exception ex)
         {
-            StatusMessage = $"保存配置失败：{ex.Message}";
+            StatusMessage = LF("ConfigStatusSaveFailedFormat", ex.Message);
         }
         finally
         {
@@ -187,7 +188,7 @@ public partial class ConfigViewModel : ViewModelBase
         var profile = SelectedProfile;
         if (profile is null)
         {
-            StatusMessage = "请先选择档案。";
+            StatusMessage = L("StatusSelectProfileFirst");
             return;
         }
 
@@ -195,20 +196,20 @@ public partial class ConfigViewModel : ViewModelBase
         {
             IsBusy = true;
             var rawJson = await _instanceServerConfigService.LoadRawJsonAsync(profile);
-            var editedJson = await _advancedJsonDialogService.ShowEditorAsync("高级 JSON", rawJson);
+            var editedJson = await _advancedJsonDialogService.ShowEditorAsync(L("ConfigAdvancedJsonDialogTitle"), rawJson);
             if (editedJson is null)
             {
-                StatusMessage = "已取消高级 JSON 编辑。";
+                StatusMessage = L("ConfigStatusAdvancedJsonCanceled");
                 return;
             }
 
             await _instanceServerConfigService.SaveRawJsonAsync(profile, editedJson);
             await LoadSelectedProfileAsync(profile);
-            StatusMessage = "高级 JSON 已保存。";
+            StatusMessage = L("ConfigStatusAdvancedJsonSaved");
         }
         catch (Exception ex)
         {
-            StatusMessage = $"高级 JSON 保存失败：{ex.Message}";
+            StatusMessage = LF("ConfigStatusAdvancedJsonSaveFailedFormat", ex.Message);
         }
         finally
         {
@@ -258,18 +259,20 @@ public partial class ConfigViewModel : ViewModelBase
                 WorldRules.Add(new ConfigWorldRuleItemViewModel
                 {
                     Key = rule.Definition.Key,
-                    Label = rule.Definition.LabelZh,
+                    LabelZh = rule.Definition.LabelZh,
+                    LabelEn = rule.Definition.LabelEn,
                     Type = rule.Definition.Type,
-                    Description = rule.Definition.DescriptionZh,
+                    DescriptionZh = rule.Definition.DescriptionZh,
+                    DescriptionEn = rule.Definition.DescriptionEn,
                     Value = rule.Value ?? string.Empty
                 });
             }
 
-            StatusMessage = $"已加载档案配置：{profile.Name}";
+            StatusMessage = LF("ConfigStatusLoadedProfileConfigFormat", profile.Name);
         }
         catch (Exception ex)
         {
-            StatusMessage = $"读取配置失败：{ex.Message}";
+            StatusMessage = LF("ConfigStatusLoadFailedFormat", ex.Message);
         }
         finally
         {
@@ -304,7 +307,7 @@ public partial class ConfigViewModel : ViewModelBase
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "VSSL",
             "workspace");
-        return Path.Combine(workspaceRoot, "saves", profileId, "default.vcdbs");
+        return Path.Combine(workspaceRoot, "data", profileId, "Saves", "default.vcdbs");
     }
 
     #region Constructors

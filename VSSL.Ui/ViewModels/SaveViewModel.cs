@@ -45,9 +45,12 @@ public partial class SaveViewModel : ViewModelBase
         }
     }
 
+    public string CurrentProfileVersionText => LF("SaveCurrentProfileVersionFormat", CurrentProfileVersion);
+
     partial void OnSelectedProfileChanged(InstanceProfile? value)
     {
         OnPropertyChanged(nameof(CurrentProfileVersion));
+        OnPropertyChanged(nameof(CurrentProfileVersionText));
         _ = LoadSavesAsync(value);
     }
 
@@ -76,7 +79,7 @@ public partial class SaveViewModel : ViewModelBase
         var profile = SelectedProfile;
         if (profile is null)
         {
-            StatusMessage = "请先选择档案。";
+            StatusMessage = L("StatusSelectProfileFirst");
             return;
         }
 
@@ -91,11 +94,11 @@ public partial class SaveViewModel : ViewModelBase
 
             NewSaveName = "default";
             await LoadSavesAsync(profile);
-            StatusMessage = $"已创建存档：{Path.GetFileName(savePath)}";
+            StatusMessage = LF("SaveStatusCreatedFormat", Path.GetFileName(savePath));
         }
         catch (Exception ex)
         {
-            StatusMessage = $"创建存档失败：{ex.Message}";
+            StatusMessage = LF("SaveStatusCreateFailedFormat", ex.Message);
         }
         finally
         {
@@ -110,7 +113,7 @@ public partial class SaveViewModel : ViewModelBase
         var profile = SelectedProfile;
         if (profile is null)
         {
-            StatusMessage = "请先选择档案。";
+            StatusMessage = L("StatusSelectProfileFirst");
             return;
         }
 
@@ -120,7 +123,7 @@ public partial class SaveViewModel : ViewModelBase
             .ToList();
         if (selectedPaths.Count == 0)
         {
-            StatusMessage = "请先勾选要删除的存档。";
+            StatusMessage = L("SaveStatusSelectSavesToDelete");
             return;
         }
 
@@ -152,11 +155,11 @@ public partial class SaveViewModel : ViewModelBase
                 await LoadSavesAsync(profile);
             }
 
-            StatusMessage = deleted > 0 ? $"已删除 {deleted} 个存档。" : "没有可删除的存档。";
+            StatusMessage = deleted > 0 ? LF("SaveStatusDeletedFormat", deleted) : L("SaveStatusNoDeletes");
         }
         catch (Exception ex)
         {
-            StatusMessage = $"删除存档失败：{ex.Message}";
+            StatusMessage = LF("SaveStatusDeleteFailedFormat", ex.Message);
         }
         finally
         {
@@ -171,7 +174,7 @@ public partial class SaveViewModel : ViewModelBase
         var profile = SelectedProfile;
         if (profile is null)
         {
-            StatusMessage = "请先选择档案。";
+            StatusMessage = L("StatusSelectProfileFirst");
             return;
         }
 
@@ -185,11 +188,11 @@ public partial class SaveViewModel : ViewModelBase
             _instanceProfileService.UpdateProfile(profile);
 
             await LoadSavesAsync(profile);
-            StatusMessage = $"已切换当前存档：{saveItem.FileName}";
+            StatusMessage = LF("SaveStatusSetActiveFormat", saveItem.FileName);
         }
         catch (Exception ex)
         {
-            StatusMessage = $"切换存档失败：{ex.Message}";
+            StatusMessage = LF("SaveStatusSetActiveFailedFormat", ex.Message);
         }
         finally
         {
@@ -219,7 +222,7 @@ public partial class SaveViewModel : ViewModelBase
                 Saves.Clear();
                 OnPropertyChanged(nameof(HasSaves));
                 OnPropertyChanged(nameof(HasNoSaves));
-                StatusMessage = "暂无档案，请先到实例/创建页面创建档案。";
+                StatusMessage = L("StatusNoProfileCreateFirst");
                 return;
             }
 
@@ -239,7 +242,7 @@ public partial class SaveViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            StatusMessage = $"刷新档案失败：{ex.Message}";
+            StatusMessage = LF("StatusRefreshProfilesFailedFormat", ex.Message);
         }
         finally
         {
@@ -283,11 +286,11 @@ public partial class SaveViewModel : ViewModelBase
             OnPropertyChanged(nameof(HasNoSaves));
             OnPropertyChanged(nameof(HasSelectedSaves));
 
-            StatusMessage = $"已加载 {Saves.Count} 个存档（档案版本：{profile.Version}）。";
+            StatusMessage = LF("SaveStatusLoadedFormat", Saves.Count, profile.Version);
         }
         catch (Exception ex)
         {
-            StatusMessage = $"读取存档失败：{ex.Message}";
+            StatusMessage = LF("SaveStatusLoadFailedFormat", ex.Message);
         }
     }
 
@@ -311,7 +314,7 @@ public partial class SaveViewModel : ViewModelBase
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "VSSL",
             "workspace");
-        return Path.Combine(workspaceRoot, "saves", profileId, "default.vcdbs");
+        return Path.Combine(workspaceRoot, "data", profileId, "Saves", "default.vcdbs");
     }
 
     #region Constructors

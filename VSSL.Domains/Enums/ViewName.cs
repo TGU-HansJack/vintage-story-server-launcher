@@ -7,6 +7,7 @@ public enum ViewName
 {
     Home,
     Workspace,
+    MapPreview,
     About,
     BugReport,
     InstanceDownload,

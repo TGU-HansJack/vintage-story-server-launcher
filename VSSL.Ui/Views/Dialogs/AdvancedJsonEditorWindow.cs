@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Media;
+using System.Globalization;
 
 namespace VSSL.Ui.Views.Dialogs;
 
@@ -15,6 +16,8 @@ public class AdvancedJsonEditorWindow : Window
 
     public AdvancedJsonEditorWindow(string title, string jsonText)
     {
+        var isZh = CultureInfo.CurrentUICulture.Name.StartsWith("zh", StringComparison.OrdinalIgnoreCase);
+
         Title = title;
         Width = 980;
         Height = 680;
@@ -39,14 +42,14 @@ public class AdvancedJsonEditorWindow : Window
 
         var cancelButton = new Button
         {
-            Content = "取消",
+            Content = isZh ? "取消" : "Cancel",
             MinWidth = 90
         };
         cancelButton.Click += (_, _) => Close(null);
 
         var saveButton = new Button
         {
-            Content = "保存",
+            Content = isZh ? "保存" : "Save",
             MinWidth = 90
         };
         saveButton.Click += (_, _) => Close(_editor.Text ?? string.Empty);

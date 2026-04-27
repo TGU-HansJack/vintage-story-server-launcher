@@ -7,11 +7,12 @@ public partial class AboutView : UserControl
 {
     public AboutView()
     {
+        InitializeComponent();
     }
 
     public AboutView(AboutViewModel viewModel)
+        : this()
     {
-        InitializeComponent();
         DataContext = viewModel;
     }
 }

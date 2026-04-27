@@ -1,3 +1,5 @@
+using System.Globalization;
+using VSSL.Abstractions.Services.I18n;
 using VSSL.Abstractions.ViewModels;
 using VSSL.Ui.Messages;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -14,6 +16,7 @@ public class RecipientViewModelBase : ObservableRecipient, IDisposable, IViewMod
     ///     资源是否已释放
     /// </summary>
     private bool _disposed;
+    private ILocalizationService? _localizationService;
 
     protected RecipientViewModelBase()
     {
@@ -45,5 +48,33 @@ public class RecipientViewModelBase : ObservableRecipient, IDisposable, IViewMod
     {
         // Make all properties change
         OnPropertyChanged(string.Empty);
+    }
+
+    public string this[string key] => ResolveLocalizationService()?[key] ?? key;
+
+    protected string L(string key)
+    {
+        return this[key];
+    }
+
+    protected string LF(string key, params object[] args)
+    {
+        return string.Format(CultureInfo.CurrentCulture, this[key], args);
+    }
+
+    private ILocalizationService? ResolveLocalizationService()
+    {
+        if (_localizationService is not null) return _localizationService;
+
+        try
+        {
+            _localizationService = ServiceLocator.GetRequiredService<ILocalizationService>();
+        }
+        catch
+        {
+            _localizationService = null;
+        }
+
+        return _localizationService;
     }
 }

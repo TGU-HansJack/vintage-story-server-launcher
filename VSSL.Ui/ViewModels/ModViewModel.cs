@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using VSSL.Abstractions.Services;
+using VSSL.Abstractions.Services.Ui;
 using VSSL.Domains.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -13,6 +14,7 @@ public partial class ModViewModel : ViewModelBase
 {
     private readonly IInstanceProfileService? _instanceProfileService;
     private readonly IInstanceModService? _instanceModService;
+    private readonly IFilePickerService? _filePickerService;
 
     [ObservableProperty] private InstanceProfile? _selectedProfile;
     [ObservableProperty] private string _modZipPath = string.Empty;
@@ -43,19 +45,35 @@ public partial class ModViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private async Task BrowseModZipAsync()
+    {
+        if (_filePickerService is null) return;
+
+        var selectedPath = await _filePickerService.PickSingleFileAsync(
+            L("ModBrowseDialogTitle"),
+            L("ModBrowseFilterName"),
+            ["*.zip"]);
+
+        if (string.IsNullOrWhiteSpace(selectedPath))
+            return;
+
+        ModZipPath = selectedPath.Trim();
+    }
+
+    [RelayCommand]
     private async Task ImportByPathAsync()
     {
         if (_instanceModService is null) return;
         var profile = SelectedProfile;
         if (profile is null)
         {
-            StatusMessage = "请先选择档案。";
+            StatusMessage = L("StatusSelectProfileFirst");
             return;
         }
 
         if (string.IsNullOrWhiteSpace(ModZipPath))
         {
-            StatusMessage = "请输入 Mod ZIP 文件路径。";
+            StatusMessage = L("ModStatusEnterZipPath");
             return;
         }
 
@@ -64,11 +82,11 @@ public partial class ModViewModel : ViewModelBase
             IsBusy = true;
             var imported = await _instanceModService.ImportModZipAsync(profile, ModZipPath.Trim());
             await LoadModsAsync(profile);
-            StatusMessage = $"已导入 Mod：{imported.ModId}@{imported.Version}";
+            StatusMessage = LF("ModStatusImportedFormat", imported.ModId, imported.Version);
         }
         catch (Exception ex)
         {
-            StatusMessage = $"导入 Mod 失败：{ex.Message}";
+            StatusMessage = LF("ModStatusImportFailedFormat", ex.Message);
         }
         finally
         {
@@ -83,7 +101,7 @@ public partial class ModViewModel : ViewModelBase
         var profile = SelectedProfile;
         if (profile is null)
         {
-            StatusMessage = "请先选择档案。";
+            StatusMessage = L("StatusSelectProfileFirst");
             return;
         }
 
@@ -93,11 +111,11 @@ public partial class ModViewModel : ViewModelBase
             var targetEnabled = mod.IsDisabled;
             await _instanceModService.SetModEnabledAsync(profile, mod.ModId, mod.Version, targetEnabled);
             await LoadModsAsync(profile);
-            StatusMessage = $"{mod.ModId} 已{(targetEnabled ? "启用" : "禁用")}。";
+            StatusMessage = LF("ModStatusToggledFormat", mod.ModId, targetEnabled ? L("ModEnabledLabel") : L("ModDisabledLabel"));
         }
         catch (Exception ex)
         {
-            StatusMessage = $"更新 Mod 状态失败：{ex.Message}";
+            StatusMessage = LF("ModStatusToggleFailedFormat", ex.Message);
         }
         finally
         {
@@ -126,7 +144,7 @@ public partial class ModViewModel : ViewModelBase
                 Mods.Clear();
                 OnPropertyChanged(nameof(HasMods));
                 OnPropertyChanged(nameof(HasNoMods));
-                StatusMessage = "暂无档案，请先到实例/创建页面创建档案。";
+                StatusMessage = L("StatusNoProfileCreateFirst");
                 return;
             }
 
@@ -146,7 +164,7 @@ public partial class ModViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            StatusMessage = $"刷新档案失败：{ex.Message}";
+            StatusMessage = LF("StatusRefreshProfilesFailedFormat", ex.Message);
         }
         finally
         {
@@ -173,11 +191,11 @@ public partial class ModViewModel : ViewModelBase
 
             OnPropertyChanged(nameof(HasMods));
             OnPropertyChanged(nameof(HasNoMods));
-            StatusMessage = $"已加载 {Mods.Count} 个模组。";
+            StatusMessage = LF("ModStatusLoadedFormat", Mods.Count);
         }
         catch (Exception ex)
         {
-            StatusMessage = $"读取模组失败：{ex.Message}";
+            StatusMessage = LF("ModStatusLoadFailedFormat", ex.Message);
         }
     }
 
@@ -189,10 +207,12 @@ public partial class ModViewModel : ViewModelBase
 
     public ModViewModel(
         IInstanceProfileService instanceProfileService,
-        IInstanceModService instanceModService)
+        IInstanceModService instanceModService,
+        IFilePickerService filePickerService)
     {
         _instanceProfileService = instanceProfileService;
         _instanceModService = instanceModService;
+        _filePickerService = filePickerService;
         _ = RefreshProfilesAsync();
     }
 

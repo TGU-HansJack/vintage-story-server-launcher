@@ -35,11 +35,11 @@ public partial class RobotConfigViewModel : ViewModelBase
             IsBusy = true;
             var settings = await _robotService.LoadSettingsAsync();
             ApplySettings(settings);
-            StatusMessage = "已加载机器人配置。";
+            StatusMessage = L("RobotConfigStatusLoaded");
         }
         catch (Exception ex)
         {
-            StatusMessage = $"读取机器人配置失败：{ex.Message}";
+            StatusMessage = LF("RobotConfigStatusLoadFailedFormat", ex.Message);
         }
         finally
         {
@@ -57,11 +57,11 @@ public partial class RobotConfigViewModel : ViewModelBase
             IsBusy = true;
             var settings = BuildSettings();
             await _robotService.SaveSettingsAsync(settings);
-            StatusMessage = "机器人配置已保存。";
+            StatusMessage = L("RobotConfigStatusSaved");
         }
         catch (Exception ex)
         {
-            StatusMessage = $"保存机器人配置失败：{ex.Message}";
+            StatusMessage = LF("RobotConfigStatusSaveFailedFormat", ex.Message);
         }
         finally
         {

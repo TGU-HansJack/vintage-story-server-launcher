@@ -1,102 +1,247 @@
-<?xml version="1.0" encoding="utf-8"?>
-
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
-    <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata"
-                id="root"
-                xmlns="">
-        <xsd:element name="root" msdata:IsDataSet="true">
-
-        </xsd:element>
-    </xsd:schema>
-    <resheader name="resmimetype">
-        <value>text/microsoft-resx</value>
-    </resheader>
-    <resheader name="version">
-        <value>1.3</value>
-    </resheader>
-    <resheader name="reader">
-        <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral,
-            PublicKeyToken=b77a5c561934e089
-        </value>
-    </resheader>
-    <resheader name="writer">
-        <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral,
-            PublicKeyToken=b77a5c561934e089
-        </value>
-    </resheader>
-    <data name="Greeting" xml:space="preserve">
-        <value>Hello, Avalonia</value>
-    </data>
-    <data name="AppName" xml:space="preserve">
-        <value>VSSL Vintage Story Server Launcher</value>
-    </data>
-    <data name="HomeMenuTitle" xml:space="preserve">
-        <value>Dashboard</value>
-    </data>
-    <data name="AboutMenuTitle" xml:space="preserve">
-        <value>About</value>
-    </data>
-    <data name="MenuSearchPlaceholder" xml:space="preserve">
-        <value>Search menus...</value>
-    </data>
-    <data name="MenuAreaPlaceholder" xml:space="preserve">
-        <value>Sub Menus...</value>
-    </data>
-    <data name="ExitButtonText" xml:space="preserve">
-        <value>Exit</value>
-    </data>
-    <data name="LanguageButtonText" xml:space="preserve">
-        <value>Language</value>
-    </data>
-    <data name="ThemesButtonText" xml:space="preserve">
-        <value>Themes</value>
-    </data>
-    <data name="LightThemeName" xml:space="preserve">
-        <value>Light</value>
-    </data>
-    <data name="DarkThemeName" xml:space="preserve">
-        <value>Dark</value>
-    </data>
-    <data name="OverviewMenuTitle" xml:space="preserve">
-        <value>Overview</value>
-    </data>
-    <data name="ProjectInfoMenuTitle" xml:space="preserve">
-        <value>Project Info</value>
-    </data>
-    <data name="WorkspaceMenuTitle" xml:space="preserve">
-        <value>Console</value>
-    </data>
-    <data name="BugReportMenuTitle" xml:space="preserve">
-        <value>Bug Report</value>
-    </data>
-    <data name="InstanceMenuTitle" xml:space="preserve">
-        <value>Instance</value>
-    </data>
-    <data name="InstanceDownloadMenuTitle" xml:space="preserve">
-        <value>Download</value>
-    </data>
-    <data name="InstanceCreateMenuTitle" xml:space="preserve">
-        <value>Create</value>
-    </data>
-    <data name="InstanceManageMenuTitle" xml:space="preserve">
-        <value>Manage</value>
-    </data>
-    <data name="ConfigMenuTitle" xml:space="preserve">
-        <value>Config</value>
-    </data>
-    <data name="SaveMenuTitle" xml:space="preserve">
-        <value>Save</value>
-    </data>
-    <data name="ModMenuTitle" xml:space="preserve">
-        <value>Mod</value>
-    </data>
-    <data name="RobotMenuTitle" xml:space="preserve">
-        <value>Robot</value>
-    </data>
-    <data name="RobotConfigMenuTitle" xml:space="preserve">
-        <value>Config</value>
-    </data>
-    <data name="RobotConsoleMenuTitle" xml:space="preserve">
-        <value>Console</value>
-    </data>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Greeting" xml:space="preserve"><value>Hello, Avalonia</value></data>
+  <data name="AppName" xml:space="preserve"><value>Vintage Story Server Launcher</value></data>
+  <data name="HomeMenuTitle" xml:space="preserve"><value>Dashboard</value></data>
+  <data name="AboutMenuTitle" xml:space="preserve"><value>About</value></data>
+  <data name="MenuSearchPlaceholder" xml:space="preserve"><value>Search menus...</value></data>
+  <data name="MenuAreaPlaceholder" xml:space="preserve"><value>Sub Menus...</value></data>
+  <data name="ExitButtonText" xml:space="preserve"><value>Exit</value></data>
+  <data name="LanguageButtonText" xml:space="preserve"><value>Language</value></data>
+  <data name="ThemesButtonText" xml:space="preserve"><value>Theme</value></data>
+  <data name="LightThemeName" xml:space="preserve"><value>Light</value></data>
+  <data name="DarkThemeName" xml:space="preserve"><value>Dark</value></data>
+  <data name="OverviewMenuTitle" xml:space="preserve"><value>Dashboard</value></data>
+  <data name="ProjectInfoMenuTitle" xml:space="preserve"><value>Project Info</value></data>
+  <data name="WorkspaceMenuTitle" xml:space="preserve"><value>Console</value></data>
+  <data name="BugReportMenuTitle" xml:space="preserve"><value>Feedback</value></data>
+  <data name="InstanceMenuTitle" xml:space="preserve"><value>Instance</value></data>
+  <data name="InstanceDownloadMenuTitle" xml:space="preserve"><value>Download</value></data>
+  <data name="InstanceCreateMenuTitle" xml:space="preserve"><value>Create</value></data>
+  <data name="InstanceManageMenuTitle" xml:space="preserve"><value>Manage</value></data>
+  <data name="ConfigMenuTitle" xml:space="preserve"><value>Config</value></data>
+  <data name="SaveMenuTitle" xml:space="preserve"><value>Save</value></data>
+  <data name="ModMenuTitle" xml:space="preserve"><value>Mod</value></data>
+  <data name="RobotMenuTitle" xml:space="preserve"><value>Robot</value></data>
+  <data name="RobotConfigMenuTitle" xml:space="preserve"><value>Config</value></data>
+  <data name="RobotConsoleMenuTitle" xml:space="preserve"><value>Console</value></data>
+  <data name="ZhLanguageOptionName" xml:space="preserve"><value>Simplified Chinese</value></data>
+  <data name="EnLanguageOptionName" xml:space="preserve"><value>English</value></data>
+  <data name="AboutRepositoryButtonText" xml:space="preserve"><value>Repository</value></data>
+  <data name="AboutCommunityButtonText" xml:space="preserve"><value>Community</value></data>
+  <data name="AboutIssuesButtonText" xml:space="preserve"><value>GitHub Issues</value></data>
+  <data name="AboutProjectInfoTitle" xml:space="preserve"><value>Project Information</value></data>
+  <data name="AboutFeedbackText" xml:space="preserve"><value>Feedback: https://vintagestory.top/ or GitHub Issues</value></data>
+  <data name="CommonCreateButtonText" xml:space="preserve"><value>Create</value></data>
+  <data name="CommonDeleteButtonText" xml:space="preserve"><value>Delete</value></data>
+  <data name="CommonRefreshButtonText" xml:space="preserve"><value>Refresh</value></data>
+  <data name="CommonSaveButtonText" xml:space="preserve"><value>Save</value></data>
+  <data name="CommonBrowseButtonText" xml:space="preserve"><value>Browse</value></data>
+  <data name="CommonImportButtonText" xml:space="preserve"><value>Import</value></data>
+  <data name="CommonStartButtonText" xml:space="preserve"><value>Start</value></data>
+  <data name="CommonStopButtonText" xml:space="preserve"><value>Stop</value></data>
+  <data name="CommonClearButtonText" xml:space="preserve"><value>Clear</value></data>
+  <data name="CommonFollowLabel" xml:space="preserve"><value>Follow</value></data>
+  <data name="CommonExportButtonText" xml:space="preserve"><value>Export</value></data>
+  <data name="CommonSearchTooltip" xml:space="preserve"><value>Search</value></data>
+  <data name="CommonRunningState" xml:space="preserve"><value>Running</value></data>
+  <data name="CommonStoppedState" xml:space="preserve"><value>Stopped</value></data>
+  <data name="ConfigAdvancedJsonButtonText" xml:space="preserve"><value>Advanced JSON</value></data>
+  <data name="ConfigServerSectionTitle" xml:space="preserve"><value>Server</value></data>
+  <data name="ConfigServerNameLabel" xml:space="preserve"><value>Server Name</value></data>
+  <data name="ConfigIpLabel" xml:space="preserve"><value>IP</value></data>
+  <data name="ConfigPortLabel" xml:space="preserve"><value>Port</value></data>
+  <data name="ConfigMaxPlayersLabel" xml:space="preserve"><value>Max Players</value></data>
+  <data name="ConfigPasswordLabel" xml:space="preserve"><value>Password</value></data>
+  <data name="ConfigWhitelistModeLabel" xml:space="preserve"><value>Whitelist Mode</value></data>
+  <data name="ConfigAdvertiseServerLabel" xml:space="preserve"><value>Advertise Server</value></data>
+  <data name="ConfigAllowPvpLabel" xml:space="preserve"><value>Allow PvP</value></data>
+  <data name="ConfigAllowFireSpreadLabel" xml:space="preserve"><value>Allow Fire Spread</value></data>
+  <data name="ConfigAllowFallingBlocksLabel" xml:space="preserve"><value>Allow Falling Blocks</value></data>
+  <data name="ConfigWorldSectionTitle" xml:space="preserve"><value>World</value></data>
+  <data name="ConfigSeedLabel" xml:space="preserve"><value>Seed</value></data>
+  <data name="ConfigWorldNameLabel" xml:space="preserve"><value>World Name</value></data>
+  <data name="ConfigSaveFileLabel" xml:space="preserve"><value>Save File</value></data>
+  <data name="ConfigPlayStyleLabel" xml:space="preserve"><value>Play Style</value></data>
+  <data name="ConfigWorldTypeLabel" xml:space="preserve"><value>World Type</value></data>
+  <data name="ConfigWorldHeightLabel" xml:space="preserve"><value>World Height</value></data>
+  <data name="ConfigWorldRulesSectionTitle" xml:space="preserve"><value>World Rules</value></data>
+  <data name="ConfigNoProfileText" xml:space="preserve"><value>No profile found. Please create one first.</value></data>
+  <data name="ConfigAdvancedJsonDialogTitle" xml:space="preserve"><value>Edit Advanced JSON</value></data>
+  <data name="ConfigStatusSaved" xml:space="preserve"><value>Configuration saved.</value></data>
+  <data name="ConfigStatusSaveFailedFormat" xml:space="preserve"><value>Failed to save configuration: {0}</value></data>
+  <data name="ConfigStatusAdvancedJsonCanceled" xml:space="preserve"><value>Advanced JSON edit canceled.</value></data>
+  <data name="ConfigStatusAdvancedJsonSaved" xml:space="preserve"><value>Advanced JSON saved.</value></data>
+  <data name="ConfigStatusAdvancedJsonSaveFailedFormat" xml:space="preserve"><value>Failed to save advanced JSON: {0}</value></data>
+  <data name="ConfigStatusLoadedProfileConfigFormat" xml:space="preserve"><value>Loaded configuration: {0}</value></data>
+  <data name="ConfigStatusLoadFailedFormat" xml:space="preserve"><value>Failed to load configuration: {0}</value></data>
+  <data name="StatusSelectProfileFirst" xml:space="preserve"><value>Please select a profile first.</value></data>
+  <data name="StatusNoProfileCreateFirst" xml:space="preserve"><value>No profile found. Please create one in Instance/Create first.</value></data>
+  <data name="StatusLoadedProfilesFormat" xml:space="preserve"><value>Loaded {0} profile(s).</value></data>
+  <data name="StatusRefreshProfilesFailedFormat" xml:space="preserve"><value>Failed to refresh profiles: {0}</value></data>
+  <data name="InstanceCreateVersionTooltip" xml:space="preserve"><value>Installed versions detected from packages (vs_server_win-x64_*.zip)</value></data>
+  <data name="InstanceCreateNameWatermark" xml:space="preserve"><value>Profile name</value></data>
+  <data name="InstanceCreateHeaderName" xml:space="preserve"><value>Name</value></data>
+  <data name="InstanceCreateHeaderVersion" xml:space="preserve"><value>Version</value></data>
+  <data name="InstanceCreateHeaderDirectory" xml:space="preserve"><value>Directory</value></data>
+  <data name="InstanceCreateHeaderTime" xml:space="preserve"><value>Created Time</value></data>
+  <data name="InstanceCreateNoProfilesText" xml:space="preserve"><value>No profiles yet.</value></data>
+  <data name="InstanceCreateStatusEnterProfileName" xml:space="preserve"><value>Please enter a profile name.</value></data>
+  <data name="InstanceCreateStatusSelectVersionFirst" xml:space="preserve"><value>Please select a server version first.</value></data>
+  <data name="InstanceCreateStatusProfileCreatedFormat" xml:space="preserve"><value>Profile created: {0}</value></data>
+  <data name="InstanceCreateStatusCreateFailedFormat" xml:space="preserve"><value>Failed to create profile: {0}</value></data>
+  <data name="InstanceCreateStatusSelectProfilesToDelete" xml:space="preserve"><value>Please select profile(s) to delete.</value></data>
+  <data name="InstanceCreateStatusDeletedProfilesFormat" xml:space="preserve"><value>Deleted {0} profile(s).</value></data>
+  <data name="InstanceCreateStatusNoProfilesDeleted" xml:space="preserve"><value>No profiles were deleted.</value></data>
+  <data name="InstanceCreateStatusDeleteFailedFormat" xml:space="preserve"><value>Failed to delete profile(s): {0}</value></data>
+  <data name="InstanceCreateStatusNoVersionsFound" xml:space="preserve"><value>No installed server versions found in packages.</value></data>
+  <data name="InstanceCreateStatusDetectedVersionsFormat" xml:space="preserve"><value>Detected {0} installed server version(s).</value></data>
+  <data name="InstanceCreateStatusDefaultWorkspaceFormat" xml:space="preserve"><value>Workspace: {0}</value></data>
+  <data name="InstanceDownloadShowDownloadedOnlyLabel" xml:space="preserve"><value>Downloaded only</value></data>
+  <data name="InstanceDownloadSearchWatermark" xml:space="preserve"><value>Search version or file name</value></data>
+  <data name="InstanceDownloadHeaderVersion" xml:space="preserve"><value>Version</value></data>
+  <data name="InstanceDownloadHeaderPlatform" xml:space="preserve"><value>Platform</value></data>
+  <data name="InstanceDownloadHeaderSize" xml:space="preserve"><value>Size</value></data>
+  <data name="InstanceDownloadHeaderFilePath" xml:space="preserve"><value>File Path</value></data>
+  <data name="InstanceDownloadHeaderAction" xml:space="preserve"><value>Action</value></data>
+  <data name="InstanceDownloadNoContentText" xml:space="preserve"><value>No downloadable server packages.</value></data>
+  <data name="InstanceDownloadStatusDownloadingFormat" xml:space="preserve"><value>Downloading {0}...</value></data>
+  <data name="InstanceDownloadStatusCompletedFormat" xml:space="preserve"><value>Download completed: {0}</value></data>
+  <data name="InstanceDownloadStatusFailedSimpleFormat" xml:space="preserve"><value>Download failed: {0}</value></data>
+  <data name="InstanceDownloadStatusFailedFormat" xml:space="preserve"><value>Download failed ({0}): {1}</value></data>
+  <data name="InstanceDownloadStatusLoadingList" xml:space="preserve"><value>Loading server version list...</value></data>
+  <data name="InstanceDownloadStatusNoEntries" xml:space="preserve"><value>No entries found.</value></data>
+  <data name="InstanceDownloadStatusLoadedEntriesFormat" xml:space="preserve"><value>Loaded {0} entries. Download directory: {1}</value></data>
+  <data name="InstanceDownloadStatusLoadFailedFormat" xml:space="preserve"><value>Failed to load download list: {0}</value></data>
+  <data name="SaveNameWatermark" xml:space="preserve"><value>Save name</value></data>
+  <data name="SaveCurrentProfileVersionFormat" xml:space="preserve"><value>Current profile version: {0}</value></data>
+  <data name="SaveHeaderName" xml:space="preserve"><value>Name</value></data>
+  <data name="SaveHeaderDirectory" xml:space="preserve"><value>Directory</value></data>
+  <data name="SaveHeaderTime" xml:space="preserve"><value>Time</value></data>
+  <data name="SaveHeaderCurrent" xml:space="preserve"><value>Current</value></data>
+  <data name="SaveHeaderAction" xml:space="preserve"><value>Action</value></data>
+  <data name="SaveSetActiveButtonText" xml:space="preserve"><value>Use</value></data>
+  <data name="SaveNoSavesText" xml:space="preserve"><value>No saves yet.</value></data>
+  <data name="SaveStatusCreatedFormat" xml:space="preserve"><value>Save created: {0}</value></data>
+  <data name="SaveStatusCreateFailedFormat" xml:space="preserve"><value>Failed to create save: {0}</value></data>
+  <data name="SaveStatusSelectSavesToDelete" xml:space="preserve"><value>Please select save(s) to delete.</value></data>
+  <data name="SaveStatusDeletedFormat" xml:space="preserve"><value>Deleted {0} save(s).</value></data>
+  <data name="SaveStatusNoDeletes" xml:space="preserve"><value>No saves were deleted.</value></data>
+  <data name="SaveStatusDeleteFailedFormat" xml:space="preserve"><value>Failed to delete save(s): {0}</value></data>
+  <data name="SaveStatusSetActiveFormat" xml:space="preserve"><value>Active save set: {0}</value></data>
+  <data name="SaveStatusSetActiveFailedFormat" xml:space="preserve"><value>Failed to set active save: {0}</value></data>
+  <data name="SaveStatusLoadedFormat" xml:space="preserve"><value>Loaded {0} save(s) for version {1}.</value></data>
+  <data name="SaveStatusLoadFailedFormat" xml:space="preserve"><value>Failed to load saves: {0}</value></data>
+  <data name="ModZipPathWatermark" xml:space="preserve"><value>Mod zip path</value></data>
+  <data name="ModBrowseDialogTitle" xml:space="preserve"><value>Select Mod Zip</value></data>
+  <data name="ModBrowseFilterName" xml:space="preserve"><value>Mod Zip File</value></data>
+  <data name="ModHeaderModId" xml:space="preserve"><value>Mod ID</value></data>
+  <data name="ModHeaderVersion" xml:space="preserve"><value>Version</value></data>
+  <data name="ModHeaderStatus" xml:space="preserve"><value>Status</value></data>
+  <data name="ModHeaderDependencies" xml:space="preserve"><value>Dependencies</value></data>
+  <data name="ModHeaderDependencyCheck" xml:space="preserve"><value>Dependency Check</value></data>
+  <data name="ModHeaderPath" xml:space="preserve"><value>Path</value></data>
+  <data name="ModHeaderAction" xml:space="preserve"><value>Action</value></data>
+  <data name="ModToggleButtonText" xml:space="preserve"><value>Toggle</value></data>
+  <data name="ModNoModsText" xml:space="preserve"><value>No mods found.</value></data>
+  <data name="ModEnabledLabel" xml:space="preserve"><value>Enabled</value></data>
+  <data name="ModDisabledLabel" xml:space="preserve"><value>Disabled</value></data>
+  <data name="ModStatusEnterZipPath" xml:space="preserve"><value>Please enter a mod zip path.</value></data>
+  <data name="ModStatusImportedFormat" xml:space="preserve"><value>Mod imported: {0} ({1})</value></data>
+  <data name="ModStatusImportFailedFormat" xml:space="preserve"><value>Failed to import mod: {0}</value></data>
+  <data name="ModStatusToggledFormat" xml:space="preserve"><value>Mod {0} switched to {1}.</value></data>
+  <data name="ModStatusToggleFailedFormat" xml:space="preserve"><value>Failed to switch mod status: {0}</value></data>
+  <data name="ModStatusLoadedFormat" xml:space="preserve"><value>Loaded {0} mod(s).</value></data>
+  <data name="ModStatusLoadFailedFormat" xml:space="preserve"><value>Failed to load mods: {0}</value></data>
+  <data name="RobotOneBotWsLabel" xml:space="preserve"><value>OneBot WebSocket</value></data>
+  <data name="RobotAccessTokenLabel" xml:space="preserve"><value>Access Token</value></data>
+  <data name="RobotReconnectIntervalLabel" xml:space="preserve"><value>Reconnect Interval (s)</value></data>
+  <data name="RobotDatabasePathLabel" xml:space="preserve"><value>Database Path</value></data>
+  <data name="RobotPollingIntervalLabel" xml:space="preserve"><value>Polling Interval (s)</value></data>
+  <data name="RobotDefaultEncodingLabel" xml:space="preserve"><value>Default Encoding</value></data>
+  <data name="RobotFallbackEncodingLabel" xml:space="preserve"><value>Fallback Encoding</value></data>
+  <data name="RobotSuperUsersLabel" xml:space="preserve"><value>Super Users (one per line)</value></data>
+  <data name="RobotConfigStatusLoaded" xml:space="preserve"><value>Robot configuration loaded.</value></data>
+  <data name="RobotConfigStatusLoadFailedFormat" xml:space="preserve"><value>Failed to load robot configuration: {0}</value></data>
+  <data name="RobotConfigStatusSaved" xml:space="preserve"><value>Robot configuration saved.</value></data>
+  <data name="RobotConfigStatusSaveFailedFormat" xml:space="preserve"><value>Failed to save robot configuration: {0}</value></data>
+  <data name="RobotConsoleRuntimeRunningFormat" xml:space="preserve"><value>Running (WS: {0}, Started: {1})</value></data>
+  <data name="RobotConsoleStatusRefreshFailedFormat" xml:space="preserve"><value>Failed to refresh robot console: {0}</value></data>
+  <data name="RobotConsoleStatusStarted" xml:space="preserve"><value>Robot started.</value></data>
+  <data name="RobotConsoleStatusStartFailedFormat" xml:space="preserve"><value>Failed to start robot: {0}</value></data>
+  <data name="RobotConsoleStatusStopped" xml:space="preserve"><value>Robot stopped.</value></data>
+  <data name="RobotConsoleStatusStopFailedFormat" xml:space="preserve"><value>Failed to stop robot: {0}</value></data>
+  <data name="RobotConsoleStatusCleared" xml:space="preserve"><value>Robot console log cleared.</value></data>
+  <data name="WorkspaceStartServerButtonText" xml:space="preserve"><value>Start</value></data>
+  <data name="WorkspaceStopServerButtonText" xml:space="preserve"><value>Stop</value></data>
+  <data name="WorkspaceRefreshProfilesButtonText" xml:space="preserve"><value>Refresh</value></data>
+  <data name="WorkspaceSendCommandButtonText" xml:space="preserve"><value>Send</value></data>
+  <data name="WorkspaceQuickVersionLabel" xml:space="preserve"><value>Version</value></data>
+  <data name="WorkspaceQuickNameLabel" xml:space="preserve"><value>Name</value></data>
+  <data name="WorkspaceQuickNameWatermark" xml:space="preserve"><value>Leave empty for auto name</value></data>
+  <data name="WorkspaceQuickCreateAndStartButtonText" xml:space="preserve"><value>Create &amp; Start</value></data>
+  <data name="WorkspaceQuickNoVersionText" xml:space="preserve"><value>Download a server version in Instance/Download first.</value></data>
+  <data name="WorkspaceQuickNoProfileTip" xml:space="preserve"><value>No profile yet. Use quick create above.</value></data>
+  <data name="WorkspaceQuickCreatingText" xml:space="preserve"><value>Creating profile and starting server...</value></data>
+  <data name="WorkspaceQuickCreatedFormat" xml:space="preserve"><value>Profile created: {0}</value></data>
+  <data name="WorkspaceQuickCreateFailedFormat" xml:space="preserve"><value>Failed to create and start: {0}</value></data>
+  <data name="WorkspaceQuickDefaultProfileNameFormat" xml:space="preserve"><value>Server-{0:yyyyMMdd-HHmm}</value></data>
+  <data name="ConsoleNoOutputText" xml:space="preserve"><value>No output yet.</value></data>
+  <data name="WorkspaceRuntimeRunningFormat" xml:space="preserve"><value>Running (PID: {0}, Players: {1}, Started: {2})</value></data>
+  <data name="WorkspaceStartupProgressFormat" xml:space="preserve"><value>Startup progress: {0:0}%</value></data>
+  <data name="WorkspaceStatusStarting" xml:space="preserve"><value>Starting server...</value></data>
+  <data name="WorkspaceStatusStarted" xml:space="preserve"><value>Server started.</value></data>
+  <data name="WorkspaceStatusStartFailedFormat" xml:space="preserve"><value>Failed to start server: {0}</value></data>
+  <data name="WorkspaceStatusStopping" xml:space="preserve"><value>Stopping server...</value></data>
+  <data name="WorkspaceStatusStopped" xml:space="preserve"><value>Server stopped.</value></data>
+  <data name="WorkspaceStatusStopFailedFormat" xml:space="preserve"><value>Failed to stop server: {0}</value></data>
+  <data name="WorkspaceStatusSendCommandFailedFormat" xml:space="preserve"><value>Failed to send command: {0}</value></data>
+  <data name="WorkspaceStatusNoExportLogs" xml:space="preserve"><value>No logs to export.</value></data>
+  <data name="WorkspaceStatusExportedFormat" xml:space="preserve"><value>Log exported: {0}</value></data>
+  <data name="WorkspaceStatusExportFailedFormat" xml:space="preserve"><value>Failed to export log: {0}</value></data>
+  <data name="HomeServerCardTitle" xml:space="preserve"><value>Server</value></data>
+  <data name="HomeRobotCardTitle" xml:space="preserve"><value>Robot</value></data>
+  <data name="HomeOnlinePlayersCardTitle" xml:space="preserve"><value>Online Players</value></data>
+  <data name="HomeSamplingWindowCardTitle" xml:space="preserve"><value>Sampling</value></data>
+  <data name="HomeSamplingWindowLine1" xml:space="preserve"><value>Last 60 samples</value></data>
+  <data name="HomeSamplingWindowLine2" xml:space="preserve"><value>Refresh manually to update</value></data>
+  <data name="HomeMemoryTrendTitle" xml:space="preserve"><value>Memory Trend</value></data>
+  <data name="HomeServerMemoryLegend" xml:space="preserve"><value>Server Memory</value></data>
+  <data name="HomeRobotMemoryLegend" xml:space="preserve"><value>Robot Memory</value></data>
+  <data name="HomeSamplesAxisLabel" xml:space="preserve"><value>Samples</value></data>
+  <data name="HomePlayerTrendTitle" xml:space="preserve"><value>Player Trend</value></data>
+  <data name="HomeOnlinePlayersLegend" xml:space="preserve"><value>Online Players</value></data>
+  <data name="HomePlayersAxisLabel" xml:space="preserve"><value>Players</value></data>
+  <data name="HomeMemoryFormat" xml:space="preserve"><value>Memory: {0}</value></data>
+  <data name="HomeUptimeFormat" xml:space="preserve"><value>Uptime: {0}</value></data>
+  <data name="InstanceManageTitle" xml:space="preserve"><value>Instance / Manage</value></data>
+  <data name="InstanceManageDescription" xml:space="preserve"><value>Manage page content coming soon.</value></data>
+  <data name="MapPreviewMenuTitle" xml:space="preserve"><value>Map Preview</value></data>
+  <data name="MapPreviewProfileLabel" xml:space="preserve"><value>Profile:</value></data>
+  <data name="MapPreviewSaveLabel" xml:space="preserve"><value>Save:</value></data>
+  <data name="MapPreviewLoadButtonText" xml:space="preserve"><value>Load Preview</value></data>
+  <data name="MapPreviewRefreshProfilesButtonText" xml:space="preserve"><value>Refresh Profiles</value></data>
+  <data name="MapPreviewRefreshSavesButtonText" xml:space="preserve"><value>Refresh Saves</value></data>
+  <data name="MapPreviewColorTabTitle" xml:space="preserve"><value>Color Map</value></data>
+  <data name="MapPreviewGrayscaleTabTitle" xml:space="preserve"><value>Grayscale Map</value></data>
+  <data name="MapPreviewNoPreviewText" xml:space="preserve"><value>No map preview yet. Click Load Preview.</value></data>
+  <data name="MapPreviewCoordinatePlaceholder" xml:space="preserve"><value>Coordinates: -</value></data>
+  <data name="MapPreviewCoordinateFormat" xml:space="preserve"><value>Dim {0} | X:{1} Z:{2} | Chunk:{3},{4}</value></data>
+  <data name="MapPreviewSourcePathFormat" xml:space="preserve"><value>Source: {0}</value></data>
+  <data name="MapPreviewSummaryEmpty" xml:space="preserve"><value>No map preview loaded.</value></data>
+  <data name="MapPreviewSummaryFormat" xml:space="preserve"><value>Dim {0} | Chunks {1} | X[{2},{3}] Z[{4},{5}] | Resolution {6}x{7} | Height {8}-{9} | Sampling x{10}</value></data>
+  <data name="MapPreviewStatusNoProfile" xml:space="preserve"><value>No profile found. Please create one first.</value></data>
+  <data name="MapPreviewStatusLoading" xml:space="preserve"><value>Loading map and generating preview...</value></data>
+  <data name="MapPreviewStatusLoaded" xml:space="preserve"><value>Map preview loaded.</value></data>
+  <data name="MapPreviewStatusLoadFailedFormat" xml:space="preserve"><value>Failed to load map preview: {0}</value></data>
+  <data name="MapPreviewStatusRefreshProfilesFailedFormat" xml:space="preserve"><value>Failed to refresh profiles: {0}</value></data>
+  <data name="MapPreviewStatusRefreshSavesFailedFormat" xml:space="preserve"><value>Failed to refresh saves: {0}</value></data>
+  <data name="MapPreviewStatusLoadedProfilesFormat" xml:space="preserve"><value>Loaded {0} profile(s).</value></data>
+  <data name="MapPreviewStatusLoadedSavesFormat" xml:space="preserve"><value>Loaded {0} save file(s).</value></data>
+  <data name="MapPreviewStatusInvalidPixels" xml:space="preserve"><value>Invalid map pixel data.</value></data>
 </root>
+

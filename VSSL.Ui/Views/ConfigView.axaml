@@ -15,21 +15,19 @@
     </Design.DataContext>
 
     <Grid RowDefinitions="Auto,Auto,*" RowSpacing="10">
-        <Border Grid.Row="0" Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
-            <Grid ColumnDefinitions="2.6*,Auto,Auto,Auto" ColumnSpacing="8">
-                <ComboBox Grid.Column="0" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
+        <Grid Grid.Row="0" Margin="12,0,12,0" ColumnDefinitions="2.6*,Auto,Auto,Auto" ColumnSpacing="8">
+            <ComboBox Grid.Column="0" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
 
-                <Button Grid.Column="1" Width="90" Command="{Binding RefreshCommand}" Content="刷新" />
-                <Button Grid.Column="2" Width="90" Command="{Binding SaveCommand}" Content="保存" />
-                <Button Grid.Column="3" Width="110" Command="{Binding EditAdvancedJsonCommand}" Content="高级JSON" />
-            </Grid>
-        </Border>
+            <Button Grid.Column="1" Command="{Binding RefreshCommand}" Content="{Binding [CommonRefreshButtonText]}" />
+            <Button Grid.Column="2" Command="{Binding SaveCommand}" Content="{Binding [CommonSaveButtonText]}" />
+            <Button Grid.Column="3" Command="{Binding EditAdvancedJsonCommand}" Content="{Binding [ConfigAdvancedJsonButtonText]}" />
+        </Grid>
 
         <TextBlock Grid.Row="1" Text="{Binding StatusMessage}" TextWrapping="Wrap" />
 
@@ -38,48 +36,48 @@
                 <StackPanel Spacing="10">
                     <Border Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
                         <StackPanel Spacing="10">
-                            <TextBlock FontSize="16" FontWeight="SemiBold" Text="服务器基础配置" />
+                            <TextBlock FontSize="16" FontWeight="SemiBold" Text="{Binding [ConfigServerSectionTitle]}" />
                             <Grid ColumnDefinitions="Auto,2*,Auto,2*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="8">
-                                <TextBlock VerticalAlignment="Center" Text="服务器名称" />
+                                <TextBlock VerticalAlignment="Center" Text="{Binding [ConfigServerNameLabel]}" />
                                 <TextBox Grid.Column="1" Text="{Binding ServerName, UpdateSourceTrigger=PropertyChanged}" />
-                                <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="IP" />
+                                <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="{Binding [ConfigIpLabel]}" />
                                 <TextBox Grid.Column="3" Text="{Binding Ip, UpdateSourceTrigger=PropertyChanged}" />
 
-                                <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="端口" />
+                                <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="{Binding [ConfigPortLabel]}" />
                                 <NumericUpDown Grid.Row="1" Grid.Column="1" Minimum="1" Maximum="65535" Value="{Binding Port}" />
-                                <TextBlock Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" Text="最大玩家" />
+                                <TextBlock Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" Text="{Binding [ConfigMaxPlayersLabel]}" />
                                 <NumericUpDown Grid.Row="1" Grid.Column="3" Minimum="1" Maximum="200" Value="{Binding MaxClients}" />
 
-                                <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="密码" />
+                                <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="{Binding [ConfigPasswordLabel]}" />
                                 <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Password, UpdateSourceTrigger=PropertyChanged}" />
-                                <TextBlock Grid.Row="2" Grid.Column="2" VerticalAlignment="Center" Text="白名单模式" />
+                                <TextBlock Grid.Row="2" Grid.Column="2" VerticalAlignment="Center" Text="{Binding [ConfigWhitelistModeLabel]}" />
                                 <NumericUpDown Grid.Row="2" Grid.Column="3" Minimum="0" Maximum="2" Value="{Binding WhitelistMode}" />
 
-                                <CheckBox Grid.Row="3" Content="公开服务器" IsChecked="{Binding AdvertiseServer}" />
-                                <CheckBox Grid.Row="3" Grid.Column="1" Content="允许 PVP" IsChecked="{Binding AllowPvP}" />
-                                <CheckBox Grid.Row="3" Grid.Column="2" Content="允许火势蔓延" IsChecked="{Binding AllowFireSpread}" />
-                                <CheckBox Grid.Row="3" Grid.Column="3" Content="允许落石" IsChecked="{Binding AllowFallingBlocks}" />
+                                <CheckBox Grid.Row="3" Content="{Binding [ConfigAdvertiseServerLabel]}" IsChecked="{Binding AdvertiseServer}" />
+                                <CheckBox Grid.Row="3" Grid.Column="1" Content="{Binding [ConfigAllowPvpLabel]}" IsChecked="{Binding AllowPvP}" />
+                                <CheckBox Grid.Row="3" Grid.Column="2" Content="{Binding [ConfigAllowFireSpreadLabel]}" IsChecked="{Binding AllowFireSpread}" />
+                                <CheckBox Grid.Row="3" Grid.Column="3" Content="{Binding [ConfigAllowFallingBlocksLabel]}" IsChecked="{Binding AllowFallingBlocks}" />
                             </Grid>
                         </StackPanel>
                     </Border>
 
                     <Border Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
                         <StackPanel Spacing="10">
-                            <TextBlock FontSize="16" FontWeight="SemiBold" Text="世界配置" />
+                            <TextBlock FontSize="16" FontWeight="SemiBold" Text="{Binding [ConfigWorldSectionTitle]}" />
                             <Grid ColumnDefinitions="Auto,2*,Auto,2*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="8">
-                                <TextBlock VerticalAlignment="Center" Text="种子" />
+                                <TextBlock VerticalAlignment="Center" Text="{Binding [ConfigSeedLabel]}" />
                                 <TextBox Grid.Column="1" Text="{Binding Seed, UpdateSourceTrigger=PropertyChanged}" />
-                                <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="世界名称" />
+                                <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="{Binding [ConfigWorldNameLabel]}" />
                                 <TextBox Grid.Column="3" Text="{Binding WorldName, UpdateSourceTrigger=PropertyChanged}" />
 
-                                <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="存档文件" />
+                                <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="{Binding [ConfigSaveFileLabel]}" />
                                 <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SaveFileLocation, UpdateSourceTrigger=PropertyChanged}" />
-                                <TextBlock Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" Text="玩法" />
+                                <TextBlock Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" Text="{Binding [ConfigPlayStyleLabel]}" />
                                 <TextBox Grid.Row="1" Grid.Column="3" Text="{Binding PlayStyle, UpdateSourceTrigger=PropertyChanged}" />
 
-                                <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="世界类型" />
+                                <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="{Binding [ConfigWorldTypeLabel]}" />
                                 <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding WorldType, UpdateSourceTrigger=PropertyChanged}" />
-                                <TextBlock Grid.Row="2" Grid.Column="2" VerticalAlignment="Center" Text="世界高度" />
+                                <TextBlock Grid.Row="2" Grid.Column="2" VerticalAlignment="Center" Text="{Binding [ConfigWorldHeightLabel]}" />
                                 <NumericUpDown Grid.Row="2" Grid.Column="3" Minimum="64" Maximum="2048" Value="{Binding WorldHeight}" />
                             </Grid>
                         </StackPanel>
@@ -87,27 +85,17 @@
 
                     <Border Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
                         <StackPanel Spacing="10">
-                            <TextBlock FontSize="16" FontWeight="SemiBold" Text="世界规则" />
-                            <Border Padding="10,8" CornerRadius="6,6,0,0" BorderBrush="Gray" BorderThickness="1">
-                                <Grid ColumnDefinitions="1.6*,2.4*" ColumnSpacing="8">
-                                    <TextBlock FontWeight="SemiBold" Text="规则" />
-                                    <TextBlock Grid.Column="1" FontWeight="SemiBold" Text="值" />
-                                </Grid>
-                            </Border>
-                            <Border Padding="0,8,0,0" CornerRadius="0,0,6,6" BorderBrush="Gray" BorderThickness="1">
-                                <ItemsControl ItemsSource="{Binding WorldRules}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="vm:ConfigWorldRuleItemViewModel">
-                                            <Border Margin="8,0,8,8" Padding="10,8" CornerRadius="6" BorderBrush="#555555" BorderThickness="1">
-                                                <Grid ColumnDefinitions="1.6*,2.4*" ColumnSpacing="8">
-                                                    <TextBlock VerticalAlignment="Center" Text="{Binding Label}" />
-                                                    <TextBox Grid.Column="1" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" />
-                                                </Grid>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </Border>
+                            <TextBlock FontSize="16" FontWeight="SemiBold" Text="{Binding [ConfigWorldRulesSectionTitle]}" />
+                            <ItemsControl ItemsSource="{Binding WorldRules}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ConfigWorldRuleItemViewModel">
+                                        <Grid Margin="0,0,0,8" ColumnDefinitions="1.5*,2.5*" ColumnSpacing="10">
+                                            <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Text="{Binding Label}" />
+                                            <TextBox Grid.Column="1" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -119,7 +107,7 @@
                 FontSize="16"
                 FontWeight="SemiBold"
                 IsVisible="{Binding HasNoProfiles}"
-                Text="暂无档案，请先到实例/创建创建档案"
+                Text="{Binding [ConfigNoProfileText]}"
                 />
         </Grid>
     </Grid>

@@ -10,33 +10,34 @@
             <SolidColorBrush x:Key="ErrorColor" Color="#EF4444" />
             <SolidColorBrush x:Key="InfoColor" Color="#0EA5E9" />
             <!--  App Hover Colors  -->
-            <SolidColorBrush x:Key="PrimaryHoverColor" Color="#2563EB" />
-            <SolidColorBrush x:Key="SecondaryHoverColor" Color="#4B5563" />
-            <SolidColorBrush x:Key="SuccessHoverColor" Color="#16A34A" />
-            <SolidColorBrush x:Key="WarningHoverColor" Color="#D97706" />
-            <SolidColorBrush x:Key="ErrorHoverColor" Color="#DC2626" />
-            <SolidColorBrush x:Key="InfoHoverColor" Color="#0284C7" />
+            <SolidColorBrush x:Key="PrimaryHoverColor" Color="#60A5FA" />
+            <SolidColorBrush x:Key="SecondaryHoverColor" Color="#9CA3AF" />
+            <SolidColorBrush x:Key="SuccessHoverColor" Color="#4ADE80" />
+            <SolidColorBrush x:Key="WarningHoverColor" Color="#FBBF24" />
+            <SolidColorBrush x:Key="ErrorHoverColor" Color="#F87171" />
+            <SolidColorBrush x:Key="InfoHoverColor" Color="#38BDF8" />
 
             <!--  Text Colors  -->
-            <SolidColorBrush x:Key="TextPrimaryColor" Color="#1F2937" />
+            <SolidColorBrush x:Key="TextPrimaryColor" Color="#111827" />
             <SolidColorBrush x:Key="TextSecondaryColor" Color="#6B7280" />
+            <SolidColorBrush x:Key="HomeInfoCardGhostIconColor" Color="#000000" />
 
             <!--  Default svg icon color  -->
             <SolidColorBrush x:Key="DefaultSvgIconColor" Color="Black" />
 
             <!--  Header 背景色  -->
-            <SolidColorBrush x:Key="HeaderBgColor" Color="#F5F5F6" />
+            <SolidColorBrush x:Key="HeaderBgColor" Color="#F3F4F6" />
             <!--  侧边栏背景色  -->
-            <SolidColorBrush x:Key="SidebarBgColor" Color="#F5F5F6" />
+            <SolidColorBrush x:Key="SidebarBgColor" Color="#F3F4F6" />
             <!--  侧边栏边框颜色  -->
-            <SolidColorBrush x:Key="SidebarBorderColor" Color="#E4E5E6" />
+            <SolidColorBrush x:Key="SidebarBorderColor" Color="#E4E4E7" />
             <!--  内容区域背景色  -->
-            <SolidColorBrush x:Key="ContentBgColor" Color="White" />
-            <SolidColorBrush x:Key="ContentBgHoverColor" Color="#DDDDDE" />
+            <SolidColorBrush x:Key="ContentBgColor" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="ContentBgHoverColor" Color="#E5E7EB" />
             <!--  当前菜单项的背景色  -->
-            <SolidColorBrush x:Key="SelectedMenuItemBgColor" Color="#DADADA" />
+            <SolidColorBrush x:Key="SelectedMenuItemBgColor" Color="#E5E7EB" />
             <!--  主题切换按钮鼠标悬浮背景色  -->
-            <SolidColorBrush x:Key="ThemeSwitchButtonHoverBgColor" Color="#DDDDDE" />
+            <SolidColorBrush x:Key="ThemeSwitchButtonHoverBgColor" Color="#E5E7EB" />
 
             <!--  工作台页面内容区域背景色  -->
             <SolidColorBrush x:Key="WorkspacePageContentBgColor" Color="#F5F5F6" />

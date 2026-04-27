@@ -47,7 +47,7 @@ public class InstanceProfileService : IInstanceProfileService
     {
         WorkspacePathHelper.EnsureWorkspace();
         var index = ReadProfileIndex();
-        var normalized = false;
+        var normalized = DiscoverProfilesFromWorkspace(index);
         foreach (var profile in index.Profiles)
             normalized |= NormalizeProfile(profile);
         if (normalized) WriteProfileIndex(index);
@@ -107,6 +107,7 @@ public class InstanceProfileService : IInstanceProfileService
         };
 
         EnsureServerConfig(profile, installPath);
+        NormalizeProfile(profile);
 
         var index = ReadProfileIndex();
         index.Profiles.Add(profile);
@@ -191,6 +192,78 @@ public class InstanceProfileService : IInstanceProfileService
     {
         var jsonText = JsonSerializer.Serialize(index, JsonOptions);
         File.WriteAllText(WorkspacePathHelper.ProfilesIndexPath, jsonText);
+    }
+
+    private bool DiscoverProfilesFromWorkspace(InstanceProfileIndex index)
+    {
+        if (!Directory.Exists(WorkspacePathHelper.DataRoot))
+            return false;
+
+        var changed = false;
+        var existingIds = new HashSet<string>(
+            index.Profiles
+                .Where(profile => !string.IsNullOrWhiteSpace(profile.Id))
+                .Select(profile => profile.Id),
+            StringComparer.OrdinalIgnoreCase);
+
+        var fallbackVersion = index.Profiles
+            .Select(profile => profile.Version)
+            .FirstOrDefault(version => !string.IsNullOrWhiteSpace(version))
+            ?? ResolveDefaultVersion();
+
+        foreach (var profileDirectory in Directory.GetDirectories(WorkspacePathHelper.DataRoot))
+        {
+            var profileId = Path.GetFileName(profileDirectory)?.Trim();
+            if (string.IsNullOrWhiteSpace(profileId))
+                continue;
+
+            if (!existingIds.Add(profileId))
+                continue;
+
+            index.Profiles.Add(BuildRecoveredProfile(profileId, profileDirectory, fallbackVersion));
+            changed = true;
+        }
+
+        return changed;
+    }
+
+    private static InstanceProfile BuildRecoveredProfile(string profileId, string profileDirectory, string fallbackVersion)
+    {
+        var (configuredSavePath, configuredServerName) = ReadServerConfigSnapshot(profileDirectory);
+        var saveDirectoryFromConfig = string.IsNullOrWhiteSpace(configuredSavePath)
+            ? string.Empty
+            : Path.GetDirectoryName(configuredSavePath) ?? string.Empty;
+
+        var legacySaveDirectory = Path.Combine(profileDirectory, "Saves");
+        var newSaveDirectory = WorkspacePathHelper.GetProfileSavesPath(profileId);
+        var saveDirectory = !string.IsNullOrWhiteSpace(saveDirectoryFromConfig)
+            ? saveDirectoryFromConfig
+            : Directory.Exists(legacySaveDirectory)
+                ? legacySaveDirectory
+                : Directory.Exists(newSaveDirectory)
+                    ? newSaveDirectory
+                    : legacySaveDirectory;
+
+        var activeSaveFile = ResolveActiveSaveFile(profileId, saveDirectory, configuredSavePath);
+        var profileName = string.IsNullOrWhiteSpace(configuredServerName) ||
+                          configuredServerName.Equals("Vintage Story Server", StringComparison.OrdinalIgnoreCase)
+            ? $"Recovered-{profileId[..Math.Min(6, profileId.Length)]}"
+            : configuredServerName.Trim();
+
+        var createdAt = SafeGetUtc(() => Directory.GetCreationTimeUtc(profileDirectory));
+        var updatedAt = SafeGetUtc(() => Directory.GetLastWriteTimeUtc(profileDirectory));
+
+        return new InstanceProfile
+        {
+            Id = profileId,
+            Name = profileName,
+            Version = fallbackVersion,
+            DirectoryPath = profileDirectory,
+            SaveDirectory = saveDirectory,
+            ActiveSaveFile = activeSaveFile,
+            CreatedAtUtc = createdAt,
+            LastUpdatedUtc = updatedAt
+        };
     }
 
     private void TryDeleteProfileDirectory(string? directoryPath, string profileId)
@@ -288,9 +361,53 @@ public class InstanceProfileService : IInstanceProfileService
     private static bool NormalizeProfile(InstanceProfile profile)
     {
         var changed = false;
+
+        if (string.IsNullOrWhiteSpace(profile.Id))
+        {
+            profile.Id = Guid.NewGuid().ToString("N");
+            changed = true;
+        }
+
         if (string.IsNullOrWhiteSpace(profile.DirectoryPath))
         {
             profile.DirectoryPath = WorkspacePathHelper.GetProfileDataPath(profile.Id);
+            changed = true;
+        }
+        else
+        {
+            var fullProfilePath = SafeGetFullPath(profile.DirectoryPath);
+            if (!string.IsNullOrWhiteSpace(fullProfilePath) &&
+                !fullProfilePath.Equals(profile.DirectoryPath, StringComparison.OrdinalIgnoreCase))
+            {
+                profile.DirectoryPath = fullProfilePath;
+                changed = true;
+            }
+        }
+
+        var (configuredSavePath, configuredServerName) = ReadServerConfigSnapshot(profile.DirectoryPath);
+        var legacySaveDirectory = Path.Combine(profile.DirectoryPath, "Saves");
+        var newSaveDirectory = WorkspacePathHelper.GetProfileSavesPath(profile.Id);
+        var configuredSaveDirectory = string.IsNullOrWhiteSpace(configuredSavePath)
+            ? string.Empty
+            : Path.GetDirectoryName(configuredSavePath) ?? string.Empty;
+
+        var saveDirectory = !string.IsNullOrWhiteSpace(configuredSaveDirectory)
+            ? configuredSaveDirectory
+            : profile.SaveDirectory;
+        if (string.IsNullOrWhiteSpace(saveDirectory))
+        {
+            saveDirectory = Directory.Exists(legacySaveDirectory)
+                    ? legacySaveDirectory
+                    : Directory.Exists(newSaveDirectory)
+                        ? newSaveDirectory
+                        : legacySaveDirectory;
+        }
+
+        var fullSaveDirectory = SafeGetFullPath(saveDirectory);
+        if (!string.IsNullOrWhiteSpace(fullSaveDirectory) &&
+            !fullSaveDirectory.Equals(profile.SaveDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            profile.SaveDirectory = fullSaveDirectory;
             changed = true;
         }
 
@@ -300,9 +417,26 @@ public class InstanceProfileService : IInstanceProfileService
             changed = true;
         }
 
-        if (string.IsNullOrWhiteSpace(profile.ActiveSaveFile))
+        var activeSaveFile = profile.ActiveSaveFile;
+        if (!string.IsNullOrWhiteSpace(configuredSavePath))
+            activeSaveFile = configuredSavePath;
+
+        if (string.IsNullOrWhiteSpace(activeSaveFile))
+            activeSaveFile = ResolveActiveSaveFile(profile.Id, profile.SaveDirectory, configuredSavePath);
+
+        var fullActiveSaveFile = SafeGetFullPath(activeSaveFile);
+        if (!string.IsNullOrWhiteSpace(fullActiveSaveFile) &&
+            !fullActiveSaveFile.Equals(profile.ActiveSaveFile, StringComparison.OrdinalIgnoreCase))
         {
-            profile.ActiveSaveFile = WorkspacePathHelper.GetProfileDefaultSaveFile(profile.Id);
+            profile.ActiveSaveFile = fullActiveSaveFile;
+            changed = true;
+        }
+
+        if (string.IsNullOrWhiteSpace(profile.Name))
+        {
+            profile.Name = string.IsNullOrWhiteSpace(configuredServerName)
+                ? $"Profile-{profile.Id[..Math.Min(6, profile.Id.Length)]}"
+                : configuredServerName.Trim();
             changed = true;
         }
 
@@ -313,6 +447,99 @@ public class InstanceProfileService : IInstanceProfileService
         }
 
         return changed;
+    }
+
+    private static string ResolveActiveSaveFile(string profileId, string saveDirectory, string configuredSavePath)
+    {
+        if (!string.IsNullOrWhiteSpace(configuredSavePath))
+            return configuredSavePath;
+
+        if (!string.IsNullOrWhiteSpace(saveDirectory) && Directory.Exists(saveDirectory))
+        {
+            var currentFile = Directory
+                .EnumerateFiles(saveDirectory, "*.vcdbs", SearchOption.TopDirectoryOnly)
+                .OrderByDescending(File.GetLastWriteTimeUtc)
+                .FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(currentFile))
+                return currentFile;
+        }
+
+        return WorkspacePathHelper.GetProfileDefaultSaveFile(profileId);
+    }
+
+    private static (string SaveFileLocation, string ServerName) ReadServerConfigSnapshot(string profileDirectory)
+    {
+        var configPath = WorkspacePathHelper.GetProfileConfigPath(profileDirectory);
+        if (!File.Exists(configPath))
+            return (string.Empty, string.Empty);
+
+        try
+        {
+            using var stream = File.OpenRead(configPath);
+            using var document = JsonDocument.Parse(stream);
+            var root = document.RootElement;
+
+            var serverName = root.TryGetProperty("ServerName", out var serverNameElement) &&
+                             serverNameElement.ValueKind == JsonValueKind.String
+                ? serverNameElement.GetString() ?? string.Empty
+                : string.Empty;
+
+            if (root.TryGetProperty("WorldConfig", out var worldConfigElement) &&
+                worldConfigElement.ValueKind == JsonValueKind.Object &&
+                worldConfigElement.TryGetProperty("SaveFileLocation", out var saveFileElement) &&
+                saveFileElement.ValueKind == JsonValueKind.String)
+            {
+                return (saveFileElement.GetString() ?? string.Empty, serverName);
+            }
+
+            return (string.Empty, serverName);
+        }
+        catch
+        {
+            return (string.Empty, string.Empty);
+        }
+    }
+
+    private static string ResolveDefaultVersion()
+    {
+        if (!Directory.Exists(WorkspacePathHelper.ServersRoot))
+            return string.Empty;
+
+        return Directory.GetDirectories(WorkspacePathHelper.ServersRoot)
+            .Select(Path.GetFileName)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .OrderByDescending(name => name, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault() ?? string.Empty;
+    }
+
+    private static string SafeGetFullPath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return string.Empty;
+
+        try
+        {
+            return Path.GetFullPath(path);
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    private static DateTimeOffset SafeGetUtc(Func<DateTime> readDateTimeUtc)
+    {
+        try
+        {
+            var value = readDateTimeUtc();
+            return value == default
+                ? DateTimeOffset.UtcNow
+                : new DateTimeOffset(DateTime.SpecifyKind(value, DateTimeKind.Utc));
+        }
+        catch
+        {
+            return DateTimeOffset.UtcNow;
+        }
     }
 
     private static void EnsureServerConfig(InstanceProfile profile, string installPath)

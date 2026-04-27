@@ -56,7 +56,8 @@ public partial class AppSidebarViewModel : RecipientViewModelBase, IRecipient<Th
     {
         var menuItems = _menuService?.GetMenuItems().Select(item => new MenuItemViewModel(item, _localizationService))
             .ToList() ?? [];
-        AboutMenu = menuItems.FirstOrDefault(menu => menu.Children.Any(child => child.ViewName == ViewName.About));
+        AboutMenu = menuItems.FirstOrDefault(menu =>
+            menu.ViewName == ViewName.About || menu.Children.Any(child => child.ViewName == ViewName.About));
         if (AboutMenu is not null) menuItems.Remove(AboutMenu);
         Menus = new ObservableCollection<MenuItemViewModel>(menuItems);
 
@@ -92,6 +93,10 @@ public partial class AppSidebarViewModel : RecipientViewModelBase, IRecipient<Th
 
     public string DarkThemeName => _localizationService[nameof(Resources.DarkThemeName)];
 
+    public string ZhLanguageOptionName => _localizationService["ZhLanguageOptionName"];
+
+    public string EnLanguageOptionName => _localizationService["EnLanguageOptionName"];
+
     #endregion
 
     #region Commands
@@ -117,6 +122,30 @@ public partial class AppSidebarViewModel : RecipientViewModelBase, IRecipient<Th
         _messenger.Send(new SubMenusChangedMessage(clickMenu.Children));
 
         if (clickMenu.Children.Count == 0) _navigationService?.NavigateTo(clickMenu.ViewName);
+    }
+
+    [RelayCommand]
+    private void NavigateAbout()
+    {
+        if (AboutMenu is null)
+        {
+            _navigationService?.NavigateTo(ViewName.About);
+            return;
+        }
+
+        Navigate(AboutMenu);
+
+        var aboutPage = AboutMenu.Children.FirstOrDefault(child => child.ViewName == ViewName.About);
+        if (aboutPage is not null)
+        {
+            foreach (var child in AboutMenu.Children)
+                child.IsActive = child == aboutPage;
+
+            _navigationService?.NavigateTo(aboutPage.ViewName);
+            return;
+        }
+
+        _navigationService?.NavigateTo(ViewName.About);
     }
 
     [RelayCommand]

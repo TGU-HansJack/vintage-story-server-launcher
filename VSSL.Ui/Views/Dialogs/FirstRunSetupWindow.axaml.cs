@@ -1,20 +1,12 @@
 using Avalonia.Controls;
+using System.Globalization;
 
 namespace VSSL.Ui.Views.Dialogs;
 
 public partial class FirstRunSetupWindow : Window
 {
-    private readonly List<OptionItem> _themeOptions =
-    [
-        new("Dark", "深色 / Dark"),
-        new("Light", "浅色 / Light")
-    ];
-
-    private readonly List<OptionItem> _languageOptions =
-    [
-        new("zh-CN", "简体中文"),
-        new("en-US", "English")
-    ];
+    private readonly List<OptionItem> _themeOptions;
+    private readonly List<OptionItem> _languageOptions;
 
     public bool IsDarkMode { get; private set; } = true;
 
@@ -27,6 +19,20 @@ public partial class FirstRunSetupWindow : Window
     public FirstRunSetupWindow(bool defaultIsDarkMode, string defaultLanguage)
     {
         InitializeComponent();
+        var isZh = IsChineseCulture();
+        ApplyUiTexts(isZh);
+
+        _themeOptions =
+        [
+            new("Dark", isZh ? "深色" : "Dark"),
+            new("Light", isZh ? "浅色" : "Light")
+        ];
+
+        _languageOptions =
+        [
+            new("zh-CN", isZh ? "简体中文" : "Simplified Chinese"),
+            new("en-US", "English")
+        ];
 
         ThemeComboBox.ItemsSource = _themeOptions;
         ThemeComboBox.SelectedItem = _themeOptions.FirstOrDefault(option =>
@@ -60,5 +66,20 @@ public partial class FirstRunSetupWindow : Window
         {
             return Text;
         }
+    }
+
+    private static bool IsChineseCulture()
+    {
+        return CultureInfo.CurrentUICulture.Name.StartsWith("zh", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void ApplyUiTexts(bool isZh)
+    {
+        Title = isZh ? "首次启动设置" : "First Run Setup";
+        TitleTextBlock.Text = isZh ? "欢迎使用 VSSL" : "Welcome to VSSL";
+        HintTextBlock.Text = isZh ? "请先选择默认主题和默认语言（仅首次显示）" : "Please choose default theme and language (shown only once).";
+        ThemeLabelTextBlock.Text = isZh ? "默认主题" : "Default Theme";
+        LanguageLabelTextBlock.Text = isZh ? "默认语言" : "Default Language";
+        ConfirmButton.Content = isZh ? "开始使用" : "Get Started";
     }
 }

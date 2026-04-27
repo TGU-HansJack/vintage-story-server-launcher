@@ -13,5 +13,43 @@
     <Design.DataContext>
         <viewModels:AboutViewModel />
     </Design.DataContext>
-    Project info~
+
+    <Grid RowDefinitions="Auto,*" RowSpacing="10">
+        <Border Grid.Row="0" Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Command="{Binding OpenRepositoryCommand}" Content="{Binding [AboutRepositoryButtonText]}" />
+                    <Button Command="{Binding OpenCommunityCommand}" Content="{Binding [AboutCommunityButtonText]}" />
+                    <Button Command="{Binding OpenIssuesCommand}" Content="{Binding [AboutIssuesButtonText]}" />
+                </StackPanel>
+
+                <TextBlock
+                    Grid.Column="1"
+                    VerticalAlignment="Center"
+                    Text="{Binding RepositoryUrl}"
+                    TextTrimming="CharacterEllipsis"
+                    />
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1" Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
+            <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8">
+                <TextBlock FontSize="16" FontWeight="SemiBold" Text="{Binding [AboutProjectInfoTitle]}" />
+                <TextBlock
+                    Grid.Row="1"
+                    Text="{Binding [AboutFeedbackText]}"
+                    TextWrapping="Wrap"
+                    />
+                <TextBox
+                    Grid.Row="2"
+                    Margin="0,4,0,0"
+                    IsReadOnly="True"
+                    AcceptsReturn="True"
+                    TextWrapping="Wrap"
+                    VerticalContentAlignment="Top"
+                    Text="{Binding ProjectReadme}"
+                    />
+            </Grid>
+        </Border>
+    </Grid>
 </UserControl>

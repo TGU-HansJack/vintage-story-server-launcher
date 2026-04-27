@@ -28,12 +28,20 @@
                 Background="Transparent"
                 Command="{Binding ToggleSidebarCommand}"
                 DockPanel.Dock="Top">
+                <Button.Styles>
+                    <Style Selector="Button:pointerover">
+                        <Setter Property="Background" Value="{DynamicResource PrimaryHoverColor}" />
+                    </Style>
+                </Button.Styles>
                 <controls:SvgIcon Width="24" Height="24" IconName="FiNavigation" />
             </Button>
 
             <!--  Toolbar  -->
             <Button HorizontalAlignment="Center" Background="Transparent" DockPanel.Dock="Bottom">
                 <Button.Styles>
+                    <Style Selector="Button:pointerover">
+                        <Setter Property="Background" Value="{DynamicResource PrimaryHoverColor}" />
+                    </Style>
                     <!--  menu items style  -->
                     <Style Selector="MenuItem">
                         <Setter Property="Margin" Value="8, 4" />
@@ -76,12 +84,12 @@
                                 Classes.checked="{Binding CurrentCultureName, Converter={StaticResource EqualToBooleanConverter}, ConverterParameter='zh-CN'}"
                                 Command="{Binding ChangeLanguageCommand}"
                                 CommandParameter="zh-CN"
-                                Header="简体中文" />
+                                Header="{Binding ZhLanguageOptionName}" />
                             <MenuItem
                                 Classes.checked="{Binding CurrentCultureName, Converter={StaticResource EqualToBooleanConverter}, ConverterParameter='en-US'}"
                                 Command="{Binding ChangeLanguageCommand}"
                                 CommandParameter="en-US"
-                                Header="English"
+                                Header="{Binding EnLanguageOptionName}"
                                 Tag="en-US" />
 
                             <MenuItem.Icon>
@@ -107,16 +115,21 @@
                 HorizontalAlignment="Center"
                 Background="Transparent"
                 Classes.active="{Binding AboutMenu.IsActive}"
-                Command="{Binding NavigateCommand}"
-                CommandParameter="{Binding AboutMenu}"
+                Command="{Binding NavigateAboutCommand}"
                 DockPanel.Dock="Bottom"
                 ToolTip.Tip="{Binding AboutMenu.Title}">
                 <Button.Styles>
                     <Style Selector="Button">
                         <Setter Property="Background" Value="Transparent" />
                     </Style>
+                    <Style Selector="Button:pointerover">
+                        <Setter Property="Background" Value="{DynamicResource PrimaryHoverColor}" />
+                    </Style>
                     <Style Selector="Button.active">
                         <Setter Property="Background" Value="{DynamicResource SelectedMenuItemBgColor}" />
+                    </Style>
+                    <Style Selector="Button.active:pointerover">
+                        <Setter Property="Background" Value="{DynamicResource PrimaryHoverColor}" />
                     </Style>
                 </Button.Styles>
                 <controls:SvgIcon Width="24" Height="24" IconName="{Binding AboutMenu.Icon}" />
@@ -141,8 +154,14 @@
                                 <Style Selector="Button">
                                     <Setter Property="Background" Value="Transparent" />
                                 </Style>
+                                <Style Selector="Button:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource PrimaryHoverColor}" />
+                                </Style>
                                 <Style Selector="Button.active">
                                     <Setter Property="Background" Value="{DynamicResource SelectedMenuItemBgColor}" />
+                                </Style>
+                                <Style Selector="Button.active:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource PrimaryHoverColor}" />
                                 </Style>
                             </Button.Styles>
                             <StackPanel>

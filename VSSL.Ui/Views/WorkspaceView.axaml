@@ -16,28 +16,74 @@
     </Design.DataContext>
 
     <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="10">
-        <Border Grid.Row="0" Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
-            <Grid ColumnDefinitions="2.2*,Auto,Auto,Auto,*" ColumnSpacing="8">
-                <ComboBox Grid.Column="0" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
+        <Grid Grid.Row="0" Margin="12,0,12,0" ColumnDefinitions="Auto,160,Auto,220,Auto,*" ColumnSpacing="8">
+            <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="{Binding [WorkspaceQuickVersionLabel]}" />
+            <ComboBox Grid.Column="1" Width="160" ItemsSource="{Binding InstalledVersions}" SelectedItem="{Binding SelectedInstalledVersion}" />
+
+            <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="{Binding [WorkspaceQuickNameLabel]}" />
+            <TextBox
+                Grid.Column="3"
+                Width="220"
+                Text="{Binding QuickCreateProfileName, UpdateSourceTrigger=PropertyChanged}"
+                Watermark="{Binding [WorkspaceQuickNameWatermark]}"
+                />
+
+            <Button
+                Grid.Column="4"
+                Command="{Binding CreateAndStartServerCommand}"
+                Content="{Binding [WorkspaceQuickCreateAndStartButtonText]}"
+                />
+
+            <TextBlock
+                Grid.Column="5"
+                Margin="10,0,0,0"
+                VerticalAlignment="Center"
+                Foreground="#B00020"
+                IsVisible="{Binding HasNoInstalledVersions}"
+                Text="{Binding [WorkspaceQuickNoVersionText]}"
+                TextTrimming="CharacterEllipsis"
+                />
+        </Grid>
+
+        <Grid Grid.Row="1" Margin="12,0,12,0" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                <StackPanel.Styles>
+                    <Style Selector="ComboBox">
+                        <Setter Property="Height" Value="36" />
+                        <Setter Property="VerticalAlignment" Value="Center" />
+                    </Style>
+                    <Style Selector="Button">
+                        <Setter Property="Height" Value="36" />
+                        <Setter Property="VerticalAlignment" Value="Center" />
+                        <Setter Property="VerticalContentAlignment" Value="Center" />
+                        <Setter Property="HorizontalContentAlignment" Value="Center" />
+                    </Style>
+                </StackPanel.Styles>
+                <ComboBox Width="140" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
                 </ComboBox>
+                <Button Command="{Binding StartServerCommand}" Content="{Binding [WorkspaceStartServerButtonText]}" />
+                <Button Command="{Binding StopServerCommand}" Content="{Binding [WorkspaceStopServerButtonText]}" />
+            </StackPanel>
 
-                <Button Grid.Column="1" Width="92" Command="{Binding StartServerCommand}" Content="启动服务器" />
-                <Button Grid.Column="2" Width="92" Command="{Binding StopServerCommand}" Content="停止服务器" />
-                <Button Grid.Column="3" Width="86" Command="{Binding RefreshProfilesCommand}" Content="刷新档案" />
-                <TextBlock Grid.Column="4" VerticalAlignment="Center" Text="{Binding RuntimeStateText}" TextTrimming="CharacterEllipsis" />
-            </Grid>
-        </Border>
+            <StackPanel
+                Grid.Column="1"
+                VerticalAlignment="Center"
+                Spacing="2">
+                <TextBlock Text="{Binding RuntimeStateText}" TextTrimming="CharacterEllipsis" />
+                <TextBlock FontSize="12" Opacity="0.9" Text="{Binding StatusMessage}" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
 
-        <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="8">
-            <CheckBox Grid.Column="0" Content="追踪" IsChecked="{Binding IsConsoleAutoFollow}" />
-            <Button Grid.Column="1" Width="80" Command="{Binding ExportConsoleCommand}" Content="导出" />
-            <Button Grid.Column="2" Width="80" Command="{Binding ClearConsoleCommand}" Content="清空" />
-            <TextBlock Grid.Column="3" VerticalAlignment="Center" Text="{Binding StatusMessage}" TextTrimming="CharacterEllipsis" />
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                <CheckBox VerticalAlignment="Center" Content="{Binding [CommonFollowLabel]}" IsChecked="{Binding IsConsoleAutoFollow}" />
+                <Button Command="{Binding RefreshProfilesCommand}" Content="{Binding [WorkspaceRefreshProfilesButtonText]}" />
+                <Button Command="{Binding ClearConsoleCommand}" Content="{Binding [CommonClearButtonText]}" />
+                <Button Command="{Binding ExportConsoleCommand}" Content="{Binding [CommonExportButtonText]}" />
+            </StackPanel>
         </Grid>
 
         <Grid Grid.Row="2" RowDefinitions="Auto,*" RowSpacing="8">
@@ -51,18 +97,20 @@
                 IsVisible="{Binding IsStartupProgressVisible}"
                 >
                 <StackPanel>
-                    <TextBlock Text="{Binding StartupProgress, StringFormat=启动进度：{0:0}%}" />
+                    <TextBlock Text="{Binding StartupProgressText}" />
                     <ProgressBar Minimum="0" Maximum="100" Height="10" Margin="0,6,0,0" Value="{Binding StartupProgress}" />
                 </StackPanel>
             </Border>
 
-            <Border Grid.Row="1" CornerRadius="6" BorderBrush="Gray" BorderThickness="1" ClipToBounds="True">
+            <Border Grid.Row="1" CornerRadius="6" BorderBrush="Gray" BorderThickness="1" Background="#000000" ClipToBounds="True">
                 <Grid>
                     <ListBox
                         x:Name="ConsoleList"
                         ItemsSource="{Binding ConsoleLines}"
                         FontFamily="Consolas"
                         FontSize="12"
+                        Foreground="#E6E6E6"
+                        Background="Transparent"
                         BorderThickness="0"
                         Padding="6"
                         />
@@ -72,8 +120,9 @@
                         VerticalAlignment="Center"
                         FontSize="16"
                         FontWeight="SemiBold"
+                        Foreground="#BFBFBF"
                         IsVisible="{Binding HasNoConsoleLines}"
-                        Text="控制台暂无输出"
+                        Text="{Binding [ConsoleNoOutputText]}"
                         />
                 </Grid>
             </Border>
@@ -81,7 +130,7 @@
 
         <Grid Grid.Row="3" ColumnDefinitions="*,Auto" ColumnSpacing="8">
             <TextBox Grid.Column="0" Text="{Binding ConsoleInput, UpdateSourceTrigger=PropertyChanged}" />
-            <Button Grid.Column="1" Width="100" Command="{Binding SendConsoleCommandCommand}" Content="发送命令" />
+            <Button Grid.Column="1" Command="{Binding SendConsoleCommandCommand}" Content="{Binding [WorkspaceSendCommandButtonText]}" />
         </Grid>
     </Grid>
 </UserControl>

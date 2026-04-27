@@ -5,8 +5,7 @@ namespace VSSL.Ui.ViewModels;
 /// </summary>
 public class InstanceManageViewModel : ViewModelBase
 {
-    public string Title => "Instance / Manage";
+    public string Title => L("InstanceManageTitle");
 
-    public string Description => "Manage instance page placeholder.";
+    public string Description => L("InstanceManageDescription");
 }
-

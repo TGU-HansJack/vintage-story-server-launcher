@@ -45,8 +45,14 @@
                                 <Style Selector="Button">
                                     <Setter Property="Background" Value="Transparent" />
                                 </Style>
+                                <Style Selector="Button:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource PrimaryHoverColor}" />
+                                </Style>
                                 <Style Selector="Button.active">
                                     <Setter Property="Background" Value="{DynamicResource SelectedMenuItemBgColor}" />
+                                </Style>
+                                <Style Selector="Button.active:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource PrimaryHoverColor}" />
                                 </Style>
                             </Button.Styles>
                             <StackPanel Orientation="Horizontal" Spacing="10">

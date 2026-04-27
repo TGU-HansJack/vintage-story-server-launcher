@@ -20,6 +20,7 @@
             <!--  Text Colors  -->
             <SolidColorBrush x:Key="TextPrimaryColor" Color="#F3F4F6" />
             <SolidColorBrush x:Key="TextSecondaryColor" Color="#9CA3AF" />
+            <SolidColorBrush x:Key="HomeInfoCardGhostIconColor" Color="#000000" />
 
             <!--  Default svg icon color  -->
             <SolidColorBrush x:Key="DefaultSvgIconColor" Color="White" />

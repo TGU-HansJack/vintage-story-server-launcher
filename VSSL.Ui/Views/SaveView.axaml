@@ -16,42 +16,40 @@
     </Design.DataContext>
 
     <Grid RowDefinitions="Auto,Auto,*" RowSpacing="10">
-        <Border Grid.Row="0" Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
-            <Grid ColumnDefinitions="2.4*,2.2*,Auto,Auto,Auto" ColumnSpacing="8">
-                <ComboBox Grid.Column="0" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
+        <Grid Grid.Row="0" Margin="12,0,12,0" ColumnDefinitions="2.4*,2.2*,Auto,Auto,Auto" ColumnSpacing="8">
+            <ComboBox Grid.Column="0" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
 
-                <TextBox
-                    Grid.Column="1"
-                    Text="{Binding NewSaveName, UpdateSourceTrigger=PropertyChanged}"
-                    Watermark="输入要创建的存档名称"
-                    />
+            <TextBox
+                Grid.Column="1"
+                Text="{Binding NewSaveName, UpdateSourceTrigger=PropertyChanged}"
+                Watermark="{Binding [SaveNameWatermark]}"
+                />
 
-                <Button Grid.Column="2" Width="90" Command="{Binding CreateCommand}" Content="创建" />
-                <Button Grid.Column="3" Width="90" Command="{Binding DeleteSelectedCommand}" Content="删除" />
-                <Button Grid.Column="4" Width="90" Command="{Binding RefreshCommand}" Content="刷新" />
-            </Grid>
-        </Border>
+            <Button Grid.Column="2" Command="{Binding CreateCommand}" Content="{Binding [CommonCreateButtonText]}" />
+            <Button Grid.Column="3" Command="{Binding DeleteSelectedCommand}" Content="{Binding [CommonDeleteButtonText]}" />
+            <Button Grid.Column="4" Command="{Binding RefreshCommand}" Content="{Binding [CommonRefreshButtonText]}" />
+        </Grid>
 
         <StackPanel Grid.Row="1" Spacing="2">
             <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" />
-            <TextBlock Text="{Binding CurrentProfileVersion, StringFormat=当前档案版本：{0}}" />
+            <TextBlock Text="{Binding CurrentProfileVersionText}" />
         </StackPanel>
 
         <Grid Grid.Row="2" RowDefinitions="Auto,*">
             <Border Grid.Row="0" Padding="10,8" CornerRadius="6,6,0,0" BorderBrush="Gray" BorderThickness="1">
                 <Grid ColumnDefinitions="52,1.5*,3.8*,1.6*,0.9*,Auto" ColumnSpacing="8">
                     <CheckBox IsChecked="{Binding SelectAll}" />
-                    <TextBlock Grid.Column="1" FontWeight="SemiBold" Text="存档名称" />
-                    <TextBlock Grid.Column="2" FontWeight="SemiBold" Text="目录" />
-                    <TextBlock Grid.Column="3" FontWeight="SemiBold" Text="时间" />
-                    <TextBlock Grid.Column="4" HorizontalAlignment="Center" FontWeight="SemiBold" Text="当前" />
-                    <TextBlock Grid.Column="5" HorizontalAlignment="Center" FontWeight="SemiBold" Text="操作" />
+                    <TextBlock Grid.Column="1" FontWeight="SemiBold" Text="{Binding [SaveHeaderName]}" />
+                    <TextBlock Grid.Column="2" FontWeight="SemiBold" Text="{Binding [SaveHeaderDirectory]}" />
+                    <TextBlock Grid.Column="3" FontWeight="SemiBold" Text="{Binding [SaveHeaderTime]}" />
+                    <TextBlock Grid.Column="4" HorizontalAlignment="Center" FontWeight="SemiBold" Text="{Binding [SaveHeaderCurrent]}" />
+                    <TextBlock Grid.Column="5" HorizontalAlignment="Center" FontWeight="SemiBold" Text="{Binding [SaveHeaderAction]}" />
                 </Grid>
             </Border>
 
@@ -61,22 +59,19 @@
                         <ItemsControl ItemsSource="{Binding Saves}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:SaveFileItemViewModel">
-                                    <Border Margin="8,0,8,8" Padding="10,8" CornerRadius="6" BorderBrush="#555555" BorderThickness="1">
-                                        <Grid ColumnDefinitions="52,1.5*,3.8*,1.6*,0.9*,Auto" ColumnSpacing="8">
-                                            <CheckBox IsChecked="{Binding IsSelected}" />
-                                            <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding FileName}" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="{Binding FullPath}" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Grid.Column="3" VerticalAlignment="Center" Text="{Binding LastWriteText}" TextTrimming="CharacterEllipsis" />
-                                            <CheckBox Grid.Column="4" HorizontalAlignment="Center" IsChecked="{Binding IsActive}" IsEnabled="False" />
-                                            <Button
-                                                Grid.Column="5"
-                                                Width="72"
-                                                Command="{Binding DataContext.SetActiveCommand, ElementName=SaveRoot}"
-                                                CommandParameter="{Binding}"
-                                                Content="设为当前"
-                                                />
-                                        </Grid>
-                                    </Border>
+                                    <Grid Margin="8,0,8,8" ColumnDefinitions="52,1.5*,3.8*,1.6*,0.9*,Auto" ColumnSpacing="8">
+                                        <CheckBox IsChecked="{Binding IsSelected}" />
+                                        <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding FileName}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="{Binding FullPath}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Column="3" VerticalAlignment="Center" Text="{Binding LastWriteText}" TextTrimming="CharacterEllipsis" />
+                                        <CheckBox Grid.Column="4" HorizontalAlignment="Center" IsChecked="{Binding IsActive}" IsEnabled="False" />
+                                        <Button
+                                            Grid.Column="5"
+                                            Command="{Binding DataContext.SetActiveCommand, ElementName=SaveRoot}"
+                                            CommandParameter="{Binding}"
+                                            Content="{Binding DataContext[SaveSetActiveButtonText], ElementName=SaveRoot}"
+                                            />
+                                    </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -88,7 +83,7 @@
                         FontSize="16"
                         FontWeight="SemiBold"
                         IsVisible="{Binding HasNoSaves}"
-                        Text="暂无存档，请先创建"
+                        Text="{Binding [SaveNoSavesText]}"
                         />
                 </Grid>
             </Border>

@@ -58,24 +58,24 @@ public partial class InstanceCreateViewModel : ViewModelBase
         {
             if (string.IsNullOrWhiteSpace(ProfileName))
             {
-                StatusMessage = "请输入档案名称。";
+                StatusMessage = L("InstanceCreateStatusEnterProfileName");
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(SelectedVersion))
             {
-                StatusMessage = "请先选择已安装服务端版本。";
+                StatusMessage = L("InstanceCreateStatusSelectVersionFirst");
                 return;
             }
 
             var profile = _instanceProfileService.CreateProfile(ProfileName, SelectedVersion);
             ProfileName = string.Empty;
             LoadProfiles();
-            StatusMessage = $"档案已创建：{profile.Name}";
+            StatusMessage = LF("InstanceCreateStatusProfileCreatedFormat", profile.Name);
         }
         catch (Exception ex)
         {
-            StatusMessage = $"创建失败：{ex.Message}";
+            StatusMessage = LF("InstanceCreateStatusCreateFailedFormat", ex.Message);
         }
     }
 
@@ -90,7 +90,7 @@ public partial class InstanceCreateViewModel : ViewModelBase
             .ToList();
         if (selectedIds.Count == 0)
         {
-            StatusMessage = "请先勾选要删除的档案。";
+            StatusMessage = L("InstanceCreateStatusSelectProfilesToDelete");
             return;
         }
 
@@ -99,12 +99,12 @@ public partial class InstanceCreateViewModel : ViewModelBase
             var deletedCount = _instanceProfileService.DeleteProfiles(selectedIds);
             LoadProfiles();
             StatusMessage = deletedCount > 0
-                ? $"已删除 {deletedCount} 个档案。"
-                : "没有可删除的档案。";
+                ? LF("InstanceCreateStatusDeletedProfilesFormat", deletedCount)
+                : L("InstanceCreateStatusNoProfilesDeleted");
         }
         catch (Exception ex)
         {
-            StatusMessage = $"删除失败：{ex.Message}";
+            StatusMessage = LF("InstanceCreateStatusDeleteFailedFormat", ex.Message);
         }
     }
 
@@ -129,14 +129,14 @@ public partial class InstanceCreateViewModel : ViewModelBase
         if (InstalledVersions.Count == 0)
         {
             SelectedVersion = null;
-            StatusMessage = "未发现可用版本（来源：packages 的 vs_server_win-x64_*.zip）。";
+            StatusMessage = L("InstanceCreateStatusNoVersionsFound");
             return;
         }
 
         if (string.IsNullOrWhiteSpace(SelectedVersion) || !InstalledVersions.Contains(SelectedVersion))
             SelectedVersion = InstalledVersions[0];
 
-        StatusMessage = $"已检测到 {InstalledVersions.Count} 个版本（来源：packages）。";
+        StatusMessage = LF("InstanceCreateStatusDetectedVersionsFormat", InstalledVersions.Count);
     }
 
     private void LoadProfiles()
@@ -202,7 +202,7 @@ public partial class InstanceCreateViewModel : ViewModelBase
         LoadData();
 
         if (string.IsNullOrWhiteSpace(StatusMessage))
-            StatusMessage = $"默认工作区：{WorkspaceRoot}";
+            StatusMessage = LF("InstanceCreateStatusDefaultWorkspaceFormat", WorkspaceRoot);
     }
 
     #endregion

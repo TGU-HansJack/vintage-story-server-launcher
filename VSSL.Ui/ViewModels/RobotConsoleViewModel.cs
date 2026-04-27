@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using VSSL.Abstractions.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -14,15 +15,30 @@ public partial class RobotConsoleViewModel : ViewModelBase
 
     [ObservableProperty] private string _statusMessage = string.Empty;
     [ObservableProperty] private bool _isBusy;
-    [ObservableProperty] private bool _isRunning;
     [ObservableProperty] private bool _isConsoleAutoFollow = true;
-    [ObservableProperty] private string _runtimeStateText = "未运行";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RuntimeStateText))]
+    private bool _isRunning;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RuntimeStateText))]
+    private string _oneBotWsUrl = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RuntimeStateText))]
+    private DateTimeOffset? _startedAtUtc;
 
     public ObservableCollection<string> ConsoleLines { get; } = [];
 
     public bool HasConsoleLines => ConsoleLines.Count > 0;
 
     public bool HasNoConsoleLines => !HasConsoleLines;
+
+    public string RuntimeStateText => IsRunning
+        ? LF("RobotConsoleRuntimeRunningFormat", string.IsNullOrWhiteSpace(OneBotWsUrl) ? "-" : OneBotWsUrl,
+            FormatStartedAt(StartedAtUtc))
+        : L("CommonStoppedState");
 
     [RelayCommand]
     private async Task RefreshAsync()
@@ -33,9 +49,8 @@ public partial class RobotConsoleViewModel : ViewModelBase
         {
             var status = _robotService.GetCurrentStatus();
             IsRunning = status.IsRunning;
-            RuntimeStateText = status.IsRunning
-                ? $"运行中（WS: {status.OneBotWsUrl}，启动时间: {status.StartedAtUtc?.ToLocalTime():yyyy-MM-dd HH:mm:ss}）"
-                : "未运行";
+            OneBotWsUrl = status.OneBotWsUrl ?? string.Empty;
+            StartedAtUtc = status.StartedAtUtc;
 
             var lines = _robotService.GetConsoleLines();
             ConsoleLines.Clear();
@@ -45,7 +60,7 @@ public partial class RobotConsoleViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            StatusMessage = $"刷新控制台失败：{ex.Message}";
+            StatusMessage = LF("RobotConsoleStatusRefreshFailedFormat", ex.Message);
         }
     }
 
@@ -60,11 +75,11 @@ public partial class RobotConsoleViewModel : ViewModelBase
             var settings = await _robotService.LoadSettingsAsync();
             await _robotService.StartAsync(settings);
             await RefreshAsync();
-            StatusMessage = "机器人已启动。";
+            StatusMessage = L("RobotConsoleStatusStarted");
         }
         catch (Exception ex)
         {
-            StatusMessage = $"启动机器人失败：{ex.Message}";
+            StatusMessage = LF("RobotConsoleStatusStartFailedFormat", ex.Message);
         }
         finally
         {
@@ -82,11 +97,11 @@ public partial class RobotConsoleViewModel : ViewModelBase
             IsBusy = true;
             await _robotService.StopAsync(TimeSpan.FromSeconds(5));
             await RefreshAsync();
-            StatusMessage = "机器人已停止。";
+            StatusMessage = L("RobotConsoleStatusStopped");
         }
         catch (Exception ex)
         {
-            StatusMessage = $"停止机器人失败：{ex.Message}";
+            StatusMessage = LF("RobotConsoleStatusStopFailedFormat", ex.Message);
         }
         finally
         {
@@ -100,7 +115,13 @@ public partial class RobotConsoleViewModel : ViewModelBase
         if (_robotService is null) return;
         _robotService.ClearConsole();
         await RefreshAsync();
-        StatusMessage = "控制台日志已清空。";
+        StatusMessage = L("RobotConsoleStatusCleared");
+    }
+
+    private static string FormatStartedAt(DateTimeOffset? startedAtUtc)
+    {
+        if (!startedAtUtc.HasValue) return "-";
+        return startedAtUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture);
     }
 
     #region Constructors

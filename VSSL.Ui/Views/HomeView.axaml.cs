@@ -27,6 +27,10 @@ public partial class HomeView : UserControl
     protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+
+        if (DataContext is HomeViewModel viewModel)
+            viewModel.RefreshMetricsCommand.Execute(null);
+
         _refreshTimer.Start();
     }
 

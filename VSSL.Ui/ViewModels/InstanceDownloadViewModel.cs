@@ -58,17 +58,17 @@ public partial class InstanceDownloadViewModel : ViewModelBase
 
         try
         {
-            StatusMessage = $"正在下载：{entry.FileName}";
+            StatusMessage = LF("InstanceDownloadStatusDownloadingFormat", entry.FileName);
             var progress = new Progress<double>(value => entry.DownloadProgress = value);
             await _instanceDownloadService.DownloadByCdnAsync(entry.CdnUrl, entry.TargetFilePath, progress);
             entry.IsDownloaded = _instanceDownloadService.IsDownloaded(entry.TargetFilePath);
             StatusMessage = entry.IsDownloaded
-                ? $"下载完成：{entry.FileName}"
-                : $"下载失败：{entry.FileName}";
+                ? LF("InstanceDownloadStatusCompletedFormat", entry.FileName)
+                : LF("InstanceDownloadStatusFailedSimpleFormat", entry.FileName);
         }
         catch (Exception ex)
         {
-            StatusMessage = $"下载失败：{entry.FileName}，{ex.Message}";
+            StatusMessage = LF("InstanceDownloadStatusFailedFormat", entry.FileName, ex.Message);
         }
         finally
         {
@@ -83,7 +83,7 @@ public partial class InstanceDownloadViewModel : ViewModelBase
         if (_instanceDownloadService is null) return;
 
         IsLoading = true;
-        StatusMessage = "正在读取服务端版本列表...";
+        StatusMessage = L("InstanceDownloadStatusLoadingList");
         try
         {
             var serverEntries = await _instanceDownloadService.GetServerDownloadEntriesAsync();
@@ -100,14 +100,14 @@ public partial class InstanceDownloadViewModel : ViewModelBase
 
             ApplyFilters();
             StatusMessage = _allEntries.Count == 0
-                ? "未读取到可下载服务端版本。"
-                : $"已加载 {_allEntries.Count} 条服务端版本，默认下载目录：{DownloadRootDirectory}";
+                ? L("InstanceDownloadStatusNoEntries")
+                : LF("InstanceDownloadStatusLoadedEntriesFormat", _allEntries.Count, DownloadRootDirectory);
         }
         catch (Exception ex)
         {
             _allEntries.Clear();
             Entries.Clear();
-            StatusMessage = $"读取服务端版本失败：{ex.Message}";
+            StatusMessage = LF("InstanceDownloadStatusLoadFailedFormat", ex.Message);
             OnPropertyChanged(nameof(HasNoData));
         }
         finally

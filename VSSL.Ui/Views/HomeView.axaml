@@ -2,8 +2,8 @@
     x:Class="VSSL.Ui.Views.HomeView"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:VSSL.Ui.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.Avalonia;assembly=LiveChartsCore.SkiaSharpView.Avalonia"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:vm="clr-namespace:VSSL.Ui.ViewModels"
     d:DesignHeight="450"
@@ -15,79 +15,151 @@
         <vm:HomeViewModel />
     </Design.DataContext>
 
-    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="12">
-        <Border Grid.Row="0" Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
-            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                <Button Width="100" Command="{Binding RefreshMetricsCommand}" Content="刷新状态" />
-                <TextBlock
-                    Grid.Column="1"
-                    VerticalAlignment="Center"
-                    Text="实时状态概览：服务器内存、机器人内存、运行时间、在线玩家"
-                    TextTrimming="CharacterEllipsis"
-                    />
-            </Grid>
-        </Border>
+    <UserControl.Styles>
+        <Style Selector="Border.home-info-card controls|SvgIcon.home-info-card-icon">
+            <Setter Property="Width" Value="60" />
+            <Setter Property="Height" Value="60" />
+            <Setter Property="IconColor" Value="{DynamicResource HomeInfoCardGhostIconColor}" />
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Duration="0:0:0.16" Property="Width" />
+                    <DoubleTransition Duration="0:0:0.16" Property="Height" />
+                </Transitions>
+            </Setter>
+        </Style>
+    </UserControl.Styles>
 
-        <Grid Grid.Row="1" ColumnDefinitions="*,*,*,*" ColumnSpacing="10">
-            <Border Padding="10" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
-                <StackPanel Spacing="6">
-                    <TextBlock FontWeight="SemiBold" Text="服务器" />
-                    <TextBlock Text="{Binding ServerStateText}" />
-                    <TextBlock Text="{Binding ServerMemoryText, StringFormat=内存：{0}}" />
-                    <TextBlock Text="{Binding ServerUptimeText, StringFormat=运行：{0}}" />
-                </StackPanel>
+    <Grid RowDefinitions="Auto,*" RowSpacing="12">
+        <Grid Grid.Row="0" ColumnDefinitions="*,*,*,*" ColumnSpacing="10">
+            <Border
+                Classes="home-info-card"
+                Padding="10"
+                BorderBrush="Gray"
+                BorderThickness="1"
+                CornerRadius="8">
+                <Grid ClipToBounds="True">
+                    <StackPanel Spacing="6">
+                        <TextBlock FontWeight="SemiBold" Text="{Binding [HomeServerCardTitle]}" />
+                        <TextBlock Text="{Binding ServerStateText}" />
+                        <TextBlock Text="{Binding ServerMemoryLineText}" />
+                        <TextBlock Text="{Binding ServerUptimeLineText}" />
+                    </StackPanel>
+                    <controls:SvgIcon
+                        Classes="home-info-card-icon"
+                        Margin="0,0,-8,-8"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Bottom"
+                        IconName="ComputerRounded"
+                        IsHitTestVisible="False"
+                        >
+                        <controls:SvgIcon.RenderTransform>
+                            <RotateTransform Angle="-18" />
+                        </controls:SvgIcon.RenderTransform>
+                    </controls:SvgIcon>
+                </Grid>
             </Border>
 
-            <Border Grid.Column="1" Padding="10" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
-                <StackPanel Spacing="6">
-                    <TextBlock FontWeight="SemiBold" Text="机器人" />
-                    <TextBlock Text="{Binding RobotStateText}" />
-                    <TextBlock Text="{Binding RobotMemoryText, StringFormat=内存：{0}}" />
-                    <TextBlock Text="{Binding RobotUptimeText, StringFormat=运行：{0}}" />
-                </StackPanel>
+            <Border Grid.Column="1" Classes="home-info-card" Padding="10" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
+                <Grid ClipToBounds="True">
+                    <StackPanel Spacing="6">
+                        <TextBlock FontWeight="SemiBold" Text="{Binding [HomeRobotCardTitle]}" />
+                        <TextBlock Text="{Binding RobotStateText}" />
+                        <TextBlock Text="{Binding RobotMemoryLineText}" />
+                        <TextBlock Text="{Binding RobotUptimeLineText}" />
+                    </StackPanel>
+                    <controls:SvgIcon
+                        Classes="home-info-card-icon"
+                        Margin="0,0,-8,-8"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Bottom"
+                        IconName="FiRobot"
+                        IsHitTestVisible="False"
+                        >
+                        <controls:SvgIcon.RenderTransform>
+                            <RotateTransform Angle="-16" />
+                        </controls:SvgIcon.RenderTransform>
+                    </controls:SvgIcon>
+                </Grid>
             </Border>
 
-            <Border Grid.Column="2" Padding="10" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
-                <StackPanel Spacing="6">
-                    <TextBlock FontWeight="SemiBold" Text="在线玩家" />
-                    <TextBlock FontSize="24" FontWeight="Bold" Text="{Binding OnlinePlayersText}" />
-                </StackPanel>
+            <Border Grid.Column="2" Classes="home-info-card" Padding="10" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
+                <Grid ClipToBounds="True">
+                    <StackPanel Spacing="6">
+                        <TextBlock FontWeight="SemiBold" Text="{Binding [HomeOnlinePlayersCardTitle]}" />
+                        <TextBlock FontSize="24" FontWeight="Bold" Text="{Binding OnlinePlayersText}" />
+                    </StackPanel>
+                    <controls:SvgIcon
+                        Classes="home-info-card-icon"
+                        Margin="0,0,-8,-8"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Bottom"
+                        IconName="GroupsRounded"
+                        IsHitTestVisible="False"
+                        >
+                        <controls:SvgIcon.RenderTransform>
+                            <RotateTransform Angle="-18" />
+                        </controls:SvgIcon.RenderTransform>
+                    </controls:SvgIcon>
+                </Grid>
             </Border>
 
-            <Border Grid.Column="3" Padding="10" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
-                <StackPanel Spacing="6">
-                    <TextBlock FontWeight="SemiBold" Text="采样窗口" />
-                    <TextBlock Text="最近 60 个采样点" />
-                    <TextBlock Text="每秒自动更新" />
-                </StackPanel>
+            <Border Grid.Column="3" Classes="home-info-card" Padding="10" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
+                <Grid ClipToBounds="True">
+                    <StackPanel Spacing="6">
+                        <TextBlock FontWeight="SemiBold" Text="{Binding [HomeSamplingWindowCardTitle]}" />
+                        <TextBlock Text="{Binding [HomeSamplingWindowLine1]}" />
+                        <TextBlock Text="{Binding [HomeSamplingWindowLine2]}" />
+                    </StackPanel>
+                    <controls:SvgIcon
+                        Classes="home-info-card-icon"
+                        Margin="0,0,-8,-8"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Bottom"
+                        IconName="TimerOutline"
+                        IsHitTestVisible="False"
+                        >
+                        <controls:SvgIcon.RenderTransform>
+                            <RotateTransform Angle="-18" />
+                        </controls:SvgIcon.RenderTransform>
+                    </controls:SvgIcon>
+                </Grid>
             </Border>
         </Grid>
 
-        <Grid Grid.Row="2" ColumnDefinitions="*,*" ColumnSpacing="12">
+        <Grid Grid.Row="1" VerticalAlignment="Top" ColumnDefinitions="*,*" ColumnSpacing="12">
             <Border Grid.Column="0" Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
                 <StackPanel Spacing="8">
-                    <TextBlock FontSize="16" FontWeight="SemiBold" Text="内存趋势" />
-                    <lvc:CartesianChart
+                    <TextBlock FontSize="16" FontWeight="SemiBold" Text="{Binding [HomeMemoryTrendTitle]}" />
+                    <controls:SimpleLineChart
                         Height="280"
-                        LegendPosition="Top"
-                        LegendTextPaint="{Binding LegendTextPaint}"
-                        Series="{Binding MemorySeries}"
-                        XAxes="{Binding MemoryXAxes}"
-                        YAxes="{Binding MemoryYAxes}"
+                        IsDarkMode="{Binding IsDarkMode}"
+                        PrimaryLegend="{Binding [HomeServerMemoryLegend]}"
+                        PrimaryStroke="#5B9BD5"
+                        PrimaryValues="{Binding ServerMemorySeries}"
+                        SecondaryLegend="{Binding [HomeRobotMemoryLegend]}"
+                        SecondaryStroke="#ED7D31"
+                        SecondaryValues="{Binding RobotMemorySeries}"
+                        XAxisLabel="{Binding [HomeSamplesAxisLabel]}"
+                        YAxisLabel="MB"
+                        YAxisValueFormat="0.0"
                         />
                 </StackPanel>
             </Border>
 
             <Border Grid.Column="1" Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
                 <StackPanel Spacing="8">
-                    <TextBlock FontSize="16" FontWeight="SemiBold" Text="玩家趋势" />
-                    <lvc:CartesianChart
+                    <TextBlock FontSize="16" FontWeight="SemiBold" Text="{Binding [HomePlayerTrendTitle]}" />
+                    <controls:SimpleLineChart
                         Height="280"
-                        LegendPosition="Top"
-                        LegendTextPaint="{Binding LegendTextPaint}"
-                        Series="{Binding PlayerSeries}"
-                        XAxes="{Binding PlayerXAxes}"
-                        YAxes="{Binding PlayerYAxes}"
+                        IsDarkMode="{Binding IsDarkMode}"
+                        PrimaryLegend="{Binding [HomeOnlinePlayersLegend]}"
+                        PrimaryStroke="#70AD47"
+                        PrimaryValues="{Binding PlayerSeries}"
+                        ShowZeroBasedYAxis="True"
+                        XAxisLabel="{Binding [HomeSamplesAxisLabel]}"
+                        YAxisLabel="{Binding [HomePlayersAxisLabel]}"
+                        YAxisValueFormat="0"
                         />
                 </StackPanel>
             </Border>

@@ -1,5 +1,7 @@
 using System.Diagnostics;
+using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.Data.Sqlite;
 using VSSL.Abstractions.Services;
 using VSSL.Domains.Models;
 
@@ -53,6 +55,8 @@ public partial class ServerProcessService : IServerProcessService
 
             // 自动修复旧版 Launcher 生成的极简配置（会导致 suplayer 组缺失并秒退）。
             ServerConfigBootstrapper.EnsureGenerated(installPath, profile.DirectoryPath);
+            PrepareSaveFileForStart(profile);
+            SqliteConnection.ClearAllPools();
 
             var process = new Process
             {
@@ -286,6 +290,132 @@ public partial class ServerProcessService : IServerProcessService
     {
         _currentStatus = status;
         StatusChanged?.Invoke(this, status);
+    }
+
+    private void PrepareSaveFileForStart(InstanceProfile profile)
+    {
+        var configuredSavePath = TryReadSaveFileLocation(profile.DirectoryPath);
+        var savePath = string.IsNullOrWhiteSpace(configuredSavePath)
+            ? profile.ActiveSaveFile
+            : configuredSavePath;
+        if (string.IsNullOrWhiteSpace(savePath))
+            return;
+
+        string fullSavePath;
+        try
+        {
+            fullSavePath = Path.GetFullPath(savePath);
+        }
+        catch
+        {
+            return;
+        }
+
+        profile.ActiveSaveFile = fullSavePath;
+        profile.SaveDirectory = Path.GetDirectoryName(fullSavePath) ?? profile.SaveDirectory;
+
+        var saveDirectory = Path.GetDirectoryName(fullSavePath);
+        if (!string.IsNullOrWhiteSpace(saveDirectory))
+            Directory.CreateDirectory(saveDirectory);
+
+        if (!File.Exists(fullSavePath))
+            return;
+
+        var saveFileInfo = new FileInfo(fullSavePath);
+        if (saveFileInfo.Length == 0)
+        {
+            File.Delete(fullSavePath);
+            OutputReceived?.Invoke(this, $"[system] 检测到空存档文件，已删除并允许服务器重新生成：{fullSavePath}");
+            return;
+        }
+
+        try
+        {
+            var builder = new SqliteConnectionStringBuilder
+            {
+                DataSource = fullSavePath,
+                Mode = SqliteOpenMode.ReadWrite,
+                Pooling = false,
+                Cache = SqliteCacheMode.Private
+            };
+            using var connection = new SqliteConnection(builder.ToString());
+            connection.Open();
+
+            var tables = ReadTables(connection);
+            var hasChunks = tables.Contains("chunks", StringComparer.OrdinalIgnoreCase);
+            var hasChunk = tables.Contains("chunk", StringComparer.OrdinalIgnoreCase);
+
+            // 兼容旧的错误迁移：曾将 chunk 表改名为 chunks，导致 VS 服务器无法写入存档。
+            // 这里仅在检测到 chunks 存在、chunk 缺失时回迁；不再执行 chunk -> chunks 的迁移。
+            if (hasChunks && !hasChunk)
+            {
+                var backupPath = $"{fullSavePath}.bak-fix-{DateTime.Now:yyyyMMddHHmmss}";
+                File.Copy(fullSavePath, backupPath, overwrite: false);
+
+                using var renameCommand = connection.CreateCommand();
+                renameCommand.CommandText = "ALTER TABLE chunks RENAME TO chunk;";
+                renameCommand.ExecuteNonQuery();
+
+                OutputReceived?.Invoke(this,
+                    $"[system] 已自动修复存档表名 chunks -> chunk，并创建备份：{backupPath}");
+            }
+        }
+        catch (SqliteException ex)
+        {
+            OutputReceived?.Invoke(this, $"[system] 存档预检查跳过（SQLite）：{ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            OutputReceived?.Invoke(this, $"[system] 存档预检查跳过：{ex.Message}");
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+        }
+    }
+
+    private static HashSet<string> ReadTables(SqliteConnection connection)
+    {
+        var tables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT name FROM sqlite_master WHERE type='table';";
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            if (!reader.IsDBNull(0))
+                tables.Add(reader.GetString(0));
+        }
+
+        return tables;
+    }
+
+    private static string TryReadSaveFileLocation(string profileDirectoryPath)
+    {
+        try
+        {
+            var configPath = WorkspacePathHelper.GetProfileConfigPath(profileDirectoryPath);
+            if (!File.Exists(configPath))
+                return string.Empty;
+
+            using var stream = File.OpenRead(configPath);
+            using var json = JsonDocument.Parse(stream);
+
+            if (!json.RootElement.TryGetProperty("WorldConfig", out var worldConfigElement) ||
+                worldConfigElement.ValueKind != JsonValueKind.Object)
+                return string.Empty;
+
+            if (!worldConfigElement.TryGetProperty("SaveFileLocation", out var saveFileElement) ||
+                saveFileElement.ValueKind != JsonValueKind.String)
+                return string.Empty;
+
+            return saveFileElement.GetString() ?? string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
+        }
     }
 
     [GeneratedRegex(@"\[(?:Server\s+)?Event\].*\s+joins\.$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]

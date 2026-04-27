@@ -12,6 +12,11 @@
         "title": "WorkspaceMenuTitle",
         "icon": "FiConsole",
         "viewName": "Workspace"
+      },
+      {
+        "title": "MapPreviewMenuTitle",
+        "icon": "FiOverview",
+        "viewName": "MapPreview"
       }
     ]
   },
@@ -46,26 +51,21 @@
         "viewName": "InstanceCreate"
       },
       {
-        "title": "InstanceManageMenuTitle",
-        "icon": "FiManage",
-        "viewName": "InstanceManage"
+        "title": "ConfigMenuTitle",
+        "icon": "FiConfig",
+        "viewName": "Config"
+      },
+      {
+        "title": "SaveMenuTitle",
+        "icon": "FiSave",
+        "viewName": "Save"
+      },
+      {
+        "title": "ModMenuTitle",
+        "icon": "FiMod",
+        "viewName": "Mod"
       }
     ]
-  },
-  {
-    "title": "ConfigMenuTitle",
-    "icon": "FiConfig",
-    "viewName": "Config"
-  },
-  {
-    "title": "SaveMenuTitle",
-    "icon": "FiSave",
-    "viewName": "Save"
-  },
-  {
-    "title": "ModMenuTitle",
-    "icon": "FiMod",
-    "viewName": "Mod"
   },
   {
     "title": "RobotMenuTitle",

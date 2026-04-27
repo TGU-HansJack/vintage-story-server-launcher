@@ -1,0 +1,107 @@
+<UserControl
+    x:Class="VSSL.Ui.Views.MapPreviewView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="clr-namespace:VSSL.Ui.ViewModels"
+    d:DesignHeight="450"
+    d:DesignWidth="800"
+    x:DataType="vm:MapPreviewViewModel"
+    mc:Ignorable="d"
+    >
+    <Design.DataContext>
+        <vm:MapPreviewViewModel />
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
+        <Grid Grid.Row="0" Margin="12,0,12,0" ColumnDefinitions="Auto,240,Auto,240,*,Auto,Auto,Auto" ColumnSpacing="8">
+            <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="{Binding [MapPreviewProfileLabel]}" />
+            <ComboBox Grid.Column="1" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+
+            <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="{Binding [MapPreviewSaveLabel]}" />
+            <ComboBox Grid.Column="3" ItemsSource="{Binding Saves}" SelectedItem="{Binding SelectedSave}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+
+            <Button Grid.Column="5" Command="{Binding RefreshProfilesCommand}" Content="{Binding [MapPreviewRefreshProfilesButtonText]}" />
+            <Button Grid.Column="6" Command="{Binding RefreshSavesCommand}" Content="{Binding [MapPreviewRefreshSavesButtonText]}" />
+            <Button Grid.Column="7" Command="{Binding LoadMapPreviewCommand}" Content="{Binding [MapPreviewLoadButtonText]}" />
+        </Grid>
+
+        <TextBlock Grid.Row="1" Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+
+        <StackPanel Grid.Row="2" Spacing="4" IsVisible="{Binding HasMapPreview}">
+            <TextBlock FontWeight="SemiBold" Text="{Binding MapPreviewSummary}" />
+            <TextBlock Text="{Binding MapPreviewSourcePathLine}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding MapPreviewSourcePath}" />
+        </StackPanel>
+
+        <Grid Grid.Row="3">
+            <TabControl x:Name="MapPreviewTabs" SelectionChanged="MapPreviewTabs_OnSelectionChanged">
+                <TabItem Header="{Binding [MapPreviewColorTabTitle]}">
+                    <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="6" Padding="8">
+                        <ScrollViewer
+                            x:Name="ColorScrollViewer"
+                            HorizontalScrollBarVisibility="Auto"
+                            VerticalScrollBarVisibility="Auto"
+                            PointerExited="ColorScrollViewer_OnPointerExited"
+                            PointerMoved="ColorScrollViewer_OnPointerMoved"
+                            PointerPressed="ColorScrollViewer_OnPointerPressed"
+                            PointerReleased="ColorScrollViewer_OnPointerReleased">
+                            <LayoutTransformControl x:Name="ColorTransformHost">
+                                <Image x:Name="ColorImage" Source="{Binding MapPreviewColorImage}" Stretch="None" />
+                            </LayoutTransformControl>
+                        </ScrollViewer>
+                    </Border>
+                </TabItem>
+
+                <TabItem Header="{Binding [MapPreviewGrayscaleTabTitle]}">
+                    <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="6" Padding="8">
+                        <ScrollViewer
+                            x:Name="GrayscaleScrollViewer"
+                            HorizontalScrollBarVisibility="Auto"
+                            VerticalScrollBarVisibility="Auto"
+                            PointerExited="GrayscaleScrollViewer_OnPointerExited"
+                            PointerMoved="GrayscaleScrollViewer_OnPointerMoved"
+                            PointerPressed="GrayscaleScrollViewer_OnPointerPressed"
+                            PointerReleased="GrayscaleScrollViewer_OnPointerReleased">
+                            <LayoutTransformControl x:Name="GrayscaleTransformHost">
+                                <Image x:Name="GrayscaleImage" Source="{Binding MapPreviewGrayscaleImage}" Stretch="None" />
+                            </LayoutTransformControl>
+                        </ScrollViewer>
+                    </Border>
+                </TabItem>
+            </TabControl>
+
+            <Border
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Margin="0,8,8,0"
+                Padding="8,4"
+                BorderBrush="Gray"
+                BorderThickness="1"
+                CornerRadius="4">
+                <TextBlock x:Name="MapCoordinateText" Text="{Binding CoordinatePlaceholderText}" />
+            </Border>
+
+            <TextBlock
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                FontSize="16"
+                FontWeight="SemiBold"
+                IsVisible="{Binding IsNoPreviewVisible}"
+                Text="{Binding NoPreviewText}"
+                />
+        </Grid>
+    </Grid>
+</UserControl>

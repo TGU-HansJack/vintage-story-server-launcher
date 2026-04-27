@@ -9,6 +9,8 @@ public class WorldRuleDefinition
 
     public required string LabelZh { get; init; }
 
+    public required string LabelEn { get; init; }
+
     public required WorldRuleType Type { get; init; }
 
     public IReadOnlyList<string> Choices { get; init; } = [];
@@ -16,4 +18,6 @@ public class WorldRuleDefinition
     public string? DefaultValue { get; init; }
 
     public string? DescriptionZh { get; init; }
+
+    public string? DescriptionEn { get; init; }
 }

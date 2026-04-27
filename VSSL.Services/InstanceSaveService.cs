@@ -33,6 +33,30 @@ public class InstanceSaveService(IInstanceServerConfigService serverConfigServic
             .OrderByDescending(static item => item.LastWriteTimeUtc)
             .ToList();
 
+        if (!string.IsNullOrWhiteSpace(profile.ActiveSaveFile) &&
+            profile.ActiveSaveFile.EndsWith(".vcdbs", StringComparison.OrdinalIgnoreCase) &&
+            result.All(item => !item.FullPath.Equals(profile.ActiveSaveFile, StringComparison.OrdinalIgnoreCase)))
+        {
+            var activePath = Path.GetFullPath(profile.ActiveSaveFile);
+            var activeDirectory = Path.GetDirectoryName(activePath);
+            if (!string.IsNullOrWhiteSpace(activeDirectory) &&
+                activeDirectory.Equals(savesPath, StringComparison.OrdinalIgnoreCase))
+            {
+                var activeEntry = new SaveFileEntry
+                {
+                    FullPath = activePath,
+                    FileName = Path.GetFileName(activePath),
+                    LastWriteTimeUtc = File.Exists(activePath)
+                        ? new FileInfo(activePath).LastWriteTimeUtc
+                        : profile.LastUpdatedUtc
+                };
+                result = result
+                    .Concat([activeEntry])
+                    .OrderByDescending(static item => item.LastWriteTimeUtc)
+                    .ToList();
+            }
+        }
+
         return Task.FromResult(result);
     }
 
@@ -50,12 +74,6 @@ public class InstanceSaveService(IInstanceServerConfigService serverConfigServic
 
         var fileName = WorkspacePathHelper.SanitizeFileName(saveName.Trim()) + ".vcdbs";
         var fullPath = Path.Combine(savesPath, fileName);
-
-        if (!File.Exists(fullPath))
-        {
-            await using var stream = new FileStream(fullPath, FileMode.CreateNew, FileAccess.Write, FileShare.Read);
-            await stream.FlushAsync(cancellationToken);
-        }
 
         profile.SaveDirectory = savesPath;
         await SetActiveSaveAsync(profile, fullPath, cancellationToken);
@@ -77,6 +95,15 @@ public class InstanceSaveService(IInstanceServerConfigService serverConfigServic
             throw new InvalidOperationException("无效存档路径。");
 
         Directory.CreateDirectory(saveDirectory);
+
+        // Avoid leaving a zero-byte placeholder save file.
+        // Vintage Story can create a proper database on first startup if the file does not exist.
+        if (File.Exists(fullPath))
+        {
+            var fileInfo = new FileInfo(fullPath);
+            if (fileInfo.Length == 0)
+                File.Delete(fullPath);
+        }
 
         var serverSettings = await serverConfigService.LoadServerSettingsAsync(profile, cancellationToken);
         var worldSettings = await serverConfigService.LoadWorldSettingsAsync(profile, cancellationToken);
@@ -132,10 +159,32 @@ public class InstanceSaveService(IInstanceServerConfigService serverConfigServic
 
     private static string ResolveSavesPath(InstanceProfile profile)
     {
+        var activeSaveDirectory = Path.GetDirectoryName(profile.ActiveSaveFile);
+        if (!string.IsNullOrWhiteSpace(activeSaveDirectory))
+        {
+            if (string.IsNullOrWhiteSpace(profile.SaveDirectory))
+                return activeSaveDirectory;
+
+            try
+            {
+                var configuredDirectory = profile.SaveDirectory;
+                var activeHasSaves = Directory.Exists(activeSaveDirectory) &&
+                                     Directory.EnumerateFiles(activeSaveDirectory, "*.vcdbs", SearchOption.TopDirectoryOnly).Any();
+                var configuredHasSaves = Directory.Exists(configuredDirectory) &&
+                                         Directory.EnumerateFiles(configuredDirectory, "*.vcdbs", SearchOption.TopDirectoryOnly).Any();
+
+                if (activeHasSaves && !configuredHasSaves)
+                    return activeSaveDirectory;
+            }
+            catch
+            {
+                // 回退到 profile.SaveDirectory / 默认目录。
+            }
+        }
+
         if (!string.IsNullOrWhiteSpace(profile.SaveDirectory))
             return profile.SaveDirectory;
 
-        var activeSaveDirectory = Path.GetDirectoryName(profile.ActiveSaveFile);
         if (!string.IsNullOrWhiteSpace(activeSaveDirectory))
             return activeSaveDirectory;
 

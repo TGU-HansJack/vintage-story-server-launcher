@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using VSSL.Abstractions.Services;
 using VSSL.Domains.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -16,18 +17,37 @@ public partial class WorkspaceViewModel : ViewModelBase
     private readonly ILogTailService? _logTailService;
 
     [ObservableProperty] private InstanceProfile? _selectedProfile;
+    [ObservableProperty] private string? _selectedInstalledVersion;
+    [ObservableProperty] private string _quickCreateProfileName = string.Empty;
     [ObservableProperty] private string _consoleInput = string.Empty;
     [ObservableProperty] private string _statusMessage = string.Empty;
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private bool _isConsoleAutoFollow = true;
 
-    [ObservableProperty] private bool _isRunning;
-    [ObservableProperty] private int _onlinePlayers;
-    [ObservableProperty] private string _runtimeStateText = "未运行";
-    [ObservableProperty] private double _startupProgress;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RuntimeStateText))]
+    private bool _isRunning;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RuntimeStateText))]
+    private int _onlinePlayers;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RuntimeStateText))]
+    private int _runtimeProcessId;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RuntimeStateText))]
+    private DateTimeOffset? _runtimeStartedAt;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StartupProgressText))]
+    private double _startupProgress;
+
     [ObservableProperty] private bool _isStartupProgressVisible;
 
     public ObservableCollection<InstanceProfile> Profiles { get; } = [];
+    public ObservableCollection<string> InstalledVersions { get; } = [];
 
     public ObservableCollection<string> ConsoleLines { get; } = [];
 
@@ -35,9 +55,19 @@ public partial class WorkspaceViewModel : ViewModelBase
 
     public bool HasNoProfiles => !HasProfiles;
 
+    public bool HasInstalledVersions => InstalledVersions.Count > 0;
+
+    public bool HasNoInstalledVersions => !HasInstalledVersions;
+
     public bool HasConsoleLines => ConsoleLines.Count > 0;
 
     public bool HasNoConsoleLines => !HasConsoleLines;
+
+    public string RuntimeStateText => IsRunning
+        ? LF("WorkspaceRuntimeRunningFormat", RuntimeProcessId, OnlinePlayers, FormatStartedAt(RuntimeStartedAt))
+        : L("CommonStoppedState");
+
+    public string StartupProgressText => LF("WorkspaceStartupProgressFormat", StartupProgress);
 
     [RelayCommand]
     private async Task RefreshProfilesAsync()
@@ -47,6 +77,7 @@ public partial class WorkspaceViewModel : ViewModelBase
         try
         {
             IsBusy = true;
+            RefreshInstalledVersions();
             var oldSelectedId = SelectedProfile?.Id;
             var profiles = _instanceProfileService.GetProfiles();
 
@@ -60,7 +91,9 @@ public partial class WorkspaceViewModel : ViewModelBase
             if (Profiles.Count == 0)
             {
                 SelectedProfile = null;
-                StatusMessage = "暂无档案，请先到实例/创建页面创建档案。";
+                StatusMessage = HasInstalledVersions
+                    ? L("WorkspaceQuickNoProfileTip")
+                    : L("WorkspaceQuickNoVersionText");
                 return;
             }
 
@@ -68,11 +101,62 @@ public partial class WorkspaceViewModel : ViewModelBase
                                   !string.IsNullOrWhiteSpace(oldSelectedId) &&
                                   profile.Id.Equals(oldSelectedId, StringComparison.OrdinalIgnoreCase))
                               ?? Profiles[0];
-            StatusMessage = $"已加载 {Profiles.Count} 个档案。";
+            StatusMessage = LF("StatusLoadedProfilesFormat", Profiles.Count);
         }
         catch (Exception ex)
         {
-            StatusMessage = $"刷新档案失败：{ex.Message}";
+            StatusMessage = LF("StatusRefreshProfilesFailedFormat", ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task CreateAndStartServerAsync()
+    {
+        if (_instanceProfileService is null || _serverProcessService is null || _logTailService is null)
+            return;
+
+        if (!HasInstalledVersions)
+        {
+            StatusMessage = L("WorkspaceQuickNoVersionText");
+            return;
+        }
+
+        var version = string.IsNullOrWhiteSpace(SelectedInstalledVersion)
+            ? InstalledVersions.FirstOrDefault()
+            : SelectedInstalledVersion;
+        if (string.IsNullOrWhiteSpace(version))
+        {
+            StatusMessage = L("WorkspaceQuickNoVersionText");
+            return;
+        }
+
+        var profileName = string.IsNullOrWhiteSpace(QuickCreateProfileName)
+            ? string.Format(CultureInfo.CurrentCulture, L("WorkspaceQuickDefaultProfileNameFormat"), DateTime.Now)
+            : QuickCreateProfileName.Trim();
+
+        try
+        {
+            IsBusy = true;
+            StatusMessage = L("WorkspaceQuickCreatingText");
+
+            var createdProfile = _instanceProfileService.CreateProfile(profileName, version);
+            StatusMessage = LF("WorkspaceQuickCreatedFormat", createdProfile.Name);
+
+            await RefreshProfilesAsync();
+            SelectedProfile = Profiles.FirstOrDefault(profile =>
+                                  profile.Id.Equals(createdProfile.Id, StringComparison.OrdinalIgnoreCase))
+                              ?? createdProfile;
+            QuickCreateProfileName = string.Empty;
+
+            await StartServerAsync();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = LF("WorkspaceQuickCreateFailedFormat", ex.Message);
         }
         finally
         {
@@ -87,7 +171,7 @@ public partial class WorkspaceViewModel : ViewModelBase
             return;
         if (SelectedProfile is null)
         {
-            StatusMessage = "请先选择档案。";
+            StatusMessage = L("StatusSelectProfileFirst");
             return;
         }
 
@@ -96,17 +180,17 @@ public partial class WorkspaceViewModel : ViewModelBase
             IsBusy = true;
             IsStartupProgressVisible = true;
             StartupProgress = 10;
-            StatusMessage = "正在启动服务器...";
+            StatusMessage = L("WorkspaceStatusStarting");
 
             await _serverProcessService.StartAsync(SelectedProfile);
             StartupProgress = 75;
             await _logTailService.StartAsync(SelectedProfile);
             StartupProgress = 100;
-            StatusMessage = "服务器已启动。";
+            StatusMessage = L("WorkspaceStatusStarted");
         }
         catch (Exception ex)
         {
-            StatusMessage = $"启动服务器失败：{ex.Message}";
+            StatusMessage = LF("WorkspaceStatusStartFailedFormat", ex.Message);
             StartupProgress = 0;
         }
         finally
@@ -125,16 +209,16 @@ public partial class WorkspaceViewModel : ViewModelBase
         try
         {
             IsBusy = true;
-            StatusMessage = "正在停止服务器...";
+            StatusMessage = L("WorkspaceStatusStopping");
             await _serverProcessService.StopAsync(TimeSpan.FromSeconds(12));
             await _logTailService.StopAsync();
-            StatusMessage = "服务器已停止。";
+            StatusMessage = L("WorkspaceStatusStopped");
             StartupProgress = 0;
             IsStartupProgressVisible = false;
         }
         catch (Exception ex)
         {
-            StatusMessage = $"停止服务器失败：{ex.Message}";
+            StatusMessage = LF("WorkspaceStatusStopFailedFormat", ex.Message);
         }
         finally
         {
@@ -156,7 +240,7 @@ public partial class WorkspaceViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            StatusMessage = $"发送命令失败：{ex.Message}";
+            StatusMessage = LF("WorkspaceStatusSendCommandFailedFormat", ex.Message);
         }
     }
 
@@ -175,7 +259,7 @@ public partial class WorkspaceViewModel : ViewModelBase
         {
             if (ConsoleLines.Count == 0)
             {
-                StatusMessage = "当前没有可导出的日志。";
+                StatusMessage = L("WorkspaceStatusNoExportLogs");
                 return;
             }
 
@@ -188,11 +272,11 @@ public partial class WorkspaceViewModel : ViewModelBase
 
             var filePath = Path.Combine(exportDirectory, $"console-{DateTime.Now:yyyyMMdd-HHmmss}.log");
             await File.WriteAllLinesAsync(filePath, ConsoleLines.ToArray());
-            StatusMessage = $"日志已导出：{filePath}";
+            StatusMessage = LF("WorkspaceStatusExportedFormat", filePath);
         }
         catch (Exception ex)
         {
-            StatusMessage = $"导出日志失败：{ex.Message}";
+            StatusMessage = LF("WorkspaceStatusExportFailedFormat", ex.Message);
         }
     }
 
@@ -210,9 +294,8 @@ public partial class WorkspaceViewModel : ViewModelBase
     {
         IsRunning = status.IsRunning;
         OnlinePlayers = status.OnlinePlayers;
-        RuntimeStateText = status.IsRunning
-            ? $"运行中 (PID: {status.ProcessId}, 在线: {status.OnlinePlayers}, 启动: {status.StartedAtUtc?.ToLocalTime():yyyy-MM-dd HH:mm:ss})"
-            : "未运行";
+        RuntimeProcessId = status.ProcessId ?? 0;
+        RuntimeStartedAt = status.StartedAtUtc;
     }
 
     private void AppendConsoleLine(string line)
@@ -223,6 +306,39 @@ public partial class WorkspaceViewModel : ViewModelBase
 
         OnPropertyChanged(nameof(HasConsoleLines));
         OnPropertyChanged(nameof(HasNoConsoleLines));
+    }
+
+    private static string FormatStartedAt(DateTimeOffset? startedAtUtc)
+    {
+        if (!startedAtUtc.HasValue) return "-";
+
+        return startedAtUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture);
+    }
+
+    private void RefreshInstalledVersions()
+    {
+        if (_instanceProfileService is null)
+        {
+            InstalledVersions.Clear();
+            OnPropertyChanged(nameof(HasInstalledVersions));
+            OnPropertyChanged(nameof(HasNoInstalledVersions));
+            return;
+        }
+
+        var oldSelectedVersion = SelectedInstalledVersion;
+        var versions = _instanceProfileService.GetInstalledVersions();
+
+        InstalledVersions.Clear();
+        foreach (var version in versions)
+            InstalledVersions.Add(version);
+
+        OnPropertyChanged(nameof(HasInstalledVersions));
+        OnPropertyChanged(nameof(HasNoInstalledVersions));
+
+        SelectedInstalledVersion = InstalledVersions.FirstOrDefault(version =>
+                                       !string.IsNullOrWhiteSpace(oldSelectedVersion) &&
+                                       version.Equals(oldSelectedVersion, StringComparison.OrdinalIgnoreCase))
+                                   ?? InstalledVersions.FirstOrDefault();
     }
 
     #region Constructors

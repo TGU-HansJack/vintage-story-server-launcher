@@ -22,6 +22,7 @@ public class DefaultNavigationService(
         .Create<ViewName, Type>()
         .Add(ViewName.Home, typeof(HomeViewModel))
         .Add(ViewName.Workspace, typeof(WorkspaceViewModel))
+        .Add(ViewName.MapPreview, typeof(MapPreviewViewModel))
         .Add(ViewName.About, typeof(AboutViewModel))
         .Add(ViewName.BugReport, typeof(BugReportViewModel))
         .Add(ViewName.InstanceDownload, typeof(InstanceDownloadViewModel))
