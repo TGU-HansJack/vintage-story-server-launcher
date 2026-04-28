@@ -16,7 +16,8 @@ namespace VSSL.Ui.ViewModels;
 public partial class AboutViewModel : ViewModelBase
 {
     private const string CommunityUrl = "https://vintagestory.top/";
-    private const string ReadmeAssetUri = "avares://VSSL.Ui/Assets/Docs/README.md";
+    private const string ReadmeZhAssetUri = "avares://VSSL.Ui/Assets/Docs/README.md";
+    private const string ReadmeEnAssetUri = "avares://VSSL.Ui/Assets/Docs/README_en.md";
 
     private readonly IBrowserService? _browserService;
     private readonly IUpdateService? _updateService;
@@ -26,7 +27,7 @@ public partial class AboutViewModel : ViewModelBase
 
     public string IssuesUrl { get; }
 
-    public string ProjectReadme { get; }
+    public string ProjectReadme => LoadReadmeText();
 
     [ObservableProperty] private string _currentVersion = GetCurrentVersion();
     [ObservableProperty] private string _updateStatusMessage = string.Empty;
@@ -38,7 +39,6 @@ public partial class AboutViewModel : ViewModelBase
     {
         RepositoryUrl = "https://github.com/TGU-HansJack/vintage-story-server-launcher";
         IssuesUrl = $"{RepositoryUrl}/issues";
-        ProjectReadme = LoadReadmeText();
         UpdateStatusMessage = "Click \"Check Updates\" to fetch latest version.";
     }
 
@@ -53,7 +53,6 @@ public partial class AboutViewModel : ViewModelBase
             ?? "https://github.com/TGU-HansJack/vintage-story-server-launcher";
         IssuesUrl = configuration["Links:BugReport"]
             ?? "https://github.com/TGU-HansJack/vintage-story-server-launcher/issues";
-        ProjectReadme = LoadReadmeText();
         UpdateStatusMessage = L("AboutUpdateStatusIdle");
     }
 
@@ -145,17 +144,35 @@ public partial class AboutViewModel : ViewModelBase
 
     private static string LoadReadmeText()
     {
+        var isChinese = CultureInfo.CurrentUICulture.Name.StartsWith("zh", StringComparison.OrdinalIgnoreCase);
+        var primaryUri = isChinese ? ReadmeZhAssetUri : ReadmeEnAssetUri;
+        var fallbackUri = isChinese ? ReadmeEnAssetUri : ReadmeZhAssetUri;
+
+        if (TryLoadReadmeAsset(primaryUri, out var readmeText, out var primaryError))
+            return readmeText;
+        if (TryLoadReadmeAsset(fallbackUri, out readmeText, out _))
+            return readmeText;
+
+        return isChinese
+            ? $"README 文档加载失败：{primaryError}"
+            : $"Failed to load README document: {primaryError}";
+    }
+
+    private static bool TryLoadReadmeAsset(string assetUri, out string readmeText, out string error)
+    {
         try
         {
-            using var stream = AssetLoader.Open(new Uri(ReadmeAssetUri));
+            using var stream = AssetLoader.Open(new Uri(assetUri));
             using var reader = new StreamReader(stream, Encoding.UTF8);
-            return reader.ReadToEnd();
+            readmeText = reader.ReadToEnd();
+            error = string.Empty;
+            return true;
         }
         catch (Exception ex)
         {
-            return CultureInfo.CurrentUICulture.Name.StartsWith("zh", StringComparison.OrdinalIgnoreCase)
-                ? $"README.md 加载失败：{ex.Message}"
-                : $"Failed to load README.md: {ex.Message}";
+            readmeText = string.Empty;
+            error = ex.Message;
+            return false;
         }
     }
 }
