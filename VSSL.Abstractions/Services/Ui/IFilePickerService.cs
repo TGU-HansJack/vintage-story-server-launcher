@@ -6,6 +6,16 @@ namespace VSSL.Abstractions.Services.Ui;
 public interface IFilePickerService
 {
     /// <summary>
+    ///     打开目录选择对话框
+    /// </summary>
+    /// <param name="title">对话框标题</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>选中的本地目录路径；取消时返回 null</returns>
+    Task<string?> PickFolderAsync(
+        string title,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     ///     打开单文件选择对话框
     /// </summary>
     /// <param name="title">对话框标题</param>
@@ -19,4 +29,3 @@ public interface IFilePickerService
         IReadOnlyList<string> patterns,
         CancellationToken cancellationToken = default);
 }
-

@@ -264,11 +264,12 @@ public partial class WorkspaceViewModel : ViewModelBase
                 return;
             }
 
-            var exportDirectory = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "VSSL",
-                "workspace",
-                "exports");
+            var workspaceRoot = _instanceProfileService?.GetWorkspaceRoot()
+                                ?? Path.Combine(
+                                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                                    "VSSL",
+                                    "workspace");
+            var exportDirectory = Path.Combine(workspaceRoot, "exports");
             Directory.CreateDirectory(exportDirectory);
 
             var filePath = Path.Combine(exportDirectory, $"console-{DateTime.Now:yyyyMMdd-HHmmss}.log");

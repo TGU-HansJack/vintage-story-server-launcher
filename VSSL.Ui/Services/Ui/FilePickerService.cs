@@ -11,6 +11,46 @@ namespace VSSL.Ui.Services.Ui;
 public class FilePickerService : IFilePickerService
 {
     /// <inheritdoc />
+    public async Task<string?> PickFolderAsync(
+        string title,
+        CancellationToken cancellationToken = default)
+    {
+        if (cancellationToken.IsCancellationRequested)
+            return null;
+
+        var lifetime = Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
+        var owner = lifetime?.MainWindow;
+        if (owner?.StorageProvider is null)
+            return null;
+
+        var options = new FolderPickerOpenOptions
+        {
+            Title = title,
+            AllowMultiple = false
+        };
+
+        IReadOnlyList<IStorageFolder> folders;
+        try
+        {
+            folders = await owner.StorageProvider.OpenFolderPickerAsync(options);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return null;
+        }
+
+        if (folders.Count == 0)
+            return null;
+
+        var selected = folders[0];
+        var localPath = selected.TryGetLocalPath();
+        if (!string.IsNullOrWhiteSpace(localPath))
+            return localPath;
+
+        return selected.Path.LocalPath;
+    }
+
+    /// <inheritdoc />
     public async Task<string?> PickSingleFileAsync(
         string title,
         string filterName,

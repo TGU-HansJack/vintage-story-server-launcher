@@ -8,9 +8,19 @@ namespace VSSL.Abstractions.Services;
 public interface IInstanceProfileService
 {
     /// <summary>
+    ///     默认工作区目录（不受用户设置影响）
+    /// </summary>
+    string GetDefaultWorkspaceRoot();
+
+    /// <summary>
     ///     默认工作区目录（参考 VSSL 默认 C 盘路径）
     /// </summary>
     string GetWorkspaceRoot();
+
+    /// <summary>
+    ///     指定档案的默认存档文件路径
+    /// </summary>
+    string GetDefaultSaveFilePath(string profileId);
 
     /// <summary>
     ///     已安装服务端版本列表

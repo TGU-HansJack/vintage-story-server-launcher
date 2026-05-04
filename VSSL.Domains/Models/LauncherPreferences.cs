@@ -19,4 +19,9 @@ public class LauncherPreferences
     ///     默认语言（culture name）
     /// </summary>
     public string Language { get; set; } = string.Empty;
+
+    /// <summary>
+    ///     工作区根目录（留空使用默认）
+    /// </summary>
+    public string WorkspaceRoot { get; set; } = string.Empty;
 }

@@ -97,6 +97,8 @@ public partial class AppSidebarViewModel : RecipientViewModelBase, IRecipient<Th
 
     public string EnLanguageOptionName => _localizationService["EnLanguageOptionName"];
 
+    public string DirectorySettingsMenuTitle => _localizationService["DirectorySettingsMenuTitle"];
+
     #endregion
 
     #region Commands
@@ -146,6 +148,17 @@ public partial class AppSidebarViewModel : RecipientViewModelBase, IRecipient<Th
         }
 
         _navigationService?.NavigateTo(ViewName.About);
+    }
+
+    [RelayCommand]
+    private void NavigateDirectorySettings()
+    {
+        _navigationService?.NavigateTo(ViewName.DirectorySettings);
+        foreach (var menu in Menus)
+            menu.IsActive = false;
+        if (AboutMenu is not null)
+            AboutMenu.IsActive = false;
+        _messenger.Send(new SubMenusChangedMessage([]));
     }
 
     [RelayCommand]

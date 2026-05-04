@@ -144,7 +144,7 @@ public partial class SaveViewModel : ViewModelBase
                 }
                 else
                 {
-                    var defaultSave = GetDefaultSaveFile(profile.Id);
+                    var defaultSave = _instanceProfileService.GetDefaultSaveFilePath(profile.Id);
                     await _instanceSaveService.SetActiveSaveAsync(profile, defaultSave);
                     profile.ActiveSaveFile = defaultSave;
                     profile.SaveDirectory = Path.GetDirectoryName(defaultSave) ?? profile.SaveDirectory;
@@ -306,15 +306,6 @@ public partial class SaveViewModel : ViewModelBase
         _syncingSelectAll = true;
         SelectAll = Saves.Count > 0 && Saves.All(item => item.IsSelected);
         _syncingSelectAll = false;
-    }
-
-    private static string GetDefaultSaveFile(string profileId)
-    {
-        var workspaceRoot = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "VSSL",
-            "workspace");
-        return Path.Combine(workspaceRoot, "data", profileId, "Saves", "default.vcdbs");
     }
 
     #region Constructors

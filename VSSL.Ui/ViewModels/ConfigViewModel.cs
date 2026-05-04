@@ -116,7 +116,7 @@ public partial class ConfigViewModel : ViewModelBase
         {
             IsBusy = true;
             var saveFile = string.IsNullOrWhiteSpace(SaveFileLocation)
-                ? GetDefaultSaveFile(profile.Id)
+                ? _instanceProfileService.GetDefaultSaveFilePath(profile.Id)
                 : Path.GetFullPath(SaveFileLocation.Trim());
 
             var serverSettings = new ServerCommonSettings
@@ -299,15 +299,6 @@ public partial class ConfigViewModel : ViewModelBase
         WorldType = "standard";
         WorldHeight = 256;
         WorldRules.Clear();
-    }
-
-    private static string GetDefaultSaveFile(string profileId)
-    {
-        var workspaceRoot = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "VSSL",
-            "workspace");
-        return Path.Combine(workspaceRoot, "data", profileId, "Saves", "default.vcdbs");
     }
 
     #region Constructors

@@ -229,6 +229,25 @@
   <data name="InstanceManageTitle" xml:space="preserve"><value>Instance / Manage</value></data>
   <data name="InstanceManageDescription" xml:space="preserve"><value>Manage page content coming soon.</value></data>
   <data name="MapPreviewMenuTitle" xml:space="preserve"><value>Map Preview</value></data>
+  <data name="AutomationMenuTitle" xml:space="preserve"><value>Automation</value></data>
+  <data name="DirectorySettingsMenuTitle" xml:space="preserve"><value>Directory Settings</value></data>
+  <data name="AutomationTitle" xml:space="preserve"><value>Automation</value></data>
+  <data name="AutomationDescription" xml:space="preserve"><value>Schedule restart windows, broadcast messages, and log exports.</value></data>
+  <data name="AutomationTargetProfileLabel" xml:space="preserve"><value>Target Profile</value></data>
+  <data name="AutomationRestartSectionTitle" xml:space="preserve"><value>Server Restart</value></data>
+  <data name="AutomationBroadcastSectionTitle" xml:space="preserve"><value>Broadcast</value></data>
+  <data name="AutomationExportSectionTitle" xml:space="preserve"><value>Log Export</value></data>
+  <data name="AutomationWarnMessageFormat" xml:space="preserve"><value>Server will restart or shut down in {0} minutes.</value></data>
+  <data name="AutomationBrowseFolderButtonText" xml:space="preserve"><value>Browse Folder</value></data>
+  <data name="AutomationResetFolderButtonText" xml:space="preserve"><value>Reset Default</value></data>
+  <data name="AutomationSaveButtonText" xml:space="preserve"><value>Save</value></data>
+  <data name="DirectorySettingsTitle" xml:space="preserve"><value>Directory Settings</value></data>
+  <data name="DirectorySettingsDescription" xml:space="preserve"><value>Server directory controls download, profile, save, and robot directories.</value></data>
+  <data name="DirectorySettingsSaveButtonText" xml:space="preserve"><value>Save Directory</value></data>
+  <data name="DirectorySettingsResetButtonText" xml:space="preserve"><value>Reset Default</value></data>
+  <data name="AutomationExportBeforeShutdownLabel" xml:space="preserve"><value>Export Before Shutdown</value></data>
+  <data name="AutomationExportIncludeChatLabel" xml:space="preserve"><value>Include Player Chat</value></data>
+  <data name="AutomationExportIncludeServerLabel" xml:space="preserve"><value>Include Server Info</value></data>
   <data name="MapPreviewProfileLabel" xml:space="preserve"><value>Profile:</value></data>
   <data name="MapPreviewSaveLabel" xml:space="preserve"><value>Save:</value></data>
   <data name="MapPreviewLoadButtonText" xml:space="preserve"><value>Load Preview</value></data>

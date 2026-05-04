@@ -227,6 +227,25 @@
   <data name="HomeMemoryFormat" xml:space="preserve"><value>内存：{0}</value></data>
   <data name="HomeUptimeFormat" xml:space="preserve"><value>运行时间：{0}</value></data>
   <data name="MapPreviewMenuTitle" xml:space="preserve"><value>地图预览</value></data>
+  <data name="AutomationMenuTitle" xml:space="preserve"><value>自动化</value></data>
+  <data name="DirectorySettingsMenuTitle" xml:space="preserve"><value>目录设置</value></data>
+  <data name="AutomationTitle" xml:space="preserve"><value>自动化</value></data>
+  <data name="AutomationDescription" xml:space="preserve"><value>定时重启、定时播报和日志导出。</value></data>
+  <data name="AutomationTargetProfileLabel" xml:space="preserve"><value>目标档案</value></data>
+  <data name="AutomationRestartSectionTitle" xml:space="preserve"><value>服务重启</value></data>
+  <data name="AutomationBroadcastSectionTitle" xml:space="preserve"><value>服务器播报</value></data>
+  <data name="AutomationExportSectionTitle" xml:space="preserve"><value>日志导出</value></data>
+  <data name="AutomationWarnMessageFormat" xml:space="preserve"><value>服务器将在 {0} 分钟后重启或关闭。</value></data>
+  <data name="AutomationBrowseFolderButtonText" xml:space="preserve"><value>选择文件夹</value></data>
+  <data name="AutomationResetFolderButtonText" xml:space="preserve"><value>恢复默认</value></data>
+  <data name="AutomationSaveButtonText" xml:space="preserve"><value>保存</value></data>
+  <data name="DirectorySettingsTitle" xml:space="preserve"><value>目录设置</value></data>
+  <data name="DirectorySettingsDescription" xml:space="preserve"><value>服务端目录将统一影响下载、档案、存档和机器人目录。</value></data>
+  <data name="DirectorySettingsSaveButtonText" xml:space="preserve"><value>保存目录</value></data>
+  <data name="DirectorySettingsResetButtonText" xml:space="preserve"><value>恢复默认</value></data>
+  <data name="AutomationExportBeforeShutdownLabel" xml:space="preserve"><value>关服前导出</value></data>
+  <data name="AutomationExportIncludeChatLabel" xml:space="preserve"><value>导出聊天信息</value></data>
+  <data name="AutomationExportIncludeServerLabel" xml:space="preserve"><value>导出服务器信息</value></data>
   <data name="MapPreviewProfileLabel" xml:space="preserve"><value>档案：</value></data>
   <data name="MapPreviewSaveLabel" xml:space="preserve"><value>存档：</value></data>
   <data name="MapPreviewLoadButtonText" xml:space="preserve"><value>加载预览</value></data>

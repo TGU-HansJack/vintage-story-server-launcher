@@ -17,6 +17,11 @@
         "title": "MapPreviewMenuTitle",
         "icon": "FiMap",
         "viewName": "MapPreview"
+      },
+      {
+        "title": "AutomationMenuTitle",
+        "icon": "TimerOutline",
+        "viewName": "Automation"
       }
     ]
   },

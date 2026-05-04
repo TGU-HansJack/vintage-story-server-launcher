@@ -1,0 +1,108 @@
+<UserControl
+    x:Class="VSSL.Ui.Views.AutomationView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="clr-namespace:VSSL.Ui.ViewModels"
+    x:DataType="vm:AutomationViewModel"
+    mc:Ignorable="d">
+    <Design.DataContext>
+        <vm:AutomationViewModel />
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="10">
+        <TextBlock FontSize="24" FontWeight="Bold" Text="{Binding [AutomationTitle]}" />
+        <TextBlock Grid.Row="1" Text="{Binding [AutomationDescription]}" />
+
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,220,Auto,Auto" ColumnSpacing="8">
+            <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="{Binding [AutomationTargetProfileLabel]}" />
+            <ComboBox Grid.Column="1" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <Button Grid.Column="2" Command="{Binding RefreshCommand}" Content="{Binding [CommonRefreshButtonText]}" />
+            <Button Grid.Column="3" Command="{Binding SaveCommand}" Content="{Binding [AutomationSaveButtonText]}" />
+        </Grid>
+
+        <Grid Grid.Row="3" ColumnDefinitions="*,*,*" ColumnSpacing="8">
+            <Border Grid.Column="0" Padding="10" BorderBrush="Gray" BorderThickness="1" CornerRadius="6">
+                <StackPanel Spacing="6">
+                    <CheckBox Content="{Binding [AutomationRestartSectionTitle]}" IsChecked="{Binding RestartSchedulerEnabled}" />
+                    <ItemsControl ItemsSource="{Binding TimeWindows}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid ColumnDefinitions="Auto,80,Auto,80,Auto" ColumnSpacing="6">
+                                    <CheckBox Grid.Column="0" IsChecked="{Binding Enabled}" />
+                                    <TextBox Grid.Column="1" Text="{Binding StartTime, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="~" />
+                                    <TextBox Grid.Column="3" Text="{Binding EndTime, UpdateSourceTrigger=PropertyChanged}" />
+                                    <Button Grid.Column="4"
+                                            Command="{Binding DataContext.RemoveRestartWindowCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding .}"
+                                            Content="x" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Command="{Binding AddRestartWindowCommand}" Content="+" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="1" Padding="10" BorderBrush="Gray" BorderThickness="1" CornerRadius="6">
+                <StackPanel Spacing="6">
+                    <CheckBox Content="{Binding [AutomationBroadcastSectionTitle]}" IsChecked="{Binding BroadcastEnabled}" />
+                    <ItemsControl ItemsSource="{Binding BroadcastMessages}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid ColumnDefinitions="Auto,80,*,Auto" ColumnSpacing="6">
+                                    <CheckBox Grid.Column="0" IsChecked="{Binding Enabled}" />
+                                    <TextBox Grid.Column="1" Text="{Binding Time, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBox Grid.Column="2" Text="{Binding Message, UpdateSourceTrigger=PropertyChanged}" />
+                                    <Button Grid.Column="3"
+                                            Command="{Binding DataContext.RemoveBroadcastCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding .}"
+                                            Content="x" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Command="{Binding AddBroadcastCommand}" Content="+" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="2" Padding="10" BorderBrush="Gray" BorderThickness="1" CornerRadius="6">
+                <StackPanel Spacing="6">
+                    <CheckBox Content="{Binding [AutomationExportSectionTitle]}" IsChecked="{Binding ExportLogEnabled}" />
+                    <CheckBox Content="{Binding [AutomationExportBeforeShutdownLabel]}" IsChecked="{Binding ExportBeforeShutdown}" />
+                    <CheckBox Content="{Binding [AutomationExportIncludeChatLabel]}" IsChecked="{Binding ExportIncludeChat}" />
+                    <CheckBox Content="{Binding [AutomationExportIncludeServerLabel]}" IsChecked="{Binding ExportIncludeServerInfo}" />
+                    <ItemsControl ItemsSource="{Binding ExportTimes}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                                    <TextBox Grid.Column="0" Text="{Binding Time, UpdateSourceTrigger=PropertyChanged}" />
+                                    <Button Grid.Column="1"
+                                            Command="{Binding DataContext.RemoveExportTimeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding .}"
+                                            Content="x" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Command="{Binding AddExportTimeCommand}" Content="+" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Grid Grid.Row="4" RowDefinitions="Auto,*" RowSpacing="6">
+            <TextBlock Grid.Row="0" Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+            <Border Grid.Row="1" BorderBrush="Gray" BorderThickness="1" CornerRadius="6">
+                <ListBox ItemsSource="{Binding RuntimeLogs}" />
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

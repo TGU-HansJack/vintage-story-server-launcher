@@ -4,10 +4,25 @@ namespace VSSL.Services;
 
 internal static partial class WorkspacePathHelper
 {
-    public static string WorkspaceRoot => Path.Combine(
+    private static string? _workspaceRoot;
+
+    public static string DefaultWorkspaceRoot => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "VSSL",
         "workspace");
+
+    public static string WorkspaceRoot => EnsureWorkspaceRoot(_workspaceRoot);
+
+    public static void SetWorkspaceRoot(string? workspaceRoot)
+    {
+        _workspaceRoot = NormalizeRoot(workspaceRoot);
+        EnsureWorkspace();
+    }
+
+    public static string GetWorkspaceRootOrDefault(string? workspaceRoot)
+    {
+        return EnsureWorkspaceRoot(NormalizeRoot(workspaceRoot));
+    }
 
     public static string DataRoot => Path.Combine(WorkspaceRoot, "data");
 
@@ -74,4 +89,28 @@ internal static partial class WorkspacePathHelper
 
     [GeneratedRegex(@"^vs_server_win-x64_(?<version>.+)\.zip$", RegexOptions.IgnoreCase)]
     private static partial Regex VersionPattern();
+
+    private static string EnsureWorkspaceRoot(string? workspaceRoot)
+    {
+        var normalizedRoot = NormalizeRoot(workspaceRoot);
+        Directory.CreateDirectory(normalizedRoot);
+        return normalizedRoot;
+    }
+
+    private static string NormalizeRoot(string? workspaceRoot)
+    {
+        if (!string.IsNullOrWhiteSpace(workspaceRoot))
+        {
+            try
+            {
+                return Path.GetFullPath(workspaceRoot.Trim());
+            }
+            catch
+            {
+                // fall back to default root
+            }
+        }
+
+        return DefaultWorkspaceRoot;
+    }
 }

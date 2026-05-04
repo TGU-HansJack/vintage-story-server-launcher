@@ -23,6 +23,21 @@ public class InstanceProfileService : IInstanceProfileService
     }
 
     /// <inheritdoc />
+    public string GetDefaultWorkspaceRoot()
+    {
+        return WorkspacePathHelper.DefaultWorkspaceRoot;
+    }
+
+    /// <inheritdoc />
+    public string GetDefaultSaveFilePath(string profileId)
+    {
+        if (string.IsNullOrWhiteSpace(profileId))
+            throw new InvalidOperationException("profileId 不能为空。");
+
+        return WorkspacePathHelper.GetProfileDefaultSaveFile(profileId.Trim());
+    }
+
+    /// <inheritdoc />
     public IReadOnlyList<string> GetInstalledVersions()
     {
         WorkspacePathHelper.EnsureWorkspace();

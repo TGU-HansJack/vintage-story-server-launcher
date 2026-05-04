@@ -16,13 +16,7 @@ public class InstanceDownloadService : IInstanceDownloadService
     /// <inheritdoc />
     public string GetDefaultDownloadDirectory()
     {
-        // Keep aligned with VSSL default workspace path on Windows:
-        // C:\Users\<User>\AppData\Local\VSSL\workspace\packages
-        return Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "VSSL",
-            "workspace",
-            "packages");
+        return WorkspacePathHelper.PackagesRoot;
     }
 
     /// <inheritdoc />

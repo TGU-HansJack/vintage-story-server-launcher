@@ -96,6 +96,11 @@
                                 <controls:SvgIcon IconName="FiTranslate" />
                             </MenuItem.Icon>
                         </MenuItem>
+                        <MenuItem Command="{Binding NavigateDirectorySettingsCommand}" Header="{Binding DirectorySettingsMenuTitle}">
+                            <MenuItem.Icon>
+                                <controls:SvgIcon IconName="ToolsPliersWireStripperOutline" />
+                            </MenuItem.Icon>
+                        </MenuItem>
                         <MenuItem Header="-" />
                         <MenuItem Command="{Binding ExitCommand}" Header="{Binding ExitButtonText}">
                             <MenuItem.Icon>
