@@ -24,4 +24,34 @@ public class LauncherPreferences
     ///     工作区根目录（留空使用默认）
     /// </summary>
     public string WorkspaceRoot { get; set; } = string.Empty;
+
+    /// <summary>
+    ///     是否开机自启启动器
+    /// </summary>
+    public bool StartWithWindows { get; set; }
+
+    /// <summary>
+    ///     是否启动时隐藏到托盘
+    /// </summary>
+    public bool StartHiddenOnLaunch { get; set; }
+
+    /// <summary>
+    ///     是否关闭窗口时隐藏到托盘
+    /// </summary>
+    public bool CloseToTrayOnExit { get; set; }
+
+    /// <summary>
+    ///     是否启动时自动启动服务器
+    /// </summary>
+    public bool AutoStartServerOnLaunch { get; set; }
+
+    /// <summary>
+    ///     自动启动服务器时使用的档案 Id
+    /// </summary>
+    public string AutoStartServerProfileId { get; set; } = string.Empty;
+
+    /// <summary>
+    ///     是否启动时自动启动 QQ 机器人
+    /// </summary>
+    public bool AutoStartRobotOnLaunch { get; set; }
 }

@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using System;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
@@ -10,16 +10,20 @@ using VSSL.Abstractions.Services.I18n;
 using VSSL.Abstractions.Services.Ui;
 using VSSL.Domains.Models;
 using VSSL.Ui;
+using VSSL.Ui.ViewModels;
 using VSSL.Ui.Views.Dialogs;
 using VSSL.Ui.Views;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Diagnostics;
 using Avalonia.Markup.Xaml;
+using Serilog;
 
 namespace VSSL.App;
 
 public class App : Application
 {
+    private bool _startupActionsExecuted;
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -30,6 +34,9 @@ public class App : Application
         var launcherPreferencesService = ServiceLocator.GetRequiredService<ILauncherPreferencesService>();
         var localizationService = ServiceLocator.GetRequiredService<ILocalizationService>();
         var themeService = ServiceLocator.GetRequiredService<IThemeService>();
+        var launcherTrayViewModel = ServiceLocator.GetRequiredService<LauncherTrayViewModel>();
+
+        DataContext = launcherTrayViewModel;
 
         var preferences = launcherPreferencesService.Load();
         ApplyPreferences(preferences, localizationService, themeService);
@@ -43,8 +50,26 @@ public class App : Application
             desktop.MainWindow = mainWindow;
             mainWindow.Opened += async (_, _) =>
             {
-                if (launcherPreferencesService.Load().IsOnboardingCompleted) return;
-                await ShowFirstRunSetupAsync(mainWindow, launcherPreferencesService, localizationService, themeService);
+                if (_startupActionsExecuted)
+                {
+                    return;
+                }
+
+                try
+                {
+                    _startupActionsExecuted = true;
+
+                    if (!launcherPreferencesService.Load().IsOnboardingCompleted)
+                    {
+                        await ShowFirstRunSetupAsync(mainWindow, launcherPreferencesService, localizationService, themeService);
+                    }
+
+                    await launcherTrayViewModel.RunAutoStartActionsAsync();
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Launcher startup sequence failed.");
+                }
             };
 
 #if DEBUG
@@ -111,9 +136,16 @@ public class App : Application
 
         var updated = new LauncherPreferences
         {
+            WorkspaceRoot = current.WorkspaceRoot,
             IsOnboardingCompleted = true,
             IsDarkMode = dialog.IsDarkMode,
-            Language = dialog.Language
+            Language = dialog.Language,
+            StartWithWindows = current.StartWithWindows,
+            StartHiddenOnLaunch = current.StartHiddenOnLaunch,
+            CloseToTrayOnExit = current.CloseToTrayOnExit,
+            AutoStartServerOnLaunch = current.AutoStartServerOnLaunch,
+            AutoStartRobotOnLaunch = current.AutoStartRobotOnLaunch,
+            AutoStartServerProfileId = current.AutoStartServerProfileId
         };
         launcherPreferencesService.Save(updated);
         ApplyPreferences(updated, localizationService, themeService);

@@ -256,5 +256,22 @@
   <data name="MapPreviewStatusLoadedProfilesFormat" xml:space="preserve"><value>Loaded {0} profile(s).</value></data>
   <data name="MapPreviewStatusLoadedSavesFormat" xml:space="preserve"><value>Loaded {0} save file(s).</value></data>
   <data name="MapPreviewStatusInvalidPixels" xml:space="preserve"><value>Invalid map pixel data.</value></data>
+  <data name="DirectorySettingsTitle" xml:space="preserve"><value>Directory Settings</value></data>
+  <data name="DirectorySettingsDescription" xml:space="preserve"><value>Server directory and startup behavior control downloads, profiles, saves, robot data, tray behavior, and auto-start.</value></data>
+  <data name="DirectorySettingsWorkspaceLabel" xml:space="preserve"><value>Workspace Root</value></data>
+  <data name="DirectorySettingsStartWithWindows" xml:space="preserve"><value>Start with Windows</value></data>
+  <data name="DirectorySettingsStartHiddenOnLaunch" xml:space="preserve"><value>Start hidden to tray</value></data>
+  <data name="DirectorySettingsCloseToTrayOnExit" xml:space="preserve"><value>Close to tray instead of exit</value></data>
+  <data name="DirectorySettingsAutoStartRobotOnLaunch" xml:space="preserve"><value>Auto-start QQ bot on launch</value></data>
+  <data name="DirectorySettingsAutoStartServerOnLaunch" xml:space="preserve"><value>Auto-start server on launch</value></data>
+  <data name="DirectorySettingsAutoStartServerProfileLabel" xml:space="preserve"><value>Auto-start server profile</value></data>
+  <data name="DirectorySettingsSaveButtonText" xml:space="preserve"><value>Save Directory</value></data>
+  <data name="DirectorySettingsResetButtonText" xml:space="preserve"><value>Reset Default</value></data>
+  <data name="TrayShowWindowText" xml:space="preserve"><value>Show Window</value></data>
+  <data name="TrayStartServerText" xml:space="preserve"><value>Start Server</value></data>
+  <data name="TrayStopServerText" xml:space="preserve"><value>Stop Server</value></data>
+  <data name="TrayStartRobotText" xml:space="preserve"><value>Start QQ Bot</value></data>
+  <data name="TrayStopRobotText" xml:space="preserve"><value>Stop QQ Bot</value></data>
+  <data name="TrayExitText" xml:space="preserve"><value>Exit</value></data>
 </root>
 

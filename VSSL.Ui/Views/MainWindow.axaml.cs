@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
+using VSSL.Abstractions.Services;
 using VSSL.Ui.ViewModels;
 using Microsoft.Extensions.Logging;
 
@@ -9,16 +10,41 @@ namespace VSSL.Ui.Views;
 
 public partial class MainWindow : Window
 {
+    private readonly ILauncherPreferencesService? _launcherPreferencesService;
+
     public MainWindow()
     {
     }
 
-    public MainWindow(MainWindowViewModel viewModel, ILogger<MainWindow> logger)
+    public MainWindow(
+        MainWindowViewModel viewModel,
+        ILauncherPreferencesService launcherPreferencesService,
+        ILogger<MainWindow> logger)
     {
         InitializeComponent();
         DataContext = viewModel;
+        _launcherPreferencesService = launcherPreferencesService;
+        Closing += OnClosing;
         AddHandler(PointerPressedEvent, OnGlobalPointerPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
         logger.LogInformation("MainWindow created");
+    }
+
+    private void OnClosing(object? sender, WindowClosingEventArgs e)
+    {
+        if (e.CloseReason is WindowCloseReason.ApplicationShutdown or WindowCloseReason.OSShutdown)
+        {
+            return;
+        }
+
+        var preferences = _launcherPreferencesService?.Load();
+        if (preferences is null || !preferences.CloseToTrayOnExit)
+        {
+            return;
+        }
+
+        e.Cancel = true;
+        ShowInTaskbar = false;
+        Hide();
     }
 
     private void OnGlobalPointerPressed(object? sender, PointerPressedEventArgs e)

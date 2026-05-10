@@ -245,9 +245,22 @@
   <data name="AutomationResetFolderButtonText" xml:space="preserve"><value>恢复默认</value></data>
   <data name="AutomationSaveButtonText" xml:space="preserve"><value>保存</value></data>
   <data name="DirectorySettingsTitle" xml:space="preserve"><value>目录设置</value></data>
-  <data name="DirectorySettingsDescription" xml:space="preserve"><value>服务端目录将统一影响下载、档案、存档和机器人目录。</value></data>
+  <data name="DirectorySettingsDescription" xml:space="preserve"><value>服务端目录与启动行为将统一影响下载、档案、存档、机器人目录、托盘行为和开机自启。</value></data>
+  <data name="DirectorySettingsWorkspaceLabel" xml:space="preserve"><value>工作区根目录</value></data>
+  <data name="DirectorySettingsStartWithWindows" xml:space="preserve"><value>开机启动启动器</value></data>
+  <data name="DirectorySettingsStartHiddenOnLaunch" xml:space="preserve"><value>启动时隐藏到托盘</value></data>
+  <data name="DirectorySettingsCloseToTrayOnExit" xml:space="preserve"><value>关闭时隐藏到托盘，不直接退出</value></data>
+  <data name="DirectorySettingsAutoStartRobotOnLaunch" xml:space="preserve"><value>启动时自动启动 QQ 机器人</value></data>
+  <data name="DirectorySettingsAutoStartServerOnLaunch" xml:space="preserve"><value>启动时自动启动服务器</value></data>
+  <data name="DirectorySettingsAutoStartServerProfileLabel" xml:space="preserve"><value>自动启动服务器档案</value></data>
   <data name="DirectorySettingsSaveButtonText" xml:space="preserve"><value>保存目录</value></data>
   <data name="DirectorySettingsResetButtonText" xml:space="preserve"><value>恢复默认</value></data>
+  <data name="TrayShowWindowText" xml:space="preserve"><value>显示窗口</value></data>
+  <data name="TrayStartServerText" xml:space="preserve"><value>启动服务器</value></data>
+  <data name="TrayStopServerText" xml:space="preserve"><value>停止服务器</value></data>
+  <data name="TrayStartRobotText" xml:space="preserve"><value>启动 QQ 机器人</value></data>
+  <data name="TrayStopRobotText" xml:space="preserve"><value>停止 QQ 机器人</value></data>
+  <data name="TrayExitText" xml:space="preserve"><value>退出</value></data>
   <data name="AutomationExportBeforeShutdownLabel" xml:space="preserve"><value>关服前导出</value></data>
   <data name="AutomationExportIncludeChatLabel" xml:space="preserve"><value>导出聊天信息</value></data>
   <data name="AutomationExportIncludeServerLabel" xml:space="preserve"><value>导出服务器信息</value></data>

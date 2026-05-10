@@ -15,7 +15,14 @@ public class LauncherPreferencesService : ILauncherPreferencesService
         WriteIndented = true
     };
 
+    private readonly ILauncherStartupService? _launcherStartupService;
+
     private static string PreferencesPath => Path.Combine(WorkspacePathHelper.DefaultWorkspaceRoot, "launcher-preferences.json");
+
+    public LauncherPreferencesService(ILauncherStartupService? launcherStartupService = null)
+    {
+        _launcherStartupService = launcherStartupService;
+    }
 
     /// <inheritdoc />
     public LauncherPreferences Load()
@@ -34,12 +41,14 @@ public class LauncherPreferencesService : ILauncherPreferencesService
             var parsed = JsonSerializer.Deserialize<LauncherPreferences>(json, JsonOptions) ?? new LauncherPreferences();
             var normalized = Normalize(parsed);
             WorkspacePathHelper.SetWorkspaceRoot(normalized.WorkspaceRoot);
+            _launcherStartupService?.SetEnabled(normalized.StartWithWindows);
             return normalized;
         }
         catch
         {
             var fallback = new LauncherPreferences();
             WorkspacePathHelper.SetWorkspaceRoot(fallback.WorkspaceRoot);
+            _launcherStartupService?.SetEnabled(fallback.StartWithWindows);
             return fallback;
         }
     }
@@ -52,6 +61,7 @@ public class LauncherPreferencesService : ILauncherPreferencesService
         var json = JsonSerializer.Serialize(normalized, JsonOptions);
         File.WriteAllText(PreferencesPath, json);
         WorkspacePathHelper.SetWorkspaceRoot(normalized.WorkspaceRoot);
+        _launcherStartupService?.SetEnabled(normalized.StartWithWindows);
     }
 
     private static LauncherPreferences Normalize(LauncherPreferences preferences)
@@ -67,7 +77,15 @@ public class LauncherPreferencesService : ILauncherPreferencesService
             Language = string.IsNullOrWhiteSpace(preferences.Language)
                 ? CultureInfo.CurrentCulture.Name
                 : preferences.Language.Trim(),
-            WorkspaceRoot = workspaceRoot
+            WorkspaceRoot = workspaceRoot,
+            StartWithWindows = preferences.StartWithWindows,
+            StartHiddenOnLaunch = preferences.StartHiddenOnLaunch,
+            CloseToTrayOnExit = preferences.CloseToTrayOnExit,
+            AutoStartServerOnLaunch = preferences.AutoStartServerOnLaunch,
+            AutoStartRobotOnLaunch = preferences.AutoStartRobotOnLaunch,
+            AutoStartServerProfileId = string.IsNullOrWhiteSpace(preferences.AutoStartServerProfileId)
+                ? string.Empty
+                : preferences.AutoStartServerProfileId.Trim()
         };
     }
 }

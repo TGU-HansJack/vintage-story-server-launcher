@@ -1,8 +1,10 @@
 <Application
     RequestedThemeVariant="Dark"
     x:Class="VSSL.App.App"
+    x:DataType="vm:LauncherTrayViewModel"
     xmlns="https://github.com/avaloniaui"
     xmlns:app="clr-namespace:VSSL.App"
+    xmlns:vm="clr-namespace:VSSL.Ui.ViewModels;assembly=VSSL.Ui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <!--  "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options.  -->
 
@@ -13,6 +15,25 @@
     <Application.Styles>
         <FluentTheme />
     </Application.Styles>
+
+    <TrayIcon.Icons>
+        <TrayIcons>
+            <TrayIcon Icon="/Assets/app-icon.ico"
+                      ToolTipText="{Binding TrayTooltipText}"
+                      Command="{Binding ShowWindowCommand}">
+                <TrayIcon.Menu>
+                    <NativeMenu>
+                        <NativeMenuItem Header="{Binding ShowWindowText}" Command="{Binding ShowWindowCommand}" />
+                        <NativeMenuItem Header="{Binding StartServerText}" Command="{Binding StartServerCommand}" />
+                        <NativeMenuItem Header="{Binding StopServerText}" Command="{Binding StopServerCommand}" />
+                        <NativeMenuItem Header="{Binding StartRobotText}" Command="{Binding StartRobotCommand}" />
+                        <NativeMenuItem Header="{Binding StopRobotText}" Command="{Binding StopRobotCommand}" />
+                        <NativeMenuItem Header="{Binding ExitText}" Command="{Binding ExitCommand}" />
+                    </NativeMenu>
+                </TrayIcon.Menu>
+            </TrayIcon>
+        </TrayIcons>
+    </TrayIcon.Icons>
 
     <Application.Resources>
         <ResourceDictionary>
