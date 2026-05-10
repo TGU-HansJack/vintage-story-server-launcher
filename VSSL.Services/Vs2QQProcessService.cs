@@ -40,6 +40,8 @@ public sealed class Vs2QQProcessService
 
     private readonly SemaphoreSlim _runtimeGate = new(1, 1);
     private readonly IServerProcessService _serverProcessService;
+    private readonly IInstanceProfileService _instanceProfileService;
+    private readonly IInstanceServerConfigService _instanceServerConfigService;
     private CancellationTokenSource? _runCts;
     private Task? _runTask;
     private Vs2QQRuntimeContext? _runtime;
@@ -50,9 +52,14 @@ public sealed class Vs2QQProcessService
 
     public RobotRuntimeStatus CurrentStatus { get; private set; } = new();
 
-    public Vs2QQProcessService(IServerProcessService serverProcessService)
+    public Vs2QQProcessService(
+        IServerProcessService serverProcessService,
+        IInstanceProfileService instanceProfileService,
+        IInstanceServerConfigService instanceServerConfigService)
     {
         _serverProcessService = serverProcessService;
+        _instanceProfileService = instanceProfileService;
+        _instanceServerConfigService = instanceServerConfigService;
         if (Interlocked.Exchange(ref _encodingProviderRegistered, 1) == 0)
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -124,7 +131,7 @@ public sealed class Vs2QQProcessService
     public async Task<OperationResult> StopAsync(TimeSpan gracefulTimeout, CancellationToken cancellationToken = default)
     {
         Task? runTask;
-        CancellationTokenSource? cts;
+        Vs2QQRuntimeContext? runtime;
 
         await _runtimeGate.WaitAsync(cancellationToken);
         try
@@ -135,12 +142,21 @@ public sealed class Vs2QQProcessService
             }
 
             runTask = _runTask;
-            cts = _runCts;
-            cts?.Cancel();
+            runtime = _runtime;
+            _runCts?.Cancel();
         }
         finally
         {
             _runtimeGate.Release();
+        }
+
+        try
+        {
+            runtime?.OsqListener?.Close();
+        }
+        catch
+        {
+            // ignore shutdown errors.
         }
 
         try
@@ -314,7 +330,7 @@ public sealed class Vs2QQProcessService
     private static bool TryBuildLocalJoinLeaveMessage(string timeLabel, string content, out string payload)
     {
         payload = string.Empty;
-        var match = LocalJoinLeaveRegex.Match(content ?? string.Empty);
+        var match = LocalJoinLeaveRegex.Match(NormalizeDisplayText(content));
         if (!match.Success)
         {
             return false;
@@ -435,16 +451,19 @@ public sealed class Vs2QQProcessService
             case "/bindserver":
             case "/bindhost":
             case "/bindremote":
+            case "/绑定服务器":
                 await HandleBindRemoteServerAsync(runtime, eventPayload, args, cancellationToken);
                 return;
             case "/unbindserver":
             case "/unbindhost":
             case "/unbindremote":
+            case "/解绑服务器":
                 await HandleUnbindRemoteServerAsync(runtime, eventPayload, args, cancellationToken);
                 return;
             case "/listserver":
             case "/listhost":
             case "/listremote":
+            case "/查看服务器":
                 await HandleListRemoteServerAsync(runtime, eventPayload, cancellationToken);
                 return;
             case "/server":
@@ -633,19 +652,34 @@ public sealed class Vs2QQProcessService
         var parts = args.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length == 0)
         {
-            await ReplyAsync(runtime, eventPayload, "Usage: /server status [n]. 中文：查询服务器状态（仅按需）", cancellationToken);
+            await ReplyAsync(runtime, eventPayload, "Usage: /server status [n] | /server password get | /server password set <new_password>", cancellationToken);
             return;
         }
 
         var subCommand = parts[0].ToLowerInvariant();
-        if (subCommand != "status")
+        if (subCommand == "status")
         {
-            await ReplyAsync(runtime, eventPayload, "Only /server status [n] is supported.", cancellationToken);
+            await HandleServerStatusCommandAsync(runtime, eventPayload, parts, cancellationToken);
             return;
         }
 
+        if (subCommand == "password")
+        {
+            await HandleServerPasswordCommandAsync(runtime, eventPayload, parts, cancellationToken);
+            return;
+        }
+
+        await ReplyAsync(runtime, eventPayload, "Only /server status [n] and /server password get|set are supported.", cancellationToken);
+    }
+
+    private async Task HandleServerStatusCommandAsync(
+        Vs2QQRuntimeContext runtime,
+        JsonObject eventPayload,
+        IReadOnlyList<string> parts,
+        CancellationToken cancellationToken)
+    {
         var index = 1;
-        if (parts.Length > 1 && int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) && parsed > 0)
+        if (parts.Count > 1 && int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) && parsed > 0)
         {
             index = parsed;
         }
@@ -674,6 +708,80 @@ public sealed class Vs2QQProcessService
         await ReplyAsync(runtime, eventPayload, BuildOsqSummaryMessage(host, snapshot), cancellationToken);
     }
 
+    private async Task HandleServerPasswordCommandAsync(
+        Vs2QQRuntimeContext runtime,
+        JsonObject eventPayload,
+        IReadOnlyList<string> parts,
+        CancellationToken cancellationToken)
+    {
+        if (parts.Count < 2)
+        {
+            await ReplyAsync(runtime, eventPayload, "Usage: /server password get | /server password set <new_password>", cancellationToken);
+            return;
+        }
+
+        var action = parts[1].ToLowerInvariant();
+        var isGet = action == "get";
+        var isSet = action == "set";
+        if (!isGet && !isSet)
+        {
+            await ReplyAsync(runtime, eventPayload, "Usage: /server password get | /server password set <new_password>", cancellationToken);
+            return;
+        }
+
+        if (!isGet && !HasAdminPermission(runtime, eventPayload))
+        {
+            await ReplyAsync(runtime, eventPayload, "Permission denied. Group admin/owner or super admin only.", cancellationToken);
+            return;
+        }
+
+        var status = _serverProcessService.GetCurrentStatus();
+        if (string.IsNullOrWhiteSpace(status.ProfileId))
+        {
+            await ReplyAsync(runtime, eventPayload, "No local running profile. Password command only supports local bound server.", cancellationToken);
+            return;
+        }
+
+        var profile = _instanceProfileService.GetProfileById(status.ProfileId);
+        if (profile is null)
+        {
+            await ReplyAsync(runtime, eventPayload, "Cannot resolve local profile for password operation.", cancellationToken);
+            return;
+        }
+
+        var serverSettings = await _instanceServerConfigService.LoadServerSettingsAsync(profile, cancellationToken);
+        var worldSettings = await _instanceServerConfigService.LoadWorldSettingsAsync(profile, cancellationToken);
+        var worldRules = await _instanceServerConfigService.LoadWorldRulesAsync(profile, cancellationToken);
+
+        if (isGet)
+        {
+            var passwordText = string.IsNullOrWhiteSpace(serverSettings.Password) ? "(empty)" : serverSettings.Password.Trim();
+            await ReplyAsync(runtime, eventPayload, $"密码：{passwordText}", cancellationToken);
+            return;
+        }
+
+        if (parts.Count < 3)
+        {
+            await ReplyAsync(runtime, eventPayload, "Usage: /server password set <new_password>", cancellationToken);
+            return;
+        }
+
+        var newPassword = string.Join(' ', parts.Skip(2)).Trim();
+        if (newPassword.Length > 128)
+        {
+            await ReplyAsync(runtime, eventPayload, "Password too long. Maximum 128 characters.", cancellationToken);
+            return;
+        }
+
+        serverSettings.Password = string.Equals(newPassword, "-", StringComparison.Ordinal)
+            ? null
+            : newPassword;
+        await _instanceServerConfigService.SaveSettingsAsync(profile, serverSettings, worldSettings, worldRules, cancellationToken);
+
+        var updatedText = string.IsNullOrWhiteSpace(serverSettings.Password) ? "(empty)" : serverSettings.Password.Trim();
+        await ReplyAsync(runtime, eventPayload, $"密码已更新：{updatedText}", cancellationToken);
+    }
+
     private async Task HandleBindRemoteServerAsync(Vs2QQRuntimeContext runtime, JsonObject eventPayload, string args, CancellationToken cancellationToken)
     {
         var userId = GetInt64(eventPayload, "user_id");
@@ -689,7 +797,7 @@ public sealed class Vs2QQProcessService
             await ReplyAsync(
                 runtime,
                 eventPayload,
-                "Usage: /bindserver <host_or_ip_port_or_domain> <token> <qq_group_id>. 中文：绑定远程服务器",
+                "Usage: /bindremote <host> <token> <group_id>. 中文：绑定远程服务器",
                 cancellationToken);
             return;
         }
@@ -718,7 +826,7 @@ public sealed class Vs2QQProcessService
         runtime.Storage.UpsertRemoteServer(host, token, userId);
         runtime.Storage.BindGroupRemoteServer(groupId, host);
 
-        await ReplyAsync(runtime, eventPayload, $"Bound remote server {host} to group {groupId}.", cancellationToken);
+        await ReplyAsync(runtime, eventPayload, $"已绑定远程服务器：{host} -> 群 {groupId}", cancellationToken);
     }
 
     private async Task HandleUnbindRemoteServerAsync(Vs2QQRuntimeContext runtime, JsonObject eventPayload, string args, CancellationToken cancellationToken)
@@ -733,7 +841,7 @@ public sealed class Vs2QQProcessService
         var parts = args.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length < 2)
         {
-            await ReplyAsync(runtime, eventPayload, "Usage: /unbindserver <host_or_ip_port_or_domain> <qq_group_id>. 中文：解绑远程服务器", cancellationToken);
+            await ReplyAsync(runtime, eventPayload, "Usage: /unbindremote <host> <group_id>. 中文：解绑远程服务器", cancellationToken);
             return;
         }
 
@@ -758,7 +866,7 @@ public sealed class Vs2QQProcessService
             return;
         }
 
-        await ReplyAsync(runtime, eventPayload, $"Unbound: group {groupId} <-> {host}", cancellationToken);
+        await ReplyAsync(runtime, eventPayload, $"已解绑：群 {groupId} <-> {host}", cancellationToken);
     }
 
     private async Task HandleListRemoteServerAsync(Vs2QQRuntimeContext runtime, JsonObject eventPayload, CancellationToken cancellationToken)
@@ -786,8 +894,8 @@ public sealed class Vs2QQProcessService
             return;
         }
 
-        var lines = new List<string> { "Remote servers:" };
-        lines.AddRange(records.Select(x => $"- group {x.GroupId}: {x.ServerHost} (ownerQQ:{x.OwnerQqId})"));
+        var lines = new List<string> { "远程服务器：" };
+        lines.AddRange(records.Select(x => $"- 群 {x.GroupId}: {x.ServerHost} (服主QQ:{x.OwnerQqId})"));
         await ReplyAsync(runtime, eventPayload, string.Join('\n', lines), cancellationToken);
     }
 
@@ -842,7 +950,7 @@ public sealed class Vs2QQProcessService
 
     private static string NormalizeOutboundText(string rawMessage)
     {
-        var text = rawMessage.Trim();
+        var text = NormalizeDisplayText(rawMessage);
         text = CqImageRegex.Replace(text, "[图片]");
         text = CqCodeRegex.Replace(text, "[消息]");
         text = text.Replace('\r', ' ').Replace('\n', ' ').Trim();
@@ -932,14 +1040,16 @@ public sealed class Vs2QQProcessService
     {
         return """
             VS2QQ Commands
-            /help - 命令帮助
+            /help - 帮助
             /bindqq <player_name> - 绑定QQ到玩家名
             /unbindqq - 解绑当前QQ
             /mybind - 查看当前QQ绑定
-            /bindserver <host_or_ip_port_or_domain> <token> <qq_group_id> - 绑定远程服务器
-            /unbindserver <host_or_ip_port_or_domain> <qq_group_id> - 解绑远程服务器
-            /listserver - 查看远程服务器绑定
-            /server status [n] - 查询最近第 n 条服务器状态（默认1）
+            /bindremote <host> <token> <group_id> - 绑定远程服务器
+            /unbindremote <host> <group_id> - 解绑远程服务器
+            /listremote - 查看远程服务器绑定
+            /server status [n] - 获取最近第 n 次服务器状态（默认1）
+            /server password get - 获取服务器密码
+            /server password set <new_password> - 修改服务器密码（- 表示清空）
             /bindlogserver <server_id> <log_path> - 绑定本机日志服务器（群管理/群主）
             /unbindlogserver <server_id> - 解绑本机日志服务器（群管理/群主）
             /listlogserver - 查看本机日志服务器（群）
@@ -1026,6 +1136,17 @@ public sealed class Vs2QQProcessService
         {
             listener.Start();
             runtime.OsqListener = listener;
+            using var cancellationRegistration = cancellationToken.Register(() =>
+            {
+                try
+                {
+                    listener.Close();
+                }
+                catch
+                {
+                    // ignore
+                }
+            });
             EmitOutput($"[osq] 监听已启动：{prefix}");
         }
         catch (Exception ex)
@@ -1348,7 +1469,7 @@ public sealed class Vs2QQProcessService
 
     private static string BuildChatSignature(OsqChatInfo chat)
     {
-        return $"{Safe(chat.TimestampUtc)}|{Safe(chat.SenderName)}|{Safe(chat.Message)}";
+        return $"{Safe(chat.TimestampUtc)}|{Safe(chat.SenderName)}|{Safe(NormalizeDisplayText(chat.Message))}";
     }
 
     private static string BuildEventSignature(OsqPlayerEventInfo entry)
@@ -1473,10 +1594,7 @@ public sealed class Vs2QQProcessService
 
     private static string NormalizeInboundServerText(string? senderName, string? rawText)
     {
-        var text = WebUtility.HtmlDecode(rawText ?? string.Empty);
-        text = HtmlTagRegex.Replace(text, string.Empty);
-        text = text.Replace('\r', ' ').Replace('\n', ' ').Trim();
-        text = MultiWhitespaceRegex.Replace(text, " ");
+        var text = NormalizeDisplayText(rawText);
 
         if (!string.IsNullOrWhiteSpace(senderName) && !string.IsNullOrWhiteSpace(text))
         {
@@ -1489,6 +1607,17 @@ public sealed class Vs2QQProcessService
             text = text.Trim();
         }
 
+        return text;
+    }
+
+    private static string NormalizeDisplayText(string? rawText)
+    {
+        var text = WebUtility.HtmlDecode(rawText ?? string.Empty);
+        text = HtmlTagRegex.Replace(text, string.Empty);
+        text = CqImageRegex.Replace(text, "[图片]");
+        text = CqCodeRegex.Replace(text, "[消息]");
+        text = text.Replace('\r', ' ').Replace('\n', ' ').Trim();
+        text = MultiWhitespaceRegex.Replace(text, " ");
         return text;
     }
 

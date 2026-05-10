@@ -14,9 +14,12 @@ public partial class AutomationService : IAutomationService, IDisposable
 {
     private readonly IAutomationSettingsService _settingsService;
     private readonly IInstanceProfileService _profileService;
+    private readonly IInstanceSaveService _instanceSaveService;
     private readonly ILogTailService _logTailService;
     private readonly IServerProcessService _serverProcessService;
+    private readonly SemaphoreSlim _backupGate = new(1, 1);
     private readonly object _logsGate = new();
+    private readonly object _backupStateGate = new();
     private readonly List<string> _runtimeLogs = [];
     private readonly ConcurrentQueue<string> _latestServerLines = new();
     private readonly HashSet<string> _executedMinuteKeys = new(StringComparer.OrdinalIgnoreCase);
@@ -28,17 +31,23 @@ public partial class AutomationService : IAutomationService, IDisposable
 
     private AutomationSettings _settings = new();
     private DateTime _lastTickMinute = DateTime.MinValue;
+    private bool _lastDesiredServerRunning;
+    private bool _lastDesiredServerRunningInitialized;
+    private TaskCompletionSource<bool>? _backupCompletionSource;
+    private static readonly TimeSpan BackupWaitTimeout = TimeSpan.FromMinutes(15);
 
     public event EventHandler<string>? RuntimeLogReceived;
 
     public AutomationService(
         IAutomationSettingsService settingsService,
         IInstanceProfileService profileService,
+        IInstanceSaveService instanceSaveService,
         ILogTailService logTailService,
         IServerProcessService serverProcessService)
     {
         _settingsService = settingsService;
         _profileService = profileService;
+        _instanceSaveService = instanceSaveService;
         _logTailService = logTailService;
         _serverProcessService = serverProcessService;
 
@@ -59,6 +68,7 @@ public partial class AutomationService : IAutomationService, IDisposable
     public async Task ReloadAsync(CancellationToken cancellationToken = default)
     {
         _settings = await _settingsService.LoadAsync(cancellationToken);
+        _lastDesiredServerRunningInitialized = false;
         WriteRuntimeLog("已重新加载自动化设置。");
     }
 
@@ -115,6 +125,9 @@ public partial class AutomationService : IAutomationService, IDisposable
         if (_settings.RestartSchedulerEnabled)
             await HandleRestartWindowsAsync(minute, cancellationToken);
 
+        if (_settings.BackupEnabled)
+            await HandleBackupAsync(minute, cancellationToken);
+
         if (_settings.BroadcastEnabled)
             await HandleBroadcastAsync(minute, cancellationToken);
 
@@ -128,44 +141,63 @@ public partial class AutomationService : IAutomationService, IDisposable
         if (profile is null)
             return;
 
-        foreach (var window in _settings.TimeWindows.Where(w => w.Enabled))
+        var enabledWindows = (_settings.ActionWindows ?? [])
+            .Where(window => window.Enabled)
+            .ToList();
+        if (enabledWindows.Count == 0)
         {
-            if (!TryParseHm(window.StartTime, out var start) || !TryParseHm(window.EndTime, out var end))
-                continue;
-
-            var date = minute.Date;
-            var startTime = date.Add(start);
-            var endTime = date.Add(end);
-            if (endTime <= startTime)
-                endTime = endTime.AddDays(1);
-
-            // warning before shutdown
-            foreach (var remainMinute in new[] { 5, 3, 1 })
-            {
-                if (minute == endTime.AddMinutes(-remainMinute))
+            enabledWindows = (_settings.TimeWindows ?? [])
+                .Where(window => window.Enabled)
+                .Select(window => new AutomationActionWindow
                 {
-                    var key = $"warn|{endTime:yyyyMMddHHmm}|{remainMinute}";
-                    if (MarkExecuted(key))
-                        await TryBroadcastSystemMessageAsync($"服务器将在 {remainMinute} 分钟后关闭。", cancellationToken);
+                    ScheduleMode = AutomationScheduleMode.Weekly,
+                    StartDayOfWeek = 1,
+                    EndDayOfWeek = 7,
+                    StartTime = window.StartTime,
+                    EndTime = window.EndTime,
+                    Action = AutomationActionType.Start,
+                    Enabled = window.Enabled
+                })
+                .ToList();
+        }
+
+        var conflict = FindConflict(enabledWindows, minute);
+        if (conflict is not null)
+        {
+            var conflictKey = $"conflict|{minute:yyyyMMddHHmm}|{conflict}";
+            if (MarkExecuted(conflictKey))
+            {
+                WriteRuntimeLog($"自动化计划冲突，已跳过本分钟：{conflict}");
+            }
+
+            return;
+        }
+
+        var desiredRunning = ComputeDesiredServerRunning(enabledWindows, minute);
+        if (!_lastDesiredServerRunningInitialized)
+        {
+            _lastDesiredServerRunning = desiredRunning;
+            _lastDesiredServerRunningInitialized = true;
+        }
+
+        var status = _serverProcessService.GetCurrentStatus();
+        if (_lastDesiredServerRunning != desiredRunning || status.IsRunning != desiredRunning)
+        {
+            var changeKey = $"desired|{minute:yyyyMMddHHmm}|{desiredRunning}";
+            if (MarkExecuted(changeKey))
+            {
+                if (desiredRunning)
+                {
+                    await EnsureServerStartedAsync(profile, cancellationToken);
+                }
+                else
+                {
+                    await EnsureServerStoppedAsync(cancellationToken);
                 }
             }
-
-            // start
-            if (minute == startTime)
-            {
-                var key = $"start|{startTime:yyyyMMddHHmm}";
-                if (MarkExecuted(key))
-                    await EnsureServerStartedAsync(profile, cancellationToken);
-            }
-
-            // stop
-            if (minute == endTime)
-            {
-                var key = $"stop|{endTime:yyyyMMddHHmm}";
-                if (MarkExecuted(key))
-                    await EnsureServerStoppedAsync(cancellationToken);
-            }
         }
+
+        _lastDesiredServerRunning = desiredRunning;
     }
 
     private async Task HandleBroadcastAsync(DateTime minute, CancellationToken cancellationToken)
@@ -184,6 +216,29 @@ public partial class AutomationService : IAutomationService, IDisposable
                 continue;
 
             await TryBroadcastSystemMessageAsync(item.Message, cancellationToken);
+        }
+    }
+
+    private async Task HandleBackupAsync(DateTime minute, CancellationToken cancellationToken)
+    {
+        var profile = ResolveTargetProfile();
+        if (profile is null)
+            return;
+
+        foreach (var time in _settings.BackupTimes)
+        {
+            if (!TryParseHm(time, out var at))
+                continue;
+
+            var point = minute.Date.Add(at);
+            if (point != minute)
+                continue;
+
+            var key = $"backup|{minute:yyyyMMddHHmm}|{time}";
+            if (!MarkExecuted(key))
+                continue;
+
+            await TryBackupActiveSaveAsync(profile, cancellationToken);
         }
     }
 
@@ -221,6 +276,15 @@ public partial class AutomationService : IAutomationService, IDisposable
 
     private async Task EnsureServerStoppedAsync(CancellationToken cancellationToken)
     {
+        if (_settings.BackupBeforeShutdown)
+        {
+            var profile = ResolveTargetProfile();
+            if (profile is not null)
+            {
+                await TryBackupActiveSaveAsync(profile, cancellationToken);
+            }
+        }
+
         if (_settings.ExportBeforeShutdown)
             await ExportLogsAsync("before-shutdown", cancellationToken);
 
@@ -233,6 +297,61 @@ public partial class AutomationService : IAutomationService, IDisposable
 
         await _serverProcessService.StopAsync(TimeSpan.FromSeconds(15), cancellationToken);
         WriteRuntimeLog("自动化：已按计划关闭服务端。");
+    }
+
+    private async Task TryBackupActiveSaveAsync(InstanceProfile profile, CancellationToken cancellationToken)
+    {
+        await _backupGate.WaitAsync(cancellationToken);
+        try
+        {
+            var status = _serverProcessService.GetCurrentStatus();
+            if (status.IsRunning)
+            {
+                var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                lock (_backupStateGate)
+                {
+                    _backupCompletionSource = completion;
+                }
+
+                await _serverProcessService.SendCommandAsync("/genbackup", cancellationToken);
+                WriteRuntimeLog($"自动化备份：已请求服务器备份（档案：{profile.Name}）。");
+
+                var finished = await Task.WhenAny(
+                    completion.Task,
+                    Task.Delay(BackupWaitTimeout, cancellationToken));
+
+                if (finished == completion.Task && await completion.Task)
+                {
+                    WriteRuntimeLog("自动化备份：服务器备份完成。");
+                }
+                else if (finished == completion.Task)
+                {
+                    WriteRuntimeLog("自动化备份：服务器备份失败。");
+                }
+                else
+                {
+                    WriteRuntimeLog("自动化备份：等待服务器备份完成超时。");
+                }
+
+                return;
+            }
+
+            var backupPath = await _instanceSaveService.BackupActiveSaveAsync(profile, cancellationToken);
+            WriteRuntimeLog($"自动化备份：已备份当前存档（{Path.GetFileName(backupPath)}）。");
+        }
+        catch (Exception ex)
+        {
+            WriteRuntimeLog($"自动化备份失败：{ex.Message}");
+        }
+        finally
+        {
+            lock (_backupStateGate)
+            {
+                _backupCompletionSource = null;
+            }
+
+            _backupGate.Release();
+        }
     }
 
     private async Task TryBroadcastSystemMessageAsync(string content, CancellationToken cancellationToken)
@@ -303,6 +422,8 @@ public partial class AutomationService : IAutomationService, IDisposable
         _latestServerLines.Enqueue(line);
         while (_latestServerLines.Count > MaxServerLines)
             _latestServerLines.TryDequeue(out _);
+
+        TryCompleteBackupWatcher(line);
     }
 
     private void OnLogTailLineReceived(object? sender, string line)
@@ -380,6 +501,160 @@ public partial class AutomationService : IAutomationService, IDisposable
             return true;
 
         return TimeSpan.TryParse(value.Trim(), out result);
+    }
+
+    private static string? FindConflict(IReadOnlyList<AutomationActionWindow> windows, DateTime minute)
+    {
+        var desiredActions = windows
+            .Where(window => IsWindowActive(window, minute))
+            .Select(window => window.Action)
+            .Distinct()
+            .ToList();
+        if (desiredActions.Count <= 1)
+        {
+            return null;
+        }
+
+        return "same time has both start and stop actions";
+    }
+
+    private static bool ComputeDesiredServerRunning(IReadOnlyList<AutomationActionWindow> windows, DateTime minute)
+    {
+        var activeWindows = windows
+            .Where(window => IsWindowActive(window, minute))
+            .ToList();
+        if (activeWindows.Count == 0)
+        {
+            return false;
+        }
+
+        var hasStart = activeWindows.Any(window => window.Action == AutomationActionType.Start);
+        var hasStop = activeWindows.Any(window => window.Action == AutomationActionType.Stop);
+        if (hasStart && !hasStop)
+        {
+            return true;
+        }
+
+        if (hasStop && !hasStart)
+        {
+            return false;
+        }
+
+        // Conflict case already guarded by FindConflict; default to stop for safety.
+        return false;
+    }
+
+    private static bool IsWindowActive(AutomationActionWindow window, DateTime minute)
+    {
+        if (!TryParseHm(window.StartTime, out var start) || !TryParseHm(window.EndTime, out var end))
+        {
+            return false;
+        }
+
+        var minuteOfDay = minute.TimeOfDay;
+        var inTimeRange = IsTimeInRange(minuteOfDay, start, end);
+        if (!inTimeRange)
+        {
+            return false;
+        }
+
+        return window.ScheduleMode switch
+        {
+            AutomationScheduleMode.Weekly => IsWeekDayInRange(minute.DayOfWeek, window.StartDayOfWeek, window.EndDayOfWeek),
+            AutomationScheduleMode.DateRange => IsDateInRange(minute.Date, window.StartDate, window.EndDate),
+            _ => false
+        };
+    }
+
+    private static bool IsTimeInRange(TimeSpan time, TimeSpan start, TimeSpan end)
+    {
+        if (start == end)
+        {
+            return true;
+        }
+
+        if (start < end)
+        {
+            return time >= start && time < end;
+        }
+
+        // Cross-day window, e.g. 23:00-06:00
+        return time >= start || time < end;
+    }
+
+    private static bool IsWeekDayInRange(DayOfWeek day, int startDay, int endDay)
+    {
+        var dayValue = ToIsoWeekDay(day);
+        startDay = NormalizeWeekDay(startDay);
+        endDay = NormalizeWeekDay(endDay);
+
+        if (startDay <= endDay)
+        {
+            return dayValue >= startDay && dayValue <= endDay;
+        }
+
+        // Wrap range: e.g. Fri->Mon
+        return dayValue >= startDay || dayValue <= endDay;
+    }
+
+    private static bool IsDateInRange(DateTime date, string startDateRaw, string endDateRaw)
+    {
+        if (!DateOnly.TryParse(startDateRaw, out var startDate) || !DateOnly.TryParse(endDateRaw, out var endDate))
+        {
+            return false;
+        }
+
+        var day = DateOnly.FromDateTime(date);
+        if (startDate <= endDate)
+        {
+            return day >= startDate && day <= endDate;
+        }
+
+        return day >= startDate || day <= endDate;
+    }
+
+    private static int ToIsoWeekDay(DayOfWeek day)
+    {
+        return day switch
+        {
+            DayOfWeek.Monday => 1,
+            DayOfWeek.Tuesday => 2,
+            DayOfWeek.Wednesday => 3,
+            DayOfWeek.Thursday => 4,
+            DayOfWeek.Friday => 5,
+            DayOfWeek.Saturday => 6,
+            DayOfWeek.Sunday => 7,
+            _ => 1
+        };
+    }
+
+    private static int NormalizeWeekDay(int day)
+    {
+        return day is >= 1 and <= 7 ? day : 1;
+    }
+
+    private void TryCompleteBackupWatcher(string line)
+    {
+        TaskCompletionSource<bool>? completionSource;
+        lock (_backupStateGate)
+        {
+            completionSource = _backupCompletionSource;
+        }
+
+        if (completionSource is null)
+            return;
+
+        if (line.Contains("Backup complete", StringComparison.OrdinalIgnoreCase))
+        {
+            completionSource.TrySetResult(true);
+            return;
+        }
+
+        if (line.Contains("Can't run backup", StringComparison.OrdinalIgnoreCase) ||
+            line.Contains("backup is already in progress", StringComparison.OrdinalIgnoreCase))
+        {
+            completionSource.TrySetResult(false);
+        }
     }
 
     [GeneratedRegex(@"\[(Talk|Chat|Event|Audit)\]|<[^>]+>\s*.+", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]

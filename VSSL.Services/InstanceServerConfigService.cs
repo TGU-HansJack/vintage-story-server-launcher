@@ -324,6 +324,7 @@ public class InstanceServerConfigService : IInstanceServerConfigService
             ["gameMode"] = "survival",
             ["allowMap"] = true,
             ["allowCoordinateHud"] = true,
+            ["colorAccurateWorldmap"] = false,
             ["allowLandClaiming"] = true,
             ["worldWidth"] = 1024000,
             ["worldLength"] = 1024000,
@@ -420,6 +421,7 @@ public class InstanceServerConfigService : IInstanceServerConfigService
         {
             "worldWidth" => ReadFlexibleString(root["MapSizeX"]) ?? ReadFlexibleString(worldConfig["MapSizeX"]),
             "worldLength" => ReadFlexibleString(root["MapSizeZ"]) ?? ReadFlexibleString(worldConfig["MapSizeZ"]),
+            "colorAccurateWorldmap" => ReadFlexibleString(worldConfig["colorAccurateWorldmap"]),
             _ => null
         };
     }

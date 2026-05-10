@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Diagnostics;
+using System.Linq;
 using VSSL.Abstractions.Services;
+using VSSL.Abstractions.Services.Ui;
 using VSSL.Domains.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -16,11 +18,14 @@ public partial class WorkspaceViewModel : ViewModelBase
     private readonly IInstanceProfileService? _instanceProfileService;
     private readonly IServerProcessService? _serverProcessService;
     private readonly ILogTailService? _logTailService;
+    private readonly ILauncherPreferencesService? _launcherPreferencesService;
+    private readonly IQuickCommandsDialogService? _quickCommandsDialogService;
 
     [ObservableProperty] private InstanceProfile? _selectedProfile;
     [ObservableProperty] private string? _selectedInstalledVersion;
     [ObservableProperty] private string _quickCreateProfileName = string.Empty;
     [ObservableProperty] private string _consoleInput = string.Empty;
+    [ObservableProperty] private string? _selectedQuickCommand;
     [ObservableProperty] private string _statusMessage = string.Empty;
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private bool _isConsoleAutoFollow = true;
@@ -49,6 +54,7 @@ public partial class WorkspaceViewModel : ViewModelBase
 
     public ObservableCollection<InstanceProfile> Profiles { get; } = [];
     public ObservableCollection<string> InstalledVersions { get; } = [];
+    public ObservableCollection<string> QuickCommands { get; } = [];
 
     public ObservableCollection<string> ConsoleLines { get; } = [];
 
@@ -64,11 +70,25 @@ public partial class WorkspaceViewModel : ViewModelBase
 
     public bool HasNoConsoleLines => !HasConsoleLines;
 
+    public bool HasQuickCommands => QuickCommands.Count > 0;
+
+    public bool HasNoQuickCommands => !HasQuickCommands;
+
     public string RuntimeStateText => IsRunning
         ? LF("WorkspaceRuntimeRunningFormat", RuntimeProcessId, OnlinePlayers, FormatStartedAt(RuntimeStartedAt))
         : L("CommonStoppedState");
 
     public string StartupProgressText => LF("WorkspaceStartupProgressFormat", StartupProgress);
+
+    partial void OnSelectedQuickCommandChanged(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        ConsoleInput = value;
+    }
 
     [RelayCommand]
     private async Task RefreshProfilesAsync()
@@ -246,6 +266,47 @@ public partial class WorkspaceViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private async Task ManageQuickCommandsAsync()
+    {
+        if (_quickCommandsDialogService is null || _launcherPreferencesService is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var edited = await _quickCommandsDialogService.ShowEditorAsync(
+                L("WorkspaceQuickCommandsDialogTitle"),
+                QuickCommands.ToList());
+            if (edited is null)
+            {
+                return;
+            }
+
+            var normalized = edited
+                .Where(command => !string.IsNullOrWhiteSpace(command))
+                .Select(command => command.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(100)
+                .ToList();
+            if (normalized.Count == 0)
+            {
+                normalized.Add("/players");
+                normalized.Add("/savegame");
+                normalized.Add("/stop");
+            }
+
+            ApplyQuickCommands(normalized);
+            SaveQuickCommands(normalized);
+            StatusMessage = L("ConfigStatusSaved");
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = LF("WorkspaceStatusSendCommandFailedFormat", ex.Message);
+        }
+    }
+
+    [RelayCommand]
     private void ClearConsole()
     {
         ConsoleLines.Clear();
@@ -375,6 +436,67 @@ public partial class WorkspaceViewModel : ViewModelBase
                                    ?? InstalledVersions.FirstOrDefault();
     }
 
+    private void LoadQuickCommands()
+    {
+        var defaults = new List<string>
+        {
+            "/players",
+            "/savegame",
+            "/stop"
+        };
+
+        if (_launcherPreferencesService is null)
+        {
+            ApplyQuickCommands(defaults);
+            return;
+        }
+
+        var preferences = _launcherPreferencesService.Load();
+        var commands = (preferences.QuickCommands ?? [])
+            .Where(command => !string.IsNullOrWhiteSpace(command))
+            .Select(command => command.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (commands.Count == 0)
+        {
+            commands = defaults;
+            preferences.QuickCommands = commands;
+            _launcherPreferencesService.Save(preferences);
+        }
+
+        ApplyQuickCommands(commands);
+    }
+
+    private void ApplyQuickCommands(IReadOnlyList<string> commands)
+    {
+        var previous = SelectedQuickCommand;
+        QuickCommands.Clear();
+        foreach (var command in commands)
+        {
+            QuickCommands.Add(command);
+        }
+
+        SelectedQuickCommand = QuickCommands.FirstOrDefault(command =>
+            !string.IsNullOrWhiteSpace(previous) &&
+            command.Equals(previous, StringComparison.OrdinalIgnoreCase))
+            ?? QuickCommands.FirstOrDefault();
+
+        OnPropertyChanged(nameof(HasQuickCommands));
+        OnPropertyChanged(nameof(HasNoQuickCommands));
+    }
+
+    private void SaveQuickCommands(IReadOnlyList<string> commands)
+    {
+        if (_launcherPreferencesService is null)
+        {
+            return;
+        }
+
+        var preferences = _launcherPreferencesService.Load();
+        preferences.QuickCommands = commands.ToList();
+        _launcherPreferencesService.Save(preferences);
+    }
+
     #region Constructors
 
     public WorkspaceViewModel()
@@ -384,17 +506,22 @@ public partial class WorkspaceViewModel : ViewModelBase
     public WorkspaceViewModel(
         IInstanceProfileService instanceProfileService,
         IServerProcessService serverProcessService,
-        ILogTailService logTailService)
+        ILogTailService logTailService,
+        ILauncherPreferencesService launcherPreferencesService,
+        IQuickCommandsDialogService quickCommandsDialogService)
     {
         _instanceProfileService = instanceProfileService;
         _serverProcessService = serverProcessService;
         _logTailService = logTailService;
+        _launcherPreferencesService = launcherPreferencesService;
+        _quickCommandsDialogService = quickCommandsDialogService;
 
         _serverProcessService.OutputReceived += OnProcessOutputReceived;
         _serverProcessService.StatusChanged += OnProcessStatusChanged;
         _logTailService.LogLineReceived += OnLogTailLineReceived;
 
         OnProcessStatusChanged(this, _serverProcessService.GetCurrentStatus());
+        LoadQuickCommands();
         _ = RefreshProfilesAsync();
     }
 

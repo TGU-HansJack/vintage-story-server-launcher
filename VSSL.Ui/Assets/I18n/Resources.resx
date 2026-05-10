@@ -203,6 +203,8 @@
   <data name="WorkspaceQuickCreatedFormat" xml:space="preserve"><value>Profile created: {0}</value></data>
   <data name="WorkspaceQuickCreateFailedFormat" xml:space="preserve"><value>Failed to create and start: {0}</value></data>
   <data name="WorkspaceQuickDefaultProfileNameFormat" xml:space="preserve"><value>Server-{0:yyyyMMdd-HHmm}</value></data>
+  <data name="WorkspaceQuickCommandsAddButtonText" xml:space="preserve"><value>Add</value></data>
+  <data name="WorkspaceQuickCommandsDialogTitle" xml:space="preserve"><value>Manage Quick Commands</value></data>
   <data name="ConsoleNoOutputText" xml:space="preserve"><value>No output yet.</value></data>
   <data name="WorkspaceRuntimeRunningFormat" xml:space="preserve"><value>Running (PID: {0}, Players: {1}, Started: {2})</value></data>
   <data name="WorkspaceStartupProgressFormat" xml:space="preserve"><value>Startup progress: {0:0}%</value></data>
@@ -240,6 +242,7 @@
   <data name="AutomationDescription" xml:space="preserve"><value>Schedule restart windows, broadcast messages, and log exports.</value></data>
   <data name="AutomationTargetProfileLabel" xml:space="preserve"><value>Target Profile</value></data>
   <data name="AutomationRestartSectionTitle" xml:space="preserve"><value>Server Restart</value></data>
+  <data name="AutomationBackupSectionTitle" xml:space="preserve"><value>Timed Backup</value></data>
   <data name="AutomationBroadcastSectionTitle" xml:space="preserve"><value>Broadcast</value></data>
   <data name="AutomationExportSectionTitle" xml:space="preserve"><value>Log Export</value></data>
   <data name="AutomationWarnMessageFormat" xml:space="preserve"><value>Server will restart or shut down in {0} minutes.</value></data>
@@ -264,8 +267,19 @@
   <data name="TrayStopRobotText" xml:space="preserve"><value>Stop QQ Bot</value></data>
   <data name="TrayExitText" xml:space="preserve"><value>Exit</value></data>
   <data name="AutomationExportBeforeShutdownLabel" xml:space="preserve"><value>Export Before Shutdown</value></data>
+  <data name="AutomationBackupBeforeShutdownLabel" xml:space="preserve"><value>Backup Before Shutdown</value></data>
   <data name="AutomationExportIncludeChatLabel" xml:space="preserve"><value>Include Player Chat</value></data>
   <data name="AutomationExportIncludeServerLabel" xml:space="preserve"><value>Include Server Info</value></data>
+  <data name="AutomationBackupHintText" xml:space="preserve"><value>Backs up the active savegame. Online servers use /genbackup, offline servers copy the current vcdbs.</value></data>
+  <data name="AutomationHintText" xml:space="preserve"><value>Weekly uses 1-7, date range uses yyyy-MM-dd, time uses HH:mm.</value></data>
+  <data name="AutomationModeLabel" xml:space="preserve"><value>Mode</value></data>
+  <data name="AutomationDayStartLabel" xml:space="preserve"><value>Day Start</value></data>
+  <data name="AutomationDayEndLabel" xml:space="preserve"><value>Day End</value></data>
+  <data name="AutomationDateStartLabel" xml:space="preserve"><value>Date Start</value></data>
+  <data name="AutomationDateEndLabel" xml:space="preserve"><value>Date End</value></data>
+  <data name="AutomationTimeStartLabel" xml:space="preserve"><value>Time Start</value></data>
+  <data name="AutomationTimeEndLabel" xml:space="preserve"><value>Time End</value></data>
+  <data name="AutomationActionLabel" xml:space="preserve"><value>Action</value></data>
   <data name="MapPreviewProfileLabel" xml:space="preserve"><value>Profile:</value></data>
   <data name="MapPreviewSaveLabel" xml:space="preserve"><value>Save:</value></data>
   <data name="MapPreviewLoadButtonText" xml:space="preserve"><value>Load Preview</value></data>

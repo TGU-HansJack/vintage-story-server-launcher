@@ -30,6 +30,10 @@ public static class WorldRuleCatalog
         },
         new()
         {
+            Key = "colorAccurateWorldmap", LabelZh = "彩色地图", LabelEn = "Color Map", Type = WorldRuleType.Boolean, DefaultValue = "false"
+        },
+        new()
+        {
             Key = "allowLandClaiming", LabelZh = "允许领地声明", LabelEn = "Allow Land Claiming", Type = WorldRuleType.Boolean, DefaultValue = "true"
         },
         new() { Key = "surfaceCopperDeposits", LabelZh = "地表铜矿生成率", LabelEn = "Surface Copper Deposits", Type = WorldRuleType.Text },

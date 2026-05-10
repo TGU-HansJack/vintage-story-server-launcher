@@ -11,6 +11,14 @@ public class AutomationSettings
 
     public List<DailyTimeWindow> TimeWindows { get; set; } = [];
 
+    public List<AutomationActionWindow> ActionWindows { get; set; } = [];
+
+    public bool BackupEnabled { get; set; }
+
+    public List<string> BackupTimes { get; set; } = [];
+
+    public bool BackupBeforeShutdown { get; set; } = true;
+
     public bool BroadcastEnabled { get; set; }
 
     public List<ScheduledBroadcastMessage> BroadcastMessages { get; set; } = [];

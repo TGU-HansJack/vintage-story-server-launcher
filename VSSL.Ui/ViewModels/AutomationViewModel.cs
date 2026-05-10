@@ -18,6 +18,8 @@ public partial class AutomationViewModel : ViewModelBase
 
     [ObservableProperty] private InstanceProfile? _selectedProfile;
     [ObservableProperty] private bool _restartSchedulerEnabled;
+    [ObservableProperty] private bool _backupEnabled;
+    [ObservableProperty] private bool _backupBeforeShutdown = true;
     [ObservableProperty] private bool _broadcastEnabled;
     [ObservableProperty] private bool _exportLogEnabled;
     [ObservableProperty] private bool _exportBeforeShutdown = true;
@@ -27,7 +29,8 @@ public partial class AutomationViewModel : ViewModelBase
     [ObservableProperty] private bool _isBusy;
 
     public ObservableCollection<InstanceProfile> Profiles { get; } = [];
-    public ObservableCollection<DailyTimeWindow> TimeWindows { get; } = [];
+    public ObservableCollection<AutomationActionWindow> ActionWindows { get; } = [];
+    public ObservableCollection<AutomationBackupTimeItemViewModel> BackupTimes { get; } = [];
     public ObservableCollection<ScheduledBroadcastMessage> BroadcastMessages { get; } = [];
     public ObservableCollection<AutomationExportTimeItemViewModel> ExportTimes { get; } = [];
     public ObservableCollection<string> RuntimeLogs { get; } = [];
@@ -63,16 +66,32 @@ public partial class AutomationViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void AddRestartWindow()
+    private void AddActionWindow()
     {
-        TimeWindows.Add(new DailyTimeWindow());
+        ActionWindows.Add(new AutomationActionWindow());
     }
 
     [RelayCommand]
-    private void RemoveRestartWindow(DailyTimeWindow? window)
+    private void RemoveActionWindow(AutomationActionWindow? window)
     {
         if (window is null) return;
-        TimeWindows.Remove(window);
+        ActionWindows.Remove(window);
+    }
+
+    [RelayCommand]
+    private void AddBackupTime()
+    {
+        BackupTimes.Add(new AutomationBackupTimeItemViewModel
+        {
+            Time = "03:00"
+        });
+    }
+
+    [RelayCommand]
+    private void RemoveBackupTime(AutomationBackupTimeItemViewModel? item)
+    {
+        if (item is null) return;
+        BackupTimes.Remove(item);
     }
 
     [RelayCommand]
@@ -165,15 +184,26 @@ public partial class AutomationViewModel : ViewModelBase
 
         var settings = await _automationSettingsService.LoadAsync();
         RestartSchedulerEnabled = settings.RestartSchedulerEnabled;
+        BackupEnabled = settings.BackupEnabled;
+        BackupBeforeShutdown = settings.BackupBeforeShutdown;
         BroadcastEnabled = settings.BroadcastEnabled;
         ExportLogEnabled = settings.ExportLogEnabled;
         ExportBeforeShutdown = settings.ExportBeforeShutdown;
         ExportIncludeChat = settings.ExportIncludeChat;
         ExportIncludeServerInfo = settings.ExportIncludeServerInfo;
 
-        TimeWindows.Clear();
-        foreach (var window in settings.TimeWindows)
-            TimeWindows.Add(window);
+        ActionWindows.Clear();
+        foreach (var window in settings.ActionWindows)
+            ActionWindows.Add(window);
+
+        BackupTimes.Clear();
+        foreach (var time in settings.BackupTimes)
+        {
+            BackupTimes.Add(new AutomationBackupTimeItemViewModel
+            {
+                Time = time
+            });
+        }
 
         BroadcastMessages.Clear();
         foreach (var message in settings.BroadcastMessages)
@@ -199,12 +229,19 @@ public partial class AutomationViewModel : ViewModelBase
         {
             TargetProfileId = SelectedProfile?.Id ?? string.Empty,
             RestartSchedulerEnabled = RestartSchedulerEnabled,
+            BackupEnabled = BackupEnabled,
+            BackupTimes = BackupTimes
+                .Select(item => item.Time?.Trim() ?? string.Empty)
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList(),
+            BackupBeforeShutdown = BackupBeforeShutdown,
             BroadcastEnabled = BroadcastEnabled,
             ExportLogEnabled = ExportLogEnabled,
             ExportBeforeShutdown = ExportBeforeShutdown,
             ExportIncludeChat = ExportIncludeChat,
             ExportIncludeServerInfo = ExportIncludeServerInfo,
-            TimeWindows = TimeWindows.ToList(),
+            ActionWindows = ActionWindows.ToList(),
             BroadcastMessages = BroadcastMessages.ToList(),
             ExportTimes = ExportTimes
                 .Select(item => item.Time?.Trim() ?? string.Empty)

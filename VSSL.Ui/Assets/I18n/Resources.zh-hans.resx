@@ -203,6 +203,8 @@
   <data name="WorkspaceQuickCreatedFormat" xml:space="preserve"><value>已创建档案：{0}</value></data>
   <data name="WorkspaceQuickCreateFailedFormat" xml:space="preserve"><value>创建并启动失败：{0}</value></data>
   <data name="WorkspaceQuickDefaultProfileNameFormat" xml:space="preserve"><value>服务器-{0:yyyyMMdd-HHmm}</value></data>
+  <data name="WorkspaceQuickCommandsAddButtonText" xml:space="preserve"><value>添加</value></data>
+  <data name="WorkspaceQuickCommandsDialogTitle" xml:space="preserve"><value>管理快捷指令</value></data>
   <data name="ConsoleNoOutputText" xml:space="preserve"><value>暂无输出。</value></data>
   <data name="WorkspaceRuntimeRunningFormat" xml:space="preserve"><value>运行中（PID: {0}，在线：{1}，启动：{2}）</value></data>
   <data name="WorkspaceStartupProgressFormat" xml:space="preserve"><value>启动进度：{0:0}%</value></data>
@@ -238,6 +240,7 @@
   <data name="AutomationDescription" xml:space="preserve"><value>定时重启、定时播报和日志导出。</value></data>
   <data name="AutomationTargetProfileLabel" xml:space="preserve"><value>目标档案</value></data>
   <data name="AutomationRestartSectionTitle" xml:space="preserve"><value>服务重启</value></data>
+  <data name="AutomationBackupSectionTitle" xml:space="preserve"><value>定时备份</value></data>
   <data name="AutomationBroadcastSectionTitle" xml:space="preserve"><value>服务器播报</value></data>
   <data name="AutomationExportSectionTitle" xml:space="preserve"><value>日志导出</value></data>
   <data name="AutomationWarnMessageFormat" xml:space="preserve"><value>服务器将在 {0} 分钟后重启或关闭。</value></data>
@@ -262,8 +265,19 @@
   <data name="TrayStopRobotText" xml:space="preserve"><value>停止 QQ 机器人</value></data>
   <data name="TrayExitText" xml:space="preserve"><value>退出</value></data>
   <data name="AutomationExportBeforeShutdownLabel" xml:space="preserve"><value>关服前导出</value></data>
+  <data name="AutomationBackupBeforeShutdownLabel" xml:space="preserve"><value>关服前备份当前存档</value></data>
   <data name="AutomationExportIncludeChatLabel" xml:space="preserve"><value>导出聊天信息</value></data>
   <data name="AutomationExportIncludeServerLabel" xml:space="preserve"><value>导出服务器信息</value></data>
+  <data name="AutomationBackupHintText" xml:space="preserve"><value>备份当前 active savegame。服务器在线时使用 /genbackup，离线时直接复制 vcdbs 文件。</value></data>
+  <data name="AutomationHintText" xml:space="preserve"><value>周模式使用 1-7，日期范围使用 yyyy-MM-dd，时间使用 HH:mm。</value></data>
+  <data name="AutomationModeLabel" xml:space="preserve"><value>模式</value></data>
+  <data name="AutomationDayStartLabel" xml:space="preserve"><value>开始星期</value></data>
+  <data name="AutomationDayEndLabel" xml:space="preserve"><value>结束星期</value></data>
+  <data name="AutomationDateStartLabel" xml:space="preserve"><value>开始日期</value></data>
+  <data name="AutomationDateEndLabel" xml:space="preserve"><value>结束日期</value></data>
+  <data name="AutomationTimeStartLabel" xml:space="preserve"><value>开始时间</value></data>
+  <data name="AutomationTimeEndLabel" xml:space="preserve"><value>结束时间</value></data>
+  <data name="AutomationActionLabel" xml:space="preserve"><value>操作</value></data>
   <data name="MapPreviewProfileLabel" xml:space="preserve"><value>档案：</value></data>
   <data name="MapPreviewSaveLabel" xml:space="preserve"><value>存档：</value></data>
   <data name="MapPreviewLoadButtonText" xml:space="preserve"><value>加载预览</value></data>

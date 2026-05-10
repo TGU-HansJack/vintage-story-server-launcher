@@ -19,13 +19,29 @@ public partial class ConfigWorldRuleItemViewModel : ViewModelBase
 
     public required WorldRuleType Type { get; init; }
 
+    public IReadOnlyList<string> Choices { get; init; } = [];
+
     public string? DescriptionZh { get; init; }
 
     public string? DescriptionEn { get; init; }
 
     public string? Description => SelectLocalized(DescriptionZh, DescriptionEn);
 
-    [ObservableProperty] private string _value = string.Empty;
+    public bool IsBoolean => Type == WorldRuleType.Boolean;
+
+    public bool IsChoice => Type == WorldRuleType.Choice;
+
+    public bool IsText => Type is WorldRuleType.Text or WorldRuleType.Number;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(BoolValue))]
+    private string _value = string.Empty;
+
+    public bool BoolValue
+    {
+        get => ParseBool(Value);
+        set => Value = value ? "true" : "false";
+    }
 
     private static string SelectLocalized(string? zh, string? en)
     {
@@ -34,5 +50,15 @@ public partial class ConfigWorldRuleItemViewModel : ViewModelBase
             return string.IsNullOrWhiteSpace(zh) ? en ?? string.Empty : zh;
 
         return string.IsNullOrWhiteSpace(en) ? zh ?? string.Empty : en;
+    }
+
+    private static bool ParseBool(string? value)
+    {
+        if (bool.TryParse(value, out var parsed))
+        {
+            return parsed;
+        }
+
+        return string.Equals(value?.Trim(), "1", StringComparison.OrdinalIgnoreCase);
     }
 }

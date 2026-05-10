@@ -47,11 +47,36 @@ public class AutomationSettingsService : IAutomationSettingsService
         return new AutomationSettings
         {
             RestartSchedulerEnabled = false,
+            BackupEnabled = false,
             BroadcastEnabled = false,
             ExportLogEnabled = false,
+            BackupBeforeShutdown = true,
             ExportBeforeShutdown = true,
             ExportIncludeChat = true,
             ExportIncludeServerInfo = true,
+            ActionWindows =
+            [
+                new AutomationActionWindow
+                {
+                    ScheduleMode = AutomationScheduleMode.Weekly,
+                    StartDayOfWeek = 1,
+                    EndDayOfWeek = 5,
+                    StartTime = "08:00",
+                    EndTime = "23:00",
+                    Action = AutomationActionType.Start,
+                    Enabled = true
+                },
+                new AutomationActionWindow
+                {
+                    ScheduleMode = AutomationScheduleMode.Weekly,
+                    StartDayOfWeek = 6,
+                    EndDayOfWeek = 7,
+                    StartTime = "00:00",
+                    EndTime = "23:59",
+                    Action = AutomationActionType.Stop,
+                    Enabled = true
+                }
+            ],
             TimeWindows =
             [
                 new DailyTimeWindow
@@ -61,6 +86,7 @@ public class AutomationSettingsService : IAutomationSettingsService
                     Enabled = true
                 }
             ],
+            BackupTimes = ["03:00"],
             BroadcastMessages =
             [
                 new ScheduledBroadcastMessage
@@ -95,6 +121,12 @@ public class AutomationSettingsService : IAutomationSettingsService
             });
         }
 
+        var normalizedActionWindows = NormalizeActionWindows(settings.ActionWindows);
+        if (normalizedActionWindows.Count == 0)
+        {
+            normalizedActionWindows = MigrateLegacyTimeWindows(normalizedWindows);
+        }
+
         var normalizedMessages = (settings.BroadcastMessages ?? [])
             .Where(item => item is not null)
             .Select(item => new ScheduledBroadcastMessage
@@ -104,6 +136,13 @@ public class AutomationSettingsService : IAutomationSettingsService
                 Enabled = item.Enabled
             })
             .Where(item => !string.IsNullOrWhiteSpace(item.Message))
+            .ToList();
+
+        var normalizedBackupTimes = (settings.BackupTimes ?? [])
+            .Select(time => NormalizeTime(time, string.Empty))
+            .Where(time => !string.IsNullOrWhiteSpace(time))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Order(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var normalizedExportTimes = (settings.ExportTimes ?? [])
@@ -117,7 +156,11 @@ public class AutomationSettingsService : IAutomationSettingsService
         {
             TargetProfileId = settings.TargetProfileId?.Trim() ?? string.Empty,
             RestartSchedulerEnabled = settings.RestartSchedulerEnabled,
+            BackupEnabled = settings.BackupEnabled,
             TimeWindows = normalizedWindows,
+            ActionWindows = normalizedActionWindows,
+            BackupTimes = normalizedBackupTimes,
+            BackupBeforeShutdown = settings.BackupBeforeShutdown,
             BroadcastEnabled = settings.BroadcastEnabled,
             BroadcastMessages = normalizedMessages,
             ExportLogEnabled = settings.ExportLogEnabled,
@@ -136,5 +179,63 @@ public class AutomationSettingsService : IAutomationSettingsService
         return TimeSpan.TryParse(value.Trim(), out var parsed)
             ? $"{parsed.Hours:00}:{parsed.Minutes:00}"
             : fallback;
+    }
+
+    private static List<AutomationActionWindow> NormalizeActionWindows(IReadOnlyList<AutomationActionWindow>? windows)
+    {
+        var normalized = (windows ?? [])
+            .Where(window => window is not null)
+            .Select(window => new AutomationActionWindow
+            {
+                ScheduleMode = window.ScheduleMode,
+                StartDayOfWeek = NormalizeWeekDay(window.StartDayOfWeek, 1),
+                EndDayOfWeek = NormalizeWeekDay(window.EndDayOfWeek, 7),
+                StartDate = NormalizeDate(window.StartDate),
+                EndDate = NormalizeDate(window.EndDate),
+                StartTime = NormalizeTime(window.StartTime, "08:00"),
+                EndTime = NormalizeTime(window.EndTime, "23:00"),
+                Action = window.Action,
+                Enabled = window.Enabled
+            })
+            .ToList();
+
+        return normalized;
+    }
+
+    private static List<AutomationActionWindow> MigrateLegacyTimeWindows(IReadOnlyList<DailyTimeWindow> windows)
+    {
+        var migrated = new List<AutomationActionWindow>();
+        foreach (var window in windows)
+        {
+            migrated.Add(new AutomationActionWindow
+            {
+                ScheduleMode = AutomationScheduleMode.Weekly,
+                StartDayOfWeek = 1,
+                EndDayOfWeek = 7,
+                StartTime = NormalizeTime(window.StartTime, "08:00"),
+                EndTime = NormalizeTime(window.EndTime, "23:00"),
+                Action = AutomationActionType.Start,
+                Enabled = window.Enabled
+            });
+        }
+
+        return migrated;
+    }
+
+    private static int NormalizeWeekDay(int value, int fallback)
+    {
+        return value is >= 1 and <= 7 ? value : fallback;
+    }
+
+    private static string NormalizeDate(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        return DateOnly.TryParse(value.Trim(), out var parsed)
+            ? parsed.ToString("yyyy-MM-dd")
+            : string.Empty;
     }
 }

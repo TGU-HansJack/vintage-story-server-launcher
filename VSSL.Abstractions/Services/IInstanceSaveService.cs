@@ -16,6 +16,10 @@ public interface IInstanceSaveService
         string saveName,
         CancellationToken cancellationToken = default);
 
+    Task<string> BackupActiveSaveAsync(
+        InstanceProfile profile,
+        CancellationToken cancellationToken = default);
+
     Task SetActiveSaveAsync(
         InstanceProfile profile,
         string saveFilePath,

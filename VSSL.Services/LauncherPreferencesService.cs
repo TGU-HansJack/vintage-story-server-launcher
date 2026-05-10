@@ -85,7 +85,13 @@ public class LauncherPreferencesService : ILauncherPreferencesService
             AutoStartRobotOnLaunch = preferences.AutoStartRobotOnLaunch,
             AutoStartServerProfileId = string.IsNullOrWhiteSpace(preferences.AutoStartServerProfileId)
                 ? string.Empty
-                : preferences.AutoStartServerProfileId.Trim()
+                : preferences.AutoStartServerProfileId.Trim(),
+            QuickCommands = (preferences.QuickCommands ?? [])
+                .Select(command => command?.Trim() ?? string.Empty)
+                .Where(command => !string.IsNullOrWhiteSpace(command))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(100)
+                .ToList()
         };
     }
 }

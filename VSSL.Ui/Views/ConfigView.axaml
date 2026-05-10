@@ -89,9 +89,14 @@
                             <ItemsControl ItemsSource="{Binding WorldRules}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:ConfigWorldRuleItemViewModel">
-                                        <Grid Margin="0,0,0,8" ColumnDefinitions="1.5*,2.5*" ColumnSpacing="10">
+                                        <Grid Margin="0,0,0,8" ColumnDefinitions="1.5*,2.5*,*" ColumnSpacing="10">
                                             <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Text="{Binding Label}" />
-                                            <TextBox Grid.Column="1" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" />
+                                            <StackPanel Grid.Column="1" Spacing="6">
+                                                <CheckBox IsVisible="{Binding IsBoolean}" IsChecked="{Binding BoolValue, Mode=TwoWay}" />
+                                                <ComboBox IsVisible="{Binding IsChoice}" ItemsSource="{Binding Choices}" SelectedItem="{Binding Value, Mode=TwoWay}" />
+                                                <TextBox IsVisible="{Binding IsText}" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" />
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="2" VerticalAlignment="Center" Opacity="0.72" Text="{Binding Description}" TextWrapping="Wrap" />
                                         </Grid>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>

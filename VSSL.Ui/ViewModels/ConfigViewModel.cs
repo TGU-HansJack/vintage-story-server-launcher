@@ -262,6 +262,7 @@ public partial class ConfigViewModel : ViewModelBase
                     LabelZh = rule.Definition.LabelZh,
                     LabelEn = rule.Definition.LabelEn,
                     Type = rule.Definition.Type,
+                    Choices = rule.Definition.Choices,
                     DescriptionZh = rule.Definition.DescriptionZh,
                     DescriptionEn = rule.Definition.DescriptionEn,
                     Value = rule.Value ?? string.Empty

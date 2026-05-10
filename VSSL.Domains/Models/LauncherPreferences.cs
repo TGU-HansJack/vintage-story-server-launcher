@@ -54,4 +54,9 @@ public class LauncherPreferences
     ///     是否启动时自动启动 QQ 机器人
     /// </summary>
     public bool AutoStartRobotOnLaunch { get; set; }
+
+    /// <summary>
+    ///     控制台快捷指令
+    /// </summary>
+    public List<string> QuickCommands { get; set; } = [];
 }

@@ -23,12 +23,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <AdditionalFiles Include="Controls\AppHeader.axaml" />
-        <AdditionalFiles Include="Themes\Dark.axaml" />
-        <AdditionalFiles Include="Themes\Light.axaml" />
-        <AdditionalFiles Include="Views\AboutView.axaml" />
-        <AdditionalFiles Include="Views\HomeView.axaml" />
-        <AdditionalFiles Include="Views\MainWindow.axaml" />
     </ItemGroup>
 
     <ItemGroup>

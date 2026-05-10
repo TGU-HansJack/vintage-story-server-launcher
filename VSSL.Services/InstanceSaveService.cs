@@ -81,6 +81,29 @@ public class InstanceSaveService(IInstanceServerConfigService serverConfigServic
     }
 
     /// <inheritdoc />
+    public Task<string> BackupActiveSaveAsync(
+        InstanceProfile profile,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var sourcePath = ResolveActiveSavePath(profile);
+        if (!File.Exists(sourcePath))
+            throw new InvalidOperationException("当前存档文件不存在，无法备份。");
+
+        var sourceName = Path.GetFileNameWithoutExtension(sourcePath);
+        var backupRoot = ResolveBackupRoot(profile);
+
+        Directory.CreateDirectory(backupRoot);
+
+        var backupName = $"{WorkspacePathHelper.SanitizeFileName(sourceName)}-{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.vcdbs";
+        var backupPath = Path.Combine(backupRoot, backupName);
+
+        File.Copy(sourcePath, backupPath, overwrite: false);
+        return Task.FromResult(backupPath);
+    }
+
+    /// <inheritdoc />
     public async Task SetActiveSaveAsync(
         InstanceProfile profile,
         string saveFilePath,
@@ -189,5 +212,53 @@ public class InstanceSaveService(IInstanceServerConfigService serverConfigServic
             return activeSaveDirectory;
 
         return WorkspacePathHelper.GetProfileSavesPath(profile.Id);
+    }
+
+    private static string ResolveActiveSavePath(InstanceProfile profile)
+    {
+        if (!string.IsNullOrWhiteSpace(profile.ActiveSaveFile))
+        {
+            try
+            {
+                return Path.GetFullPath(profile.ActiveSaveFile);
+            }
+            catch
+            {
+                // fall through
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(profile.SaveDirectory))
+        {
+            try
+            {
+                var defaultSave = Path.Combine(Path.GetFullPath(profile.SaveDirectory), "default.vcdbs");
+                return defaultSave;
+            }
+            catch
+            {
+                // fall through
+            }
+        }
+
+        return WorkspacePathHelper.GetProfileDefaultSaveFile(profile.Id);
+    }
+
+    private static string ResolveBackupRoot(InstanceProfile profile)
+    {
+        var profileDirectory = profile.DirectoryPath;
+        if (!string.IsNullOrWhiteSpace(profileDirectory))
+        {
+            try
+            {
+                return Path.Combine(Path.GetFullPath(profileDirectory), "Backups");
+            }
+            catch
+            {
+                // fall through
+            }
+        }
+
+        return Path.Combine(WorkspacePathHelper.GetProfileDataPath(profile.Id), "Backups");
     }
 }

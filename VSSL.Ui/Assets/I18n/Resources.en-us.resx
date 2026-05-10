@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>1.3</value></resheader>
@@ -203,6 +203,8 @@
   <data name="WorkspaceQuickCreatedFormat" xml:space="preserve"><value>Profile created: {0}</value></data>
   <data name="WorkspaceQuickCreateFailedFormat" xml:space="preserve"><value>Failed to create and start: {0}</value></data>
   <data name="WorkspaceQuickDefaultProfileNameFormat" xml:space="preserve"><value>Server-{0:yyyyMMdd-HHmm}</value></data>
+  <data name="WorkspaceQuickCommandsAddButtonText" xml:space="preserve"><value>Add</value></data>
+  <data name="WorkspaceQuickCommandsDialogTitle" xml:space="preserve"><value>Manage Quick Commands</value></data>
   <data name="ConsoleNoOutputText" xml:space="preserve"><value>No output yet.</value></data>
   <data name="WorkspaceRuntimeRunningFormat" xml:space="preserve"><value>Running (PID: {0}, Players: {1}, Started: {2})</value></data>
   <data name="WorkspaceStartupProgressFormat" xml:space="preserve"><value>Startup progress: {0:0}%</value></data>
@@ -256,6 +258,15 @@
   <data name="MapPreviewStatusLoadedProfilesFormat" xml:space="preserve"><value>Loaded {0} profile(s).</value></data>
   <data name="MapPreviewStatusLoadedSavesFormat" xml:space="preserve"><value>Loaded {0} save file(s).</value></data>
   <data name="MapPreviewStatusInvalidPixels" xml:space="preserve"><value>Invalid map pixel data.</value></data>
+  <data name="AutomationHintText" xml:space="preserve"><value>Weekly uses 1-7, date range uses yyyy-MM-dd, time uses HH:mm.</value></data>
+  <data name="AutomationModeLabel" xml:space="preserve"><value>Mode</value></data>
+  <data name="AutomationDayStartLabel" xml:space="preserve"><value>Day Start</value></data>
+  <data name="AutomationDayEndLabel" xml:space="preserve"><value>Day End</value></data>
+  <data name="AutomationDateStartLabel" xml:space="preserve"><value>Date Start</value></data>
+  <data name="AutomationDateEndLabel" xml:space="preserve"><value>Date End</value></data>
+  <data name="AutomationTimeStartLabel" xml:space="preserve"><value>Time Start</value></data>
+  <data name="AutomationTimeEndLabel" xml:space="preserve"><value>Time End</value></data>
+  <data name="AutomationActionLabel" xml:space="preserve"><value>Action</value></data>
   <data name="DirectorySettingsTitle" xml:space="preserve"><value>Directory Settings</value></data>
   <data name="DirectorySettingsDescription" xml:space="preserve"><value>Server directory and startup behavior control downloads, profiles, saves, robot data, tray behavior, and auto-start.</value></data>
   <data name="DirectorySettingsWorkspaceLabel" xml:space="preserve"><value>Workspace Root</value></data>
