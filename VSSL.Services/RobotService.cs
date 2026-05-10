@@ -126,7 +126,12 @@ public class RobotService : IRobotService
             PollIntervalSec = 1.0,
             DefaultEncoding = "utf-8",
             FallbackEncoding = "gbk",
-            SuperUsers = []
+            SuperUsers = [],
+            Owners = [],
+            OsqPollIntervalSec = 20,
+            OsqRequestTimeoutSec = 8,
+            OsqAllowInsecureHttp = false,
+            OsqListenPrefix = "http://127.0.0.1:18089/"
         };
     }
 
@@ -163,6 +168,21 @@ public class RobotService : IRobotService
             .Distinct()
             .ToList();
 
+        var owners = (settings.Owners ?? [])
+            .Where(o => o is not null && o.QqId > 0 && !string.IsNullOrWhiteSpace(o.ServerHost))
+            .Select(o => new RobotOwnerBinding
+            {
+                QqId = o.QqId,
+                ServerHost = o.ServerHost.Trim()
+            })
+            .GroupBy(o => $"{o.ServerHost.ToLowerInvariant()}|{o.QqId}")
+            .Select(g => g.First())
+            .ToList();
+
+        var osqPollIntervalSec = settings.OsqPollIntervalSec <= 0 ? 20 : settings.OsqPollIntervalSec;
+        var osqRequestTimeoutSec = settings.OsqRequestTimeoutSec <= 0 ? 8 : settings.OsqRequestTimeoutSec;
+        var osqListenPrefix = NormalizeListenPrefix(settings.OsqListenPrefix);
+
         return new RobotSettings
         {
             OneBotWsUrl = wsUrl,
@@ -172,8 +192,85 @@ public class RobotService : IRobotService
             PollIntervalSec = poll,
             DefaultEncoding = defaultEncoding,
             FallbackEncoding = fallbackEncoding,
-            SuperUsers = superUsers
+            SuperUsers = superUsers,
+            Owners = owners,
+            OsqPollIntervalSec = osqPollIntervalSec,
+            OsqRequestTimeoutSec = osqRequestTimeoutSec,
+            OsqAllowInsecureHttp = settings.OsqAllowInsecureHttp,
+            OsqListenPrefix = osqListenPrefix
         };
+    }
+
+    private static string NormalizeListenPrefix(string? value)
+    {
+        var raw = string.IsNullOrWhiteSpace(value)
+            ? "http://127.0.0.1:18089/"
+            : value.Trim();
+
+        if (IsWildcardListenPrefix(raw))
+        {
+            return NormalizeWildcardListenPrefix(raw);
+        }
+
+        if (!raw.EndsWith('/'))
+        {
+            raw += "/";
+        }
+
+        if (!Uri.TryCreate(raw, UriKind.Absolute, out var uri))
+        {
+            return "http://127.0.0.1:18089/";
+        }
+
+        if (!string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            return "http://127.0.0.1:18089/";
+        }
+
+        if (string.IsNullOrWhiteSpace(uri.Host))
+        {
+            return "http://127.0.0.1:18089/";
+        }
+
+        var prefix = uri.GetLeftPart(UriPartial.Path);
+        if (!prefix.EndsWith('/'))
+        {
+            prefix += "/";
+        }
+
+        return prefix;
+    }
+
+    private static bool IsWildcardListenPrefix(string value)
+    {
+        return value.StartsWith("http://+:", StringComparison.OrdinalIgnoreCase)
+            || value.StartsWith("http://*:", StringComparison.OrdinalIgnoreCase)
+            || value.StartsWith("http://0.0.0.0:", StringComparison.OrdinalIgnoreCase)
+            || value.StartsWith("https://+:", StringComparison.OrdinalIgnoreCase)
+            || value.StartsWith("https://*:", StringComparison.OrdinalIgnoreCase)
+            || value.StartsWith("https://0.0.0.0:", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeWildcardListenPrefix(string value)
+    {
+        string prefix = value.Trim();
+        if (!prefix.EndsWith('/'))
+        {
+            prefix += "/";
+        }
+
+        if (prefix.StartsWith("http://0.0.0.0:", StringComparison.OrdinalIgnoreCase))
+        {
+            return "http://+:" + prefix["http://0.0.0.0:".Length..];
+        }
+
+        if (prefix.StartsWith("https://0.0.0.0:", StringComparison.OrdinalIgnoreCase))
+        {
+            return "https://+:" + prefix["https://0.0.0.0:".Length..];
+        }
+
+        return prefix;
     }
 
     private void OnProcessOutputReceived(object? sender, string line)

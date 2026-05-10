@@ -24,6 +24,11 @@ public partial class RobotConfigViewModel : ViewModelBase
     [ObservableProperty] private string _defaultEncoding = "utf-8";
     [ObservableProperty] private string _fallbackEncoding = "gbk";
     [ObservableProperty] private string _superUsersText = string.Empty;
+    [ObservableProperty] private string _ownersText = string.Empty;
+    [ObservableProperty] private int _osqPollIntervalSec = 20;
+    [ObservableProperty] private int _osqRequestTimeoutSec = 8;
+    [ObservableProperty] private bool _osqAllowInsecureHttp;
+    [ObservableProperty] private string _osqListenPrefix = "http://127.0.0.1:18089/";
 
     [RelayCommand]
     private async Task RefreshAsync()
@@ -80,7 +85,12 @@ public partial class RobotConfigViewModel : ViewModelBase
             PollIntervalSec = PollIntervalSec,
             DefaultEncoding = DefaultEncoding.Trim(),
             FallbackEncoding = FallbackEncoding.Trim(),
-            SuperUsers = ParseSuperUsers(SuperUsersText)
+            SuperUsers = ParseSuperUsers(SuperUsersText),
+            Owners = ParseOwners(OwnersText),
+            OsqPollIntervalSec = OsqPollIntervalSec,
+            OsqRequestTimeoutSec = OsqRequestTimeoutSec,
+            OsqAllowInsecureHttp = OsqAllowInsecureHttp,
+            OsqListenPrefix = OsqListenPrefix.Trim()
         };
     }
 
@@ -95,6 +105,15 @@ public partial class RobotConfigViewModel : ViewModelBase
         FallbackEncoding = settings.FallbackEncoding;
         SuperUsersText = string.Join(Environment.NewLine,
             settings.SuperUsers.Select(id => id.ToString(CultureInfo.InvariantCulture)));
+        OwnersText = string.Join(
+            Environment.NewLine,
+            (settings.Owners ?? [])
+            .Where(o => o is not null && o.QqId > 0 && !string.IsNullOrWhiteSpace(o.ServerHost))
+            .Select(o => $"{o.ServerHost} {o.QqId}"));
+        OsqPollIntervalSec = settings.OsqPollIntervalSec;
+        OsqRequestTimeoutSec = settings.OsqRequestTimeoutSec;
+        OsqAllowInsecureHttp = settings.OsqAllowInsecureHttp;
+        OsqListenPrefix = settings.OsqListenPrefix;
     }
 
     private static IReadOnlyList<long> ParseSuperUsers(string text)
@@ -114,6 +133,53 @@ public partial class RobotConfigViewModel : ViewModelBase
         }
 
         return result.Distinct().ToList();
+    }
+
+    private static IReadOnlyList<RobotOwnerBinding> ParseOwners(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return [];
+        }
+
+        List<RobotOwnerBinding> result = [];
+        string[] lines = text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
+        foreach (string rawLine in lines)
+        {
+            string line = rawLine.Trim();
+            if (line.Length == 0)
+            {
+                continue;
+            }
+
+            string[] parts = line.Split([' ', '\t', ',', ';', '|'], StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 2)
+            {
+                continue;
+            }
+
+            string serverHost = parts[0].Trim();
+            if (!long.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out long qqId))
+            {
+                continue;
+            }
+
+            if (serverHost.Length == 0 || qqId <= 0)
+            {
+                continue;
+            }
+
+            result.Add(new RobotOwnerBinding
+            {
+                ServerHost = serverHost,
+                QqId = qqId
+            });
+        }
+
+        return result
+            .GroupBy(x => $"{x.ServerHost.ToLowerInvariant()}|{x.QqId}")
+            .Select(g => g.First())
+            .ToList();
     }
 
     #region Constructors

@@ -20,4 +20,21 @@ public class RobotSettings
     public string FallbackEncoding { get; init; } = "gbk";
 
     public IReadOnlyList<long> SuperUsers { get; init; } = [];
+
+    public IReadOnlyList<RobotOwnerBinding> Owners { get; init; } = [];
+
+    public int OsqPollIntervalSec { get; init; } = 20;
+
+    public int OsqRequestTimeoutSec { get; init; } = 8;
+
+    public bool OsqAllowInsecureHttp { get; init; }
+
+    public string OsqListenPrefix { get; init; } = "http://127.0.0.1:18089/";
+}
+
+public sealed class RobotOwnerBinding
+{
+    public string ServerHost { get; init; } = string.Empty;
+
+    public long QqId { get; init; }
 }

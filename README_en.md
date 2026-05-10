@@ -28,7 +28,7 @@ The application uses a three-zone layout. The top area contains window controls 
 | Config | Visual configuration for `serverconfig.json`. | Edits server basics, world parameters, world rules, and supports advanced JSON editing. |
 | Save | Manage `.vcdbs` save files. | Creates saves, switches active save, deletes saves, and writes changes back to profile config. |
 | Mod | Manage the Mods directory. | Imports zip mods, parses `modinfo.json`, toggles enable state, and reports missing dependencies. |
-| Robot Config | Configure VS2QQ integration. | Configures OneBot WebSocket, token, polling, encoding, super users, and database path. |
+| Robot Config | Configure VS2QQ integration. | Configures OneBot WebSocket, token, polling, encoding, super admins, and database path. |
 | Robot Console | Operate VS2QQ runtime. | Starts and stops robot service, refreshes and clears logs, and shows runtime connection state. |
 | About | Version and project links. | Displays current version, checks GitHub Releases updates, and opens repository or community links. |
 | Feedback | Issue reporting entry. | One-click jump to the issue tracker page. |
@@ -103,7 +103,20 @@ Windows installer packaging is defined in `.github/workflows/windows-packages.ym
 
 ### Robot Commands
 
-Built-in VS2QQ currently supports `/help`, `/bindqq`, `/unbindqq`, `/mybind`, `/bindserver`, `/unbindserver`, `/listserver`, and `/bindserverregex`.
+Built-in VS2QQ uses English commands with Chinese descriptions:
+
+- `/help` (command help)
+- `/bindqq <player_name>` (bind QQ to player name)
+- `/unbindqq` (unbind current QQ)
+- `/mybind` (show current QQ binding)
+- `/bindserver <host_or_ip_port_or_domain> <token> <qq_group_id>` (bind remote/cloud server)
+- `/unbindserver <host_or_ip_port_or_domain> <qq_group_id>` (unbind remote server)
+- `/listserver` (list remote server bindings)
+- `/server status [n]` (query on-demand status snapshot #n, default 1)
+- `/bindlogserver <server_id> <log_path>` (bind local log server, group admin/owner)
+- `/unbindlogserver <server_id>` (unbind local log server, group admin/owner)
+- `/listlogserver` (list local log server bindings)
+- `/bindlogregex <server_id> <regex>` (set log regex, group admin/owner)
 
 ## Platform Notes and Limitations
 
