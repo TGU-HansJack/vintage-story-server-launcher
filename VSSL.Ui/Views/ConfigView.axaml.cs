@@ -14,5 +14,24 @@ public partial class ConfigView : UserControl
         InitializeComponent();
         DataContext = viewModel;
     }
-}
 
+    private async void ShowcaseImages_OnSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (DataContext is not ConfigViewModel vm)
+        {
+            return;
+        }
+
+        if (vm.IsBusy)
+        {
+            return;
+        }
+
+        if (sender is not ListBox listBox || listBox.SelectedItem is not ConfigServerImageItemViewModel image)
+        {
+            return;
+        }
+
+        await vm.PreviewShowcaseImageCommand.ExecuteAsync(image);
+    }
+}

@@ -92,6 +92,77 @@
 
                     <Border Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
                         <StackPanel Spacing="10">
+                            <TextBlock FontSize="16" FontWeight="SemiBold" Text="{Binding [ConfigServerImagesSectionTitle]}" />
+
+                            <StackPanel Spacing="4">
+                                <TextBlock FontWeight="SemiBold" Text="{Binding [ConfigServerImagesRootLabel]}" />
+                                <TextBlock Text="{Binding ImageRootPath}" TextWrapping="Wrap" Opacity="0.78" />
+                            </StackPanel>
+
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                                <Border Padding="10" CornerRadius="6" BorderBrush="Gray" BorderThickness="1">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock FontWeight="SemiBold" Text="{Binding [ConfigServerImagesCoverTitle]}" />
+                                        <TextBlock Text="{Binding CoverImageDisplayText}" TextWrapping="Wrap" />
+
+                                        <StackPanel Spacing="6">
+                                            <TextBlock Text="{Binding PendingCoverImportPath}" TextWrapping="Wrap" Opacity="0.78" />
+                                            <WrapPanel Orientation="Horizontal" ItemHeight="32" ItemWidth="100">
+                                                <Button Command="{Binding BrowseCoverImageCommand}" Content="{Binding [CommonBrowseButtonText]}" />
+                                                <Button Command="{Binding ImportCoverImageCommand}" Content="{Binding [CommonImportButtonText]}" />
+                                                <Button Command="{Binding PreviewCoverImageCommand}" Content="{Binding [ConfigServerImagesPreviewButtonText]}" />
+                                                <Button Command="{Binding DeleteCoverImageCommand}" Content="{Binding [CommonDeleteButtonText]}" />
+                                            </WrapPanel>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Grid.Column="1" Padding="10" CornerRadius="6" BorderBrush="Gray" BorderThickness="1">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock FontWeight="SemiBold" Text="{Binding [ConfigServerImagesShowcaseTitle]}" />
+                                        <TextBlock
+                                            IsVisible="{Binding HasShowcaseImages}"
+                                            Text="{Binding [ConfigServerImagesShowcaseHintText]}"
+                                            Opacity="0.75"
+                                            />
+                                        <TextBlock
+                                            IsVisible="{Binding HasNoShowcaseImages}"
+                                            Text="{Binding [ConfigServerImagesNoShowcaseText]}"
+                                            Opacity="0.75"
+                                            />
+                                        <ListBox MaxHeight="170"
+                                                 ItemsSource="{Binding ShowcaseImages}"
+                                                 SelectedItem="{Binding SelectedShowcaseImage}"
+                                                 SelectionChanged="ShowcaseImages_OnSelectionChanged">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:ConfigServerImageItemViewModel">
+                                                    <StackPanel Spacing="2">
+                                                        <TextBlock FontWeight="SemiBold" Text="{Binding FileName}" />
+                                                        <TextBlock Opacity="0.72" Text="{Binding RelativePath}" TextWrapping="Wrap" />
+                                                        <TextBlock Opacity="0.72" Text="{Binding SizeLabel}" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+
+                                        <StackPanel Spacing="6">
+                                            <TextBlock Text="{Binding PendingShowcaseImportPath}" TextWrapping="Wrap" Opacity="0.78" />
+                                            <WrapPanel Orientation="Horizontal" ItemHeight="32" ItemWidth="100">
+                                                <Button Command="{Binding BrowseShowcaseImageCommand}" Content="{Binding [CommonBrowseButtonText]}" />
+                                                <Button Command="{Binding AddShowcaseImageCommand}" Content="{Binding [ConfigServerImagesAddButtonText]}" />
+                                                <Button Command="{Binding ImportShowcaseFolderCommand}" Content="{Binding [CommonImportButtonText]}" />
+                                                <Button Command="{Binding PreviewShowcaseImageCommand}" Content="{Binding [ConfigServerImagesPreviewButtonText]}" />
+                                                <Button Command="{Binding DeleteShowcaseImageCommand}" Content="{Binding [CommonDeleteButtonText]}" />
+                                            </WrapPanel>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
+                        <StackPanel Spacing="10">
                             <TextBlock FontSize="16" FontWeight="SemiBold" Text="{Binding [ConfigWorldRulesSectionTitle]}" />
                             <ItemsControl ItemsSource="{Binding WorldRules}">
                                 <ItemsControl.ItemTemplate>

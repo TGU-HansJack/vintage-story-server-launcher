@@ -12,9 +12,22 @@ namespace VSSL.Ui.ViewModels;
 /// </summary>
 public partial class ConfigViewModel : ViewModelBase
 {
+    private static readonly IReadOnlyList<string> ImagePatterns =
+    [
+        "*.png",
+        "*.jpg",
+        "*.jpeg",
+        "*.webp",
+        "*.gif",
+        "*.bmp"
+    ];
+
     private readonly IInstanceProfileService? _instanceProfileService;
     private readonly IInstanceServerConfigService? _instanceServerConfigService;
     private readonly IAdvancedJsonDialogService? _advancedJsonDialogService;
+    private readonly IFilePickerService? _filePickerService;
+    private readonly IServerImageService? _serverImageService;
+    private readonly IImagePreviewDialogService? _imagePreviewDialogService;
 
     [ObservableProperty] private InstanceProfile? _selectedProfile;
     [ObservableProperty] private string _statusMessage = string.Empty;
@@ -42,13 +55,42 @@ public partial class ConfigViewModel : ViewModelBase
     [ObservableProperty] private string _worldType = "standard";
     [ObservableProperty] private int _worldHeight = 256;
 
+    [ObservableProperty] private string _imageRootPath = string.Empty;
+    [ObservableProperty] private string _pendingCoverImportPath = string.Empty;
+    [ObservableProperty] private string _pendingShowcaseImportPath = string.Empty;
+    [ObservableProperty] private ConfigServerImageItemViewModel? _coverImage;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSelectedShowcaseImage))]
+    private ConfigServerImageItemViewModel? _selectedShowcaseImage;
+
     public ObservableCollection<InstanceProfile> Profiles { get; } = [];
 
     public ObservableCollection<ConfigWorldRuleItemViewModel> WorldRules { get; } = [];
 
+    public ObservableCollection<ConfigServerImageItemViewModel> ShowcaseImages { get; } = [];
+
     public bool HasProfiles => Profiles.Count > 0;
 
     public bool HasNoProfiles => !HasProfiles;
+
+    public bool HasCoverImage => CoverImage is not null;
+
+    public bool HasSelectedShowcaseImage => SelectedShowcaseImage is not null;
+
+    public bool HasShowcaseImages => ShowcaseImages.Count > 0;
+
+    public bool HasNoShowcaseImages => !HasShowcaseImages;
+
+    public string CoverImageDisplayText => CoverImage is null
+        ? L("ConfigServerImagesNoCoverText")
+        : $"{CoverImage.RelativePath} ({CoverImage.SizeLabel})";
+
+    partial void OnCoverImageChanged(ConfigServerImageItemViewModel? value)
+    {
+        OnPropertyChanged(nameof(HasCoverImage));
+        OnPropertyChanged(nameof(CoverImageDisplayText));
+    }
 
     partial void OnSelectedProfileChanged(InstanceProfile? value)
     {
@@ -223,6 +265,348 @@ public partial class ConfigViewModel : ViewModelBase
         }
     }
 
+    [RelayCommand]
+    private async Task BrowseCoverImageAsync()
+    {
+        if (_filePickerService is null)
+        {
+            return;
+        }
+
+        var selected = await _filePickerService.PickSingleFileAsync(
+            L("ConfigImageBrowseDialogTitle"),
+            L("ConfigImageBrowseFilterName"),
+            ImagePatterns);
+        if (string.IsNullOrWhiteSpace(selected))
+        {
+            return;
+        }
+
+        PendingCoverImportPath = selected;
+        StatusMessage = LF("ConfigImageStatusSelectedImportFileFormat", Path.GetFileName(selected));
+    }
+
+    [RelayCommand]
+    private async Task ImportCoverImageAsync()
+    {
+        if (_serverImageService is null)
+        {
+            return;
+        }
+
+        var profile = SelectedProfile;
+        if (profile is null)
+        {
+            StatusMessage = L("StatusSelectProfileFirst");
+            return;
+        }
+
+        var sourcePath = PendingCoverImportPath;
+        if (!TryValidateImportSource(sourcePath, out var validatedSourcePath, out var error))
+        {
+            if (_filePickerService is null)
+            {
+                StatusMessage = error;
+                return;
+            }
+
+            sourcePath = await _filePickerService.PickSingleFileAsync(
+                L("ConfigImageBrowseDialogTitle"),
+                L("ConfigImageBrowseFilterName"),
+                ImagePatterns);
+            if (string.IsNullOrWhiteSpace(sourcePath))
+            {
+                return;
+            }
+
+            if (!TryValidateImportSource(sourcePath, out validatedSourcePath, out error))
+            {
+                StatusMessage = error;
+                return;
+            }
+        }
+
+        try
+        {
+            IsBusy = true;
+            var imported = await _serverImageService.ImportImageAsync(profile, validatedSourcePath, ServerImageKind.Cover);
+            await ReloadServerImagesAsync(profile);
+            PendingCoverImportPath = validatedSourcePath;
+            StatusMessage = LF("ConfigImageStatusCoverImportedFormat", imported.FileName);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = LF("ConfigStatusSaveFailedFormat", ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task DeleteCoverImageAsync()
+    {
+        if (_serverImageService is null)
+        {
+            return;
+        }
+
+        var profile = SelectedProfile;
+        if (profile is null)
+        {
+            StatusMessage = L("StatusSelectProfileFirst");
+            return;
+        }
+
+        if (CoverImage is null)
+        {
+            StatusMessage = L("ConfigServerImagesNoCoverText");
+            return;
+        }
+
+        try
+        {
+            IsBusy = true;
+            await _serverImageService.DeleteImageAsync(profile, ToDomainImageInfo(CoverImage, ServerImageKind.Cover));
+            await ReloadServerImagesAsync(profile);
+            StatusMessage = L("ConfigImageStatusCoverDeleted");
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = LF("ConfigStatusSaveFailedFormat", ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task PreviewCoverImageAsync()
+    {
+        if (_imagePreviewDialogService is null)
+        {
+            return;
+        }
+
+        if (CoverImage is null || !File.Exists(CoverImage.FullPath))
+        {
+            StatusMessage = L("ConfigServerImagesNoCoverText");
+            return;
+        }
+
+        try
+        {
+            await _imagePreviewDialogService.ShowAsync(
+                LF("ConfigImagePreviewDialogTitleFormat", CoverImage.FileName),
+                CoverImage.FullPath);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = LF("ConfigImageStatusPreviewFailedFormat", ex.Message);
+        }
+    }
+
+    [RelayCommand]
+    private async Task BrowseShowcaseImageAsync()
+    {
+        if (_filePickerService is null)
+        {
+            return;
+        }
+
+        var selected = await _filePickerService.PickSingleFileAsync(
+            L("ConfigImageBrowseDialogTitle"),
+            L("ConfigImageBrowseFilterName"),
+            ImagePatterns);
+        if (string.IsNullOrWhiteSpace(selected))
+        {
+            return;
+        }
+
+        PendingShowcaseImportPath = selected;
+        StatusMessage = LF("ConfigImageStatusSelectedImportFileFormat", Path.GetFileName(selected));
+    }
+
+    [RelayCommand]
+    private async Task AddShowcaseImageAsync()
+    {
+        if (_serverImageService is null)
+        {
+            return;
+        }
+
+        var profile = SelectedProfile;
+        if (profile is null)
+        {
+            StatusMessage = L("StatusSelectProfileFirst");
+            return;
+        }
+
+        var sourcePath = PendingShowcaseImportPath;
+        if (!TryValidateImportSource(sourcePath, out var validatedSourcePath, out var error))
+        {
+            if (_filePickerService is null)
+            {
+                StatusMessage = error;
+                return;
+            }
+
+            sourcePath = await _filePickerService.PickSingleFileAsync(
+                L("ConfigImageBrowseDialogTitle"),
+                L("ConfigImageBrowseFilterName"),
+                ImagePatterns);
+            if (string.IsNullOrWhiteSpace(sourcePath))
+            {
+                return;
+            }
+
+            if (!TryValidateImportSource(sourcePath, out validatedSourcePath, out error))
+            {
+                StatusMessage = error;
+                return;
+            }
+        }
+
+        try
+        {
+            IsBusy = true;
+            var imported = await _serverImageService.ImportImageAsync(profile, validatedSourcePath, ServerImageKind.Showcase);
+            await ReloadServerImagesAsync(profile);
+            PendingShowcaseImportPath = validatedSourcePath;
+            StatusMessage = LF("ConfigImageStatusShowcaseAddedFormat", imported.FileName);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = LF("ConfigStatusSaveFailedFormat", ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task ImportShowcaseFolderAsync()
+    {
+        if (_filePickerService is null || _serverImageService is null)
+        {
+            return;
+        }
+
+        var profile = SelectedProfile;
+        if (profile is null)
+        {
+            StatusMessage = L("StatusSelectProfileFirst");
+            return;
+        }
+
+        var folder = await _filePickerService.PickFolderAsync(L("ConfigImageImportFolderDialogTitle"));
+        if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder))
+        {
+            return;
+        }
+
+        var files = Directory.EnumerateFiles(folder, "*.*", SearchOption.TopDirectoryOnly)
+            .Where(IsSupportedImagePath)
+            .OrderBy(path => Path.GetFileName(path), StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (files.Count == 0)
+        {
+            StatusMessage = L("ConfigImageStatusNoImportFiles");
+            return;
+        }
+
+        try
+        {
+            IsBusy = true;
+            var importedCount = 0;
+            foreach (var file in files)
+            {
+                await _serverImageService.ImportImageAsync(profile, file, ServerImageKind.Showcase);
+                importedCount++;
+            }
+
+            await ReloadServerImagesAsync(profile);
+            StatusMessage = LF("ConfigImageStatusShowcaseImportedFormat", importedCount);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = LF("ConfigStatusSaveFailedFormat", ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task DeleteShowcaseImageAsync(ConfigServerImageItemViewModel? image)
+    {
+        if (_serverImageService is null)
+        {
+            return;
+        }
+
+        var profile = SelectedProfile;
+        if (profile is null)
+        {
+            StatusMessage = L("StatusSelectProfileFirst");
+            return;
+        }
+
+        var selected = image ?? SelectedShowcaseImage;
+        if (selected is null)
+        {
+            StatusMessage = L("ConfigImageStatusSelectShowcaseFirst");
+            return;
+        }
+
+        try
+        {
+            IsBusy = true;
+            await _serverImageService.DeleteImageAsync(profile, ToDomainImageInfo(selected, ServerImageKind.Showcase));
+            await ReloadServerImagesAsync(profile);
+            StatusMessage = LF("ConfigImageStatusShowcaseDeletedFormat", selected.FileName);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = LF("ConfigStatusSaveFailedFormat", ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task PreviewShowcaseImageAsync(ConfigServerImageItemViewModel? image)
+    {
+        if (_imagePreviewDialogService is null)
+        {
+            return;
+        }
+
+        var selected = image ?? SelectedShowcaseImage;
+        if (selected is null || !File.Exists(selected.FullPath))
+        {
+            StatusMessage = L("ConfigImageStatusSelectShowcaseFirst");
+            return;
+        }
+
+        try
+        {
+            await _imagePreviewDialogService.ShowAsync(
+                LF("ConfigImagePreviewDialogTitleFormat", selected.FileName),
+                selected.FullPath);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = LF("ConfigImageStatusPreviewFailedFormat", ex.Message);
+        }
+    }
+
     private async Task LoadSelectedProfileAsync(InstanceProfile? selectedProfile)
     {
         if (_instanceServerConfigService is null || _instanceProfileService is null) return;
@@ -277,6 +661,7 @@ public partial class ConfigViewModel : ViewModelBase
                 });
             }
 
+            await ReloadServerImagesAsync(profile);
             StatusMessage = LF("ConfigStatusLoadedProfileConfigFormat", profile.Name);
         }
         catch (Exception ex)
@@ -287,6 +672,35 @@ public partial class ConfigViewModel : ViewModelBase
         {
             IsBusy = false;
         }
+    }
+
+    private async Task ReloadServerImagesAsync(InstanceProfile profile)
+    {
+        if (_serverImageService is null)
+        {
+            ClearImageForm();
+            return;
+        }
+
+        ImageRootPath = _serverImageService.GetImageRootPath(profile);
+        var images = await _serverImageService.LoadServerImagesAsync(profile);
+
+        var cover = images.FirstOrDefault(image => image.Kind == ServerImageKind.Cover);
+        CoverImage = cover is null ? null : ToViewModel(cover);
+
+        var oldSelectedPath = SelectedShowcaseImage?.FullPath;
+        ShowcaseImages.Clear();
+        foreach (var info in images.Where(image => image.Kind == ServerImageKind.Showcase))
+        {
+            ShowcaseImages.Add(ToViewModel(info));
+        }
+
+        SelectedShowcaseImage = ShowcaseImages.FirstOrDefault(item =>
+            !string.IsNullOrWhiteSpace(oldSelectedPath) &&
+            item.FullPath.Equals(oldSelectedPath, StringComparison.OrdinalIgnoreCase));
+
+        OnPropertyChanged(nameof(HasShowcaseImages));
+        OnPropertyChanged(nameof(HasNoShowcaseImages));
     }
 
     private void ClearForm()
@@ -310,6 +724,82 @@ public partial class ConfigViewModel : ViewModelBase
         WorldType = "standard";
         WorldHeight = 256;
         WorldRules.Clear();
+        ClearImageForm();
+    }
+
+    private void ClearImageForm()
+    {
+        ImageRootPath = string.Empty;
+        PendingCoverImportPath = string.Empty;
+        PendingShowcaseImportPath = string.Empty;
+        CoverImage = null;
+        ShowcaseImages.Clear();
+        SelectedShowcaseImage = null;
+        OnPropertyChanged(nameof(HasShowcaseImages));
+        OnPropertyChanged(nameof(HasNoShowcaseImages));
+    }
+
+    private bool TryValidateImportSource(string? rawPath, out string sourcePath, out string error)
+    {
+        sourcePath = string.Empty;
+        error = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(rawPath))
+        {
+            error = L("ConfigImageStatusSelectFileFirst");
+            return false;
+        }
+
+        sourcePath = Path.GetFullPath(rawPath.Trim());
+        if (!File.Exists(sourcePath))
+        {
+            error = L("ConfigImageStatusFileNotFound");
+            return false;
+        }
+
+        if (!IsSupportedImagePath(sourcePath))
+        {
+            error = L("ConfigImageStatusUnsupportedFormat");
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsSupportedImagePath(string path)
+    {
+        var ext = Path.GetExtension(path) ?? string.Empty;
+        return ext.Equals(".png", StringComparison.OrdinalIgnoreCase)
+               || ext.Equals(".jpg", StringComparison.OrdinalIgnoreCase)
+               || ext.Equals(".jpeg", StringComparison.OrdinalIgnoreCase)
+               || ext.Equals(".webp", StringComparison.OrdinalIgnoreCase)
+               || ext.Equals(".gif", StringComparison.OrdinalIgnoreCase)
+               || ext.Equals(".bmp", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static ConfigServerImageItemViewModel ToViewModel(ServerImageFileInfo image)
+    {
+        return new ConfigServerImageItemViewModel
+        {
+            Kind = image.Kind,
+            FullPath = image.FullPath,
+            RelativePath = image.RelativePath,
+            FileName = image.FileName,
+            SizeBytes = image.SizeBytes
+        };
+    }
+
+    private static ServerImageFileInfo ToDomainImageInfo(ConfigServerImageItemViewModel image, ServerImageKind kind)
+    {
+        return new ServerImageFileInfo
+        {
+            Kind = kind,
+            FullPath = image.FullPath,
+            RelativePath = image.RelativePath,
+            FileName = image.FileName,
+            SizeBytes = image.SizeBytes,
+            LastWriteUtc = DateTimeOffset.UtcNow
+        };
     }
 
     private void EnsureServerLanguageOptions()
@@ -336,11 +826,17 @@ public partial class ConfigViewModel : ViewModelBase
     public ConfigViewModel(
         IInstanceProfileService instanceProfileService,
         IInstanceServerConfigService instanceServerConfigService,
-        IAdvancedJsonDialogService advancedJsonDialogService)
+        IAdvancedJsonDialogService advancedJsonDialogService,
+        IFilePickerService filePickerService,
+        IServerImageService serverImageService,
+        IImagePreviewDialogService imagePreviewDialogService)
     {
         _instanceProfileService = instanceProfileService;
         _instanceServerConfigService = instanceServerConfigService;
         _advancedJsonDialogService = advancedJsonDialogService;
+        _filePickerService = filePickerService;
+        _serverImageService = serverImageService;
+        _imagePreviewDialogService = imagePreviewDialogService;
         EnsureServerLanguageOptions();
 
         _ = RefreshAsync();

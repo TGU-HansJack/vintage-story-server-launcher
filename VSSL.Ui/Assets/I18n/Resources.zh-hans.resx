@@ -80,6 +80,31 @@
   <data name="ConfigWorldTypeLabel" xml:space="preserve"><value>世界类型</value></data>
   <data name="ConfigWorldHeightLabel" xml:space="preserve"><value>世界高度</value></data>
   <data name="ConfigWorldRulesSectionTitle" xml:space="preserve"><value>世界规则</value></data>
+  <data name="ConfigServerImagesSectionTitle" xml:space="preserve"><value>服务器图片</value></data>
+  <data name="ConfigServerImagesRootLabel" xml:space="preserve"><value>图片目录</value></data>
+  <data name="ConfigServerImagesCoverTitle" xml:space="preserve"><value>封面图（cover）</value></data>
+  <data name="ConfigServerImagesShowcaseTitle" xml:space="preserve"><value>展示图（showcase）</value></data>
+  <data name="ConfigServerImagesShowcaseHintText" xml:space="preserve"><value>选择列表项后可预览。</value></data>
+  <data name="ConfigServerImagesNoShowcaseText" xml:space="preserve"><value>暂无展示图。</value></data>
+  <data name="ConfigServerImagesNoCoverText" xml:space="preserve"><value>暂无封面图。</value></data>
+  <data name="ConfigServerImagesPreviewButtonText" xml:space="preserve"><value>预览</value></data>
+  <data name="ConfigServerImagesAddButtonText" xml:space="preserve"><value>添加</value></data>
+  <data name="ConfigImageBrowseDialogTitle" xml:space="preserve"><value>选择图片</value></data>
+  <data name="ConfigImageBrowseFilterName" xml:space="preserve"><value>图片文件</value></data>
+  <data name="ConfigImageImportFolderDialogTitle" xml:space="preserve"><value>选择图片文件夹</value></data>
+  <data name="ConfigImagePreviewDialogTitleFormat" xml:space="preserve"><value>预览：{0}</value></data>
+  <data name="ConfigImageStatusSelectedImportFileFormat" xml:space="preserve"><value>已选择图片：{0}</value></data>
+  <data name="ConfigImageStatusCoverImportedFormat" xml:space="preserve"><value>封面图已导入：{0}</value></data>
+  <data name="ConfigImageStatusCoverDeleted" xml:space="preserve"><value>封面图已删除。</value></data>
+  <data name="ConfigImageStatusShowcaseAddedFormat" xml:space="preserve"><value>已添加展示图：{0}</value></data>
+  <data name="ConfigImageStatusShowcaseImportedFormat" xml:space="preserve"><value>已导入 {0} 张展示图。</value></data>
+  <data name="ConfigImageStatusShowcaseDeletedFormat" xml:space="preserve"><value>展示图已删除：{0}</value></data>
+  <data name="ConfigImageStatusNoImportFiles" xml:space="preserve"><value>所选目录中没有可导入的图片文件。</value></data>
+  <data name="ConfigImageStatusSelectShowcaseFirst" xml:space="preserve"><value>请先选择一张展示图。</value></data>
+  <data name="ConfigImageStatusSelectFileFirst" xml:space="preserve"><value>请先选择图片文件。</value></data>
+  <data name="ConfigImageStatusFileNotFound" xml:space="preserve"><value>图片文件不存在。</value></data>
+  <data name="ConfigImageStatusUnsupportedFormat" xml:space="preserve"><value>仅支持 png/jpg/jpeg/webp/gif/bmp 图片。</value></data>
+  <data name="ConfigImageStatusPreviewFailedFormat" xml:space="preserve"><value>图片预览失败：{0}</value></data>
   <data name="ConfigNoProfileText" xml:space="preserve"><value>暂无档案，请先创建档案。</value></data>
   <data name="ConfigAdvancedJsonDialogTitle" xml:space="preserve"><value>编辑高级JSON</value></data>
   <data name="ConfigStatusSaved" xml:space="preserve"><value>配置已保存。</value></data>

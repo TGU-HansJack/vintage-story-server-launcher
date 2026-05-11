@@ -2678,6 +2678,9 @@ public sealed class Vs2QQProcessService
         {
             lock (_sync)
             {
+                var previousSnapshot = ReadLatestOsqSnapshotLocked(serverHost, 1);
+                var mergedSnapshot = MergeServerImages(previousSnapshot, payload);
+
                 using (var command = _connection.CreateCommand())
                 {
                     command.CommandText =
@@ -2686,7 +2689,7 @@ public sealed class Vs2QQProcessService
                         VALUES ($serverHost, $payloadJson, $createdAt);
                         """;
                     command.Parameters.AddWithValue("$serverHost", serverHost);
-                    command.Parameters.AddWithValue("$payloadJson", JsonSerializer.Serialize(payload, OsqJsonOptions));
+                    command.Parameters.AddWithValue("$payloadJson", JsonSerializer.Serialize(mergedSnapshot, OsqJsonOptions));
                     command.Parameters.AddWithValue("$createdAt", GetUtcNowIso());
                     command.ExecuteNonQuery();
                 }
@@ -2714,39 +2717,99 @@ public sealed class Vs2QQProcessService
 
         public OsqSnapshotEnvelope? GetLatestOsqSnapshot(string serverHost, int index)
         {
+            lock (_sync)
+            {
+                return ReadLatestOsqSnapshotLocked(serverHost, index);
+            }
+        }
+
+        private OsqSnapshotEnvelope? ReadLatestOsqSnapshotLocked(string serverHost, int index)
+        {
             if (index <= 0)
             {
                 return null;
             }
 
-            lock (_sync)
+            using var command = _connection.CreateCommand();
+            command.CommandText =
+                """
+                SELECT payload_json
+                FROM osq_snapshots
+                WHERE server_host = $serverHost
+                ORDER BY snapshot_id DESC
+                LIMIT 1 OFFSET $offset;
+                """;
+            command.Parameters.AddWithValue("$serverHost", serverHost);
+            command.Parameters.AddWithValue("$offset", index - 1);
+            var value = command.ExecuteScalar();
+            if (value is null || value == DBNull.Value)
             {
-                using var command = _connection.CreateCommand();
-                command.CommandText =
-                    """
-                    SELECT payload_json
-                    FROM osq_snapshots
-                    WHERE server_host = $serverHost
-                    ORDER BY snapshot_id DESC
-                    LIMIT 1 OFFSET $offset;
-                    """;
-                command.Parameters.AddWithValue("$serverHost", serverHost);
-                command.Parameters.AddWithValue("$offset", index - 1);
-                var value = command.ExecuteScalar();
-                if (value is null || value == DBNull.Value)
+                return null;
+            }
+
+            try
+            {
+                return JsonSerializer.Deserialize<OsqSnapshotEnvelope>(value.ToString() ?? string.Empty, OsqJsonOptions);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static OsqSnapshotEnvelope MergeServerImages(OsqSnapshotEnvelope? previous, OsqSnapshotEnvelope current)
+        {
+            current.ServerImages ??= new OsqServerImagesInfo();
+            if (previous?.ServerImages is null)
+            {
+                return current;
+            }
+
+            if (string.IsNullOrWhiteSpace(current.ServerImages.Standard))
+            {
+                current.ServerImages.Standard = previous.ServerImages.Standard;
+            }
+
+            if (string.IsNullOrWhiteSpace(current.ServerImages.BasePath))
+            {
+                current.ServerImages.BasePath = previous.ServerImages.BasePath;
+            }
+
+            if (!current.ServerImages.FullSnapshot)
+            {
+                if (current.ServerImages.Cover is null && previous.ServerImages.Cover is not null)
                 {
-                    return null;
+                    current.ServerImages.Cover = CloneServerImageInfo(previous.ServerImages.Cover);
                 }
 
-                try
+                if ((current.ServerImages.Showcase is null || current.ServerImages.Showcase.Count == 0) &&
+                    previous.ServerImages.Showcase is { Count: > 0 })
                 {
-                    return JsonSerializer.Deserialize<OsqSnapshotEnvelope>(value.ToString() ?? string.Empty, OsqJsonOptions);
-                }
-                catch
-                {
-                    return null;
+                    current.ServerImages.Showcase = previous.ServerImages.Showcase
+                        .Select(CloneServerImageInfo)
+                        .ToList();
                 }
             }
+
+            return current;
+        }
+
+        private static OsqServerImageInfo CloneServerImageInfo(OsqServerImageInfo source)
+        {
+            return new OsqServerImageInfo
+            {
+                Kind = source.Kind,
+                FileName = source.FileName,
+                RelativePath = source.RelativePath,
+                MimeType = source.MimeType,
+                SizeBytes = source.SizeBytes,
+                LastWriteUtc = source.LastWriteUtc,
+                Sha256 = source.Sha256,
+                ContentIncluded = source.ContentIncluded,
+                ContentEncoding = source.ContentEncoding,
+                DataBase64 = source.DataBase64,
+                SkippedReason = source.SkippedReason
+            };
         }
 
         public OsqForwardState? GetOsqForwardState(string serverHost)
@@ -3695,6 +3758,8 @@ public sealed class Vs2QQProcessService
         public List<OsqChatInfo>? RecentChats { get; set; }
 
         public List<OsqServerNotificationInfo>? ServerNotifications { get; set; }
+
+        public OsqServerImagesInfo? ServerImages { get; set; }
     }
 
     private sealed class OsqServerInfo
@@ -3756,5 +3821,43 @@ public sealed class Vs2QQProcessService
         public string TimestampUtc { get; set; } = string.Empty;
 
         public string Message { get; set; } = string.Empty;
+    }
+
+    private sealed class OsqServerImagesInfo
+    {
+        public string Standard { get; set; } = string.Empty;
+
+        public string BasePath { get; set; } = string.Empty;
+
+        public bool FullSnapshot { get; set; }
+
+        public OsqServerImageInfo? Cover { get; set; }
+
+        public List<OsqServerImageInfo>? Showcase { get; set; }
+    }
+
+    private sealed class OsqServerImageInfo
+    {
+        public string Kind { get; set; } = string.Empty;
+
+        public string FileName { get; set; } = string.Empty;
+
+        public string RelativePath { get; set; } = string.Empty;
+
+        public string MimeType { get; set; } = string.Empty;
+
+        public long SizeBytes { get; set; }
+
+        public string LastWriteUtc { get; set; } = string.Empty;
+
+        public string Sha256 { get; set; } = string.Empty;
+
+        public bool ContentIncluded { get; set; }
+
+        public string ContentEncoding { get; set; } = string.Empty;
+
+        public string DataBase64 { get; set; } = string.Empty;
+
+        public string SkippedReason { get; set; } = string.Empty;
     }
 }

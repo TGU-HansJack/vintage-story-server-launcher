@@ -80,6 +80,31 @@
   <data name="ConfigWorldTypeLabel" xml:space="preserve"><value>World Type</value></data>
   <data name="ConfigWorldHeightLabel" xml:space="preserve"><value>World Height</value></data>
   <data name="ConfigWorldRulesSectionTitle" xml:space="preserve"><value>World Rules</value></data>
+  <data name="ConfigServerImagesSectionTitle" xml:space="preserve"><value>Server Images</value></data>
+  <data name="ConfigServerImagesRootLabel" xml:space="preserve"><value>Image Folder</value></data>
+  <data name="ConfigServerImagesCoverTitle" xml:space="preserve"><value>Cover Image</value></data>
+  <data name="ConfigServerImagesShowcaseTitle" xml:space="preserve"><value>Showcase Images</value></data>
+  <data name="ConfigServerImagesShowcaseHintText" xml:space="preserve"><value>Click an item to preview it.</value></data>
+  <data name="ConfigServerImagesNoShowcaseText" xml:space="preserve"><value>No showcase images yet.</value></data>
+  <data name="ConfigServerImagesNoCoverText" xml:space="preserve"><value>No cover image yet.</value></data>
+  <data name="ConfigServerImagesPreviewButtonText" xml:space="preserve"><value>Preview</value></data>
+  <data name="ConfigServerImagesAddButtonText" xml:space="preserve"><value>Add</value></data>
+  <data name="ConfigImageBrowseDialogTitle" xml:space="preserve"><value>Select Image</value></data>
+  <data name="ConfigImageBrowseFilterName" xml:space="preserve"><value>Image Files</value></data>
+  <data name="ConfigImageImportFolderDialogTitle" xml:space="preserve"><value>Select Image Folder</value></data>
+  <data name="ConfigImagePreviewDialogTitleFormat" xml:space="preserve"><value>Preview: {0}</value></data>
+  <data name="ConfigImageStatusSelectedImportFileFormat" xml:space="preserve"><value>Selected image: {0}</value></data>
+  <data name="ConfigImageStatusCoverImportedFormat" xml:space="preserve"><value>Cover image imported: {0}</value></data>
+  <data name="ConfigImageStatusCoverDeleted" xml:space="preserve"><value>Cover image deleted.</value></data>
+  <data name="ConfigImageStatusShowcaseAddedFormat" xml:space="preserve"><value>Showcase image added: {0}</value></data>
+  <data name="ConfigImageStatusShowcaseImportedFormat" xml:space="preserve"><value>Imported {0} showcase image(s).</value></data>
+  <data name="ConfigImageStatusShowcaseDeletedFormat" xml:space="preserve"><value>Showcase image deleted: {0}</value></data>
+  <data name="ConfigImageStatusNoImportFiles" xml:space="preserve"><value>No image files found in the selected folder.</value></data>
+  <data name="ConfigImageStatusSelectShowcaseFirst" xml:space="preserve"><value>Please select a showcase image first.</value></data>
+  <data name="ConfigImageStatusSelectFileFirst" xml:space="preserve"><value>Please select an image file first.</value></data>
+  <data name="ConfigImageStatusFileNotFound" xml:space="preserve"><value>Image file does not exist.</value></data>
+  <data name="ConfigImageStatusUnsupportedFormat" xml:space="preserve"><value>Only png/jpg/jpeg/webp/gif/bmp images are supported.</value></data>
+  <data name="ConfigImageStatusPreviewFailedFormat" xml:space="preserve"><value>Failed to preview image: {0}</value></data>
   <data name="ConfigNoProfileText" xml:space="preserve"><value>No profile found. Please create one first.</value></data>
   <data name="ConfigAdvancedJsonDialogTitle" xml:space="preserve"><value>Edit Advanced JSON</value></data>
   <data name="ConfigStatusSaved" xml:space="preserve"><value>Configuration saved.</value></data>
