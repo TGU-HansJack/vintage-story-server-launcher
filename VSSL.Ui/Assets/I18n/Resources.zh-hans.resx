@@ -70,6 +70,8 @@
   <data name="ConfigAllowPvpLabel" xml:space="preserve"><value>允许PvP</value></data>
   <data name="ConfigAllowFireSpreadLabel" xml:space="preserve"><value>允许火势蔓延</value></data>
   <data name="ConfigAllowFallingBlocksLabel" xml:space="preserve"><value>允许方块掉落</value></data>
+  <data name="ConfigServerLanguageLabel" xml:space="preserve"><value>服务器语言</value></data>
+  <data name="ConfigDefaultRoleCodeLabel" xml:space="preserve"><value>默认角色代码</value></data>
   <data name="ConfigWorldSectionTitle" xml:space="preserve"><value>世界</value></data>
   <data name="ConfigSeedLabel" xml:space="preserve"><value>种子</value></data>
   <data name="ConfigWorldNameLabel" xml:space="preserve"><value>世界名称</value></data>

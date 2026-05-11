@@ -30,6 +30,10 @@ public partial class ConfigViewModel : ViewModelBase
     [ObservableProperty] private bool _allowPvP = true;
     [ObservableProperty] private bool _allowFireSpread = true;
     [ObservableProperty] private bool _allowFallingBlocks = true;
+    [ObservableProperty] private string _serverLanguage = "en";
+    [ObservableProperty] private string _defaultRoleCode = "suplayer";
+
+    public ObservableCollection<string> ServerLanguageOptions { get; } = [];
 
     [ObservableProperty] private string _seed = "123456789";
     [ObservableProperty] private string _worldName = "A new world";
@@ -130,7 +134,9 @@ public partial class ConfigViewModel : ViewModelBase
                 WhitelistMode = WhitelistMode,
                 AllowPvP = AllowPvP,
                 AllowFireSpread = AllowFireSpread,
-                AllowFallingBlocks = AllowFallingBlocks
+                AllowFallingBlocks = AllowFallingBlocks,
+                ServerLanguage = ServerLanguage.Trim(),
+                DefaultRoleCode = DefaultRoleCode.Trim()
             };
 
             var worldSettings = new WorldSettings
@@ -245,6 +251,8 @@ public partial class ConfigViewModel : ViewModelBase
             AllowPvP = serverSettings.AllowPvP;
             AllowFireSpread = serverSettings.AllowFireSpread;
             AllowFallingBlocks = serverSettings.AllowFallingBlocks;
+            ServerLanguage = serverSettings.ServerLanguage;
+            DefaultRoleCode = serverSettings.DefaultRoleCode;
 
             Seed = worldSettings.Seed;
             WorldName = worldSettings.WorldName;
@@ -293,6 +301,8 @@ public partial class ConfigViewModel : ViewModelBase
         AllowPvP = true;
         AllowFireSpread = true;
         AllowFallingBlocks = true;
+        ServerLanguage = "en";
+        DefaultRoleCode = "suplayer";
         Seed = "123456789";
         WorldName = "A new world";
         SaveFileLocation = string.Empty;
@@ -302,10 +312,25 @@ public partial class ConfigViewModel : ViewModelBase
         WorldRules.Clear();
     }
 
+    private void EnsureServerLanguageOptions()
+    {
+        if (ServerLanguageOptions.Count > 0) return;
+
+        foreach (var code in new[]
+                 {
+                     "en", "ar", "be", "cs", "da", "de", "es-es", "fr", "hu", "is", "it", "ja", "ko",
+                     "nl", "no", "pl", "pt-br", "pt-pt", "ru", "sr", "zh-cn", "zh-tw"
+                 })
+        {
+            ServerLanguageOptions.Add(code);
+        }
+    }
+
     #region Constructors
 
     public ConfigViewModel()
     {
+        EnsureServerLanguageOptions();
     }
 
     public ConfigViewModel(
@@ -316,6 +341,7 @@ public partial class ConfigViewModel : ViewModelBase
         _instanceProfileService = instanceProfileService;
         _instanceServerConfigService = instanceServerConfigService;
         _advancedJsonDialogService = advancedJsonDialogService;
+        EnsureServerLanguageOptions();
 
         _ = RefreshAsync();
     }

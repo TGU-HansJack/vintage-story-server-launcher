@@ -37,7 +37,7 @@
                     <Border Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
                         <StackPanel Spacing="10">
                             <TextBlock FontSize="16" FontWeight="SemiBold" Text="{Binding [ConfigServerSectionTitle]}" />
-                            <Grid ColumnDefinitions="Auto,2*,Auto,2*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="8">
+                            <Grid ColumnDefinitions="Auto,2*,Auto,2*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="8">
                                 <TextBlock VerticalAlignment="Center" Text="{Binding [ConfigServerNameLabel]}" />
                                 <TextBox Grid.Column="1" Text="{Binding ServerName, UpdateSourceTrigger=PropertyChanged}" />
                                 <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="{Binding [ConfigIpLabel]}" />
@@ -57,6 +57,13 @@
                                 <CheckBox Grid.Row="3" Grid.Column="1" Content="{Binding [ConfigAllowPvpLabel]}" IsChecked="{Binding AllowPvP}" />
                                 <CheckBox Grid.Row="3" Grid.Column="2" Content="{Binding [ConfigAllowFireSpreadLabel]}" IsChecked="{Binding AllowFireSpread}" />
                                 <CheckBox Grid.Row="3" Grid.Column="3" Content="{Binding [ConfigAllowFallingBlocksLabel]}" IsChecked="{Binding AllowFallingBlocks}" />
+
+                                <TextBlock Grid.Row="4" VerticalAlignment="Center" Text="{Binding [ConfigServerLanguageLabel]}" />
+                                <ComboBox Grid.Row="4" Grid.Column="1"
+                                          ItemsSource="{Binding ServerLanguageOptions}"
+                                          SelectedItem="{Binding ServerLanguage, Mode=TwoWay}" />
+                                <TextBlock Grid.Row="4" Grid.Column="2" VerticalAlignment="Center" Text="{Binding [ConfigDefaultRoleCodeLabel]}" />
+                                <TextBox Grid.Row="4" Grid.Column="3" Text="{Binding DefaultRoleCode, UpdateSourceTrigger=PropertyChanged}" />
                             </Grid>
                         </StackPanel>
                     </Border>

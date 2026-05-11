@@ -305,7 +305,12 @@ public sealed class Vs2QQProcessService
 
         var timeLabel = FormatDisplayTime(talk.Timestamp);
         string payload;
-        if (!TryBuildLocalJoinLeaveMessage(timeLabel, talk.Content, out payload))
+        if (IsServerNotificationSender(talk.Sender))
+        {
+            var content = NormalizeDisplayText(talk.Content);
+            payload = $"[服务器 {timeLabel}]{Safe(content)}";
+        }
+        else if (!TryBuildLocalJoinLeaveMessage(timeLabel, talk.Content, out payload))
         {
             var sender = Safe(talk.Sender);
             var content = NormalizeInboundServerText(talk.Sender, talk.Content);
@@ -357,6 +362,11 @@ public sealed class Vs2QQProcessService
 
         payload = $"[服务器 {timeLabel}]{playerName} {normalizedAction}";
         return true;
+    }
+
+    private static bool IsServerNotificationSender(string? sender)
+    {
+        return string.Equals(sender?.Trim(), Vs2QQTalkLineParser.ServerNotificationSender, StringComparison.Ordinal);
     }
 
     private async Task HandleOneBotEventAsync(Vs2QQRuntimeContext runtime, JsonObject eventPayload, CancellationToken cancellationToken)
@@ -652,7 +662,7 @@ public sealed class Vs2QQProcessService
         var parts = args.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length == 0)
         {
-            await ReplyAsync(runtime, eventPayload, "Usage: /server status [n] | /server password get | /server password set <new_password>", cancellationToken);
+            await ReplyAsync(runtime, eventPayload, "Usage: /server status [n] | /server players [n] | /server password get | /server password set <new_password>", cancellationToken);
             return;
         }
 
@@ -663,13 +673,19 @@ public sealed class Vs2QQProcessService
             return;
         }
 
+        if (subCommand == "players")
+        {
+            await HandleServerPlayersCommandAsync(runtime, eventPayload, parts, cancellationToken);
+            return;
+        }
+
         if (subCommand == "password")
         {
             await HandleServerPasswordCommandAsync(runtime, eventPayload, parts, cancellationToken);
             return;
         }
 
-        await ReplyAsync(runtime, eventPayload, "Only /server status [n] and /server password get|set are supported.", cancellationToken);
+        await ReplyAsync(runtime, eventPayload, "Only /server status [n], /server players [n], and /server password get|set are supported.", cancellationToken);
     }
 
     private async Task HandleServerStatusCommandAsync(
@@ -780,6 +796,42 @@ public sealed class Vs2QQProcessService
 
         var updatedText = string.IsNullOrWhiteSpace(serverSettings.Password) ? "(empty)" : serverSettings.Password.Trim();
         await ReplyAsync(runtime, eventPayload, $"密码已更新：{updatedText}", cancellationToken);
+    }
+
+    private async Task HandleServerPlayersCommandAsync(
+        Vs2QQRuntimeContext runtime,
+        JsonObject eventPayload,
+        IReadOnlyList<string> parts,
+        CancellationToken cancellationToken)
+    {
+        var index = 1;
+        if (parts.Count > 1 && int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) && parsed > 0)
+        {
+            index = parsed;
+        }
+
+        var groupId = GetInt64(eventPayload, "group_id");
+        if (groupId <= 0)
+        {
+            await ReplyAsync(runtime, eventPayload, "Use in group chat.", cancellationToken);
+            return;
+        }
+
+        var host = runtime.Storage.FindRemoteServerHostByGroup(groupId);
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            await ReplyAsync(runtime, eventPayload, "This group has no remote server binding.", cancellationToken);
+            return;
+        }
+
+        var snapshot = runtime.Storage.GetLatestOsqSnapshot(host, index);
+        if (snapshot is null)
+        {
+            await ReplyAsync(runtime, eventPayload, $"No server status #{index} for {host}.", cancellationToken);
+            return;
+        }
+
+        await ReplyAsync(runtime, eventPayload, BuildOsqPlayersMessage(host, snapshot), cancellationToken);
     }
 
     private async Task HandleBindRemoteServerAsync(Vs2QQRuntimeContext runtime, JsonObject eventPayload, string args, CancellationToken cancellationToken)
@@ -1048,6 +1100,7 @@ public sealed class Vs2QQProcessService
             /unbindremote <host> <group_id> - 解绑远程服务器
             /listremote - 查看远程服务器绑定
             /server status [n] - 获取最近第 n 次服务器状态（默认1）
+            /server players [n] - 获取最近第 n 次在线玩家列表（默认1）
             /server password get - 获取服务器密码
             /server password set <new_password> - 修改服务器密码（- 表示清空）
             /bindlogserver <server_id> <log_path> - 绑定本机日志服务器（群管理/群主）
@@ -1308,16 +1361,19 @@ public sealed class Vs2QQProcessService
         var forwardState = runtime.Storage.GetOsqForwardState(host);
         var chats = payload.RecentChats ?? [];
         var events = payload.PlayerEvents ?? [];
+        var notifications = payload.ServerNotifications ?? [];
 
         var newChatLines = CollectNewChatLines(chats, forwardState?.LastChatSignature, out var lastChatSignature);
         var newEventLines = CollectNewEventLines(events, forwardState?.LastEventSignature, out var lastEventSignature);
+        var newNotificationLines = CollectNewNotificationLines(notifications, forwardState?.LastNotificationSignature, out var lastNotificationSignature);
 
         var lines = new List<string>();
         lines.AddRange(newEventLines);
+        lines.AddRange(newNotificationLines);
         lines.AddRange(newChatLines);
         if (lines.Count == 0)
         {
-            runtime.Storage.UpsertOsqForwardState(host, lastChatSignature, lastEventSignature);
+            runtime.Storage.UpsertOsqForwardState(host, lastChatSignature, lastEventSignature, lastNotificationSignature);
             return;
         }
 
@@ -1334,7 +1390,7 @@ public sealed class Vs2QQProcessService
             }
         }
 
-        runtime.Storage.UpsertOsqForwardState(host, lastChatSignature, lastEventSignature);
+        runtime.Storage.UpsertOsqForwardState(host, lastChatSignature, lastEventSignature, lastNotificationSignature);
     }
 
     private static string BuildOsqSummaryMessage(string host, OsqSnapshotEnvelope payload)
@@ -1379,6 +1435,36 @@ public sealed class Vs2QQProcessService
         }
 
         return string.Join('\n', lines.Where(line => !string.IsNullOrWhiteSpace(line)));
+    }
+
+    private static string BuildOsqPlayersMessage(string host, OsqSnapshotEnvelope payload)
+    {
+        var server = payload.Server ?? new OsqServerInfo();
+        var players = payload.Players ?? [];
+        var onlinePlayers = players
+            .Where(p => p.IsOnline)
+            .OrderBy(p => p.PlayerName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var timeLabel = FormatDisplayTime(payload.TimestampUtc);
+        var lines = new List<string>
+        {
+            $"[OSQ:{host}] 在线玩家 {onlinePlayers.Count}/{server.MaxPlayers} @ {timeLabel}"
+        };
+
+        if (onlinePlayers.Count == 0)
+        {
+            lines.Add("当前无在线玩家。");
+            return string.Join('\n', lines);
+        }
+
+        foreach (var player in onlinePlayers)
+        {
+            var latency = player.PingMs.HasValue ? $"{player.PingMs.Value}ms/{Safe(player.DelayLevel)}" : Safe(player.DelayLevel);
+            lines.Add($"- {Safe(player.PlayerName)} ({Safe(player.ConnectionState)}, {latency})");
+        }
+
+        return string.Join('\n', lines);
     }
 
     private static IReadOnlyList<string> CollectNewChatLines(
@@ -1444,6 +1530,34 @@ public sealed class Vs2QQProcessService
         return result;
     }
 
+    private static IReadOnlyList<string> CollectNewNotificationLines(
+        IReadOnlyList<OsqServerNotificationInfo> notifications,
+        string? previousSignature,
+        out string? lastSignature)
+    {
+        var signatures = notifications
+            .Select(n => BuildNotificationSignature(n))
+            .ToList();
+
+        lastSignature = signatures.Count == 0 ? previousSignature : signatures[^1];
+        var startIndex = ResolveNewItemsStartIndex(signatures, previousSignature);
+        if (startIndex >= signatures.Count)
+        {
+            return [];
+        }
+
+        var result = new List<string>();
+        for (var i = startIndex; i < notifications.Count; i++)
+        {
+            var notification = notifications[i];
+            var content = Safe(NormalizeInboundServerText(null, notification.Message));
+            var timeLabel = FormatDisplayTime(notification.TimestampUtc);
+            result.Add($"[服务器 {timeLabel}]{content}");
+        }
+
+        return result;
+    }
+
     private static int ResolveNewItemsStartIndex(IReadOnlyList<string> signatures, string? previousSignature)
     {
         if (signatures.Count == 0)
@@ -1475,6 +1589,11 @@ public sealed class Vs2QQProcessService
     private static string BuildEventSignature(OsqPlayerEventInfo entry)
     {
         return $"{Safe(entry.TimestampUtc)}|{Safe(entry.EventType)}|{Safe(entry.PlayerName)}|{Safe(entry.ConnectionState)}";
+    }
+
+    private static string BuildNotificationSignature(OsqServerNotificationInfo notification)
+    {
+        return $"{Safe(notification.TimestampUtc)}|{Safe(NormalizeDisplayText(notification.Message))}";
     }
 
     private static string? MapJoinLeaveText(string? eventType)
@@ -2637,7 +2756,7 @@ public sealed class Vs2QQProcessService
                 using var command = _connection.CreateCommand();
                 command.CommandText =
                     """
-                    SELECT last_chat_signature, last_event_signature
+                    SELECT last_chat_signature, last_event_signature, last_notification_signature
                     FROM osq_forward_state
                     WHERE server_host = $serverHost
                     LIMIT 1;
@@ -2651,27 +2770,30 @@ public sealed class Vs2QQProcessService
 
                 return new OsqForwardState(
                     reader.IsDBNull(0) ? null : reader.GetString(0),
-                    reader.IsDBNull(1) ? null : reader.GetString(1));
+                    reader.IsDBNull(1) ? null : reader.GetString(1),
+                    reader.FieldCount > 2 && !reader.IsDBNull(2) ? reader.GetString(2) : null);
             }
         }
 
-        public void UpsertOsqForwardState(string serverHost, string? lastChatSignature, string? lastEventSignature)
+        public void UpsertOsqForwardState(string serverHost, string? lastChatSignature, string? lastEventSignature, string? lastNotificationSignature)
         {
             lock (_sync)
             {
                 using var command = _connection.CreateCommand();
                 command.CommandText =
                     """
-                    INSERT INTO osq_forward_state (server_host, last_chat_signature, last_event_signature, updated_at)
-                    VALUES ($serverHost, $lastChatSignature, $lastEventSignature, $updatedAt)
+                    INSERT INTO osq_forward_state (server_host, last_chat_signature, last_event_signature, last_notification_signature, updated_at)
+                    VALUES ($serverHost, $lastChatSignature, $lastEventSignature, $lastNotificationSignature, $updatedAt)
                     ON CONFLICT(server_host) DO UPDATE SET
                         last_chat_signature = excluded.last_chat_signature,
                         last_event_signature = excluded.last_event_signature,
+                        last_notification_signature = excluded.last_notification_signature,
                         updated_at = excluded.updated_at;
                     """;
                 command.Parameters.AddWithValue("$serverHost", serverHost);
                 command.Parameters.AddWithValue("$lastChatSignature", (object?)lastChatSignature ?? DBNull.Value);
                 command.Parameters.AddWithValue("$lastEventSignature", (object?)lastEventSignature ?? DBNull.Value);
+                command.Parameters.AddWithValue("$lastNotificationSignature", (object?)lastNotificationSignature ?? DBNull.Value);
                 command.Parameters.AddWithValue("$updatedAt", GetUtcNowIso());
                 command.ExecuteNonQuery();
             }
@@ -2884,6 +3006,7 @@ public sealed class Vs2QQProcessService
                         server_host TEXT PRIMARY KEY,
                         last_chat_signature TEXT,
                         last_event_signature TEXT,
+                        last_notification_signature TEXT,
                         updated_at TEXT NOT NULL,
                         FOREIGN KEY (server_host) REFERENCES remote_servers(server_host) ON DELETE CASCADE
                     );
@@ -2902,11 +3025,32 @@ public sealed class Vs2QQProcessService
                     """;
                 command.ExecuteNonQuery();
             }
+
+            EnsureColumn("osq_forward_state", "last_notification_signature", "TEXT");
         }
 
         private static string GetUtcNowIso()
         {
             return DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
+        }
+
+        private void EnsureColumn(string tableName, string columnName, string columnDefinition)
+        {
+            using var command = _connection.CreateCommand();
+            command.CommandText = $"PRAGMA table_info({tableName});";
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                var existingName = reader.GetString(1);
+                if (string.Equals(existingName, columnName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+            }
+
+            using var alter = _connection.CreateCommand();
+            alter.CommandText = $"ALTER TABLE {tableName} ADD COLUMN {columnName} {columnDefinition};";
+            alter.ExecuteNonQuery();
         }
     }
 
@@ -3305,6 +3449,8 @@ public sealed class Vs2QQProcessService
 
     private sealed class Vs2QQTalkLineParser
     {
+        internal const string ServerNotificationSender = "__VS_SERVER_NOTIFICATION__";
+
         private static readonly string[] KnownTimeFormats =
         [
             "yyyy-MM-dd HH:mm:ss",
@@ -3330,6 +3476,13 @@ public sealed class Vs2QQProcessService
         [
             new(@"^(?<time>\d{1,2}\.\d{1,2}\.\d{4}\s+\d{2}:\d{2}:\d{2})\s*\[Event\]\s*(?<player>[^\[\]:]{1,64})\s+\[[^\]]+\](?::\d+)?\s+joins\.$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
             new(@"^(?<time>\d{1,2}\.\d{1,2}\.\d{4}\s+\d{2}:\d{2}:\d{2})\s*\[Event\]\s*Player\s+(?<player>[^\.]{1,64})\s+left\.$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
+        ];
+
+        private static readonly Regex[] NotificationPatterns =
+        [
+            new(@"^(?:\[log\]\s*)?(?<time>\d{1,2}\.\d{1,2}\.\d{4}\s+\d{2}:\d{2}:\d{2})\s*\[(?:Server\s+Notification|Notification)\]\s*Message to all in group \d+:\s*(?<content>.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+            new(@"^(?:\[log\]\s*)?(?<time>\d{4}[-/]\d{2}[-/]\d{2}[ T]\d{2}:\d{2}:\d{2})\s*\[(?:Server\s+Notification|Notification)\]\s*Message to all in group \d+:\s*(?<content>.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+            new(@"^(?:\[log\]\s*)?\[(?<time>[^\]]+)\]\s*\[(?:Server\s+Notification|Notification)\]\s*Message to all in group \d+:\s*(?<content>.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
         ];
 
         private static readonly Regex DeathAuditPattern =
@@ -3376,6 +3529,12 @@ public sealed class Vs2QQProcessService
             if (systemEvent.HasValue)
             {
                 return systemEvent;
+            }
+
+            var notificationEvent = ParseNotificationEvent(line);
+            if (notificationEvent.HasValue)
+            {
+                return notificationEvent;
             }
 
             return null;
@@ -3460,6 +3619,30 @@ public sealed class Vs2QQProcessService
             return null;
         }
 
+        private static (string Timestamp, string Sender, string Content)? ParseNotificationEvent(string line)
+        {
+            foreach (var pattern in NotificationPatterns)
+            {
+                var match = pattern.Match(line);
+                if (!match.Success)
+                {
+                    continue;
+                }
+
+                var content = match.Groups["content"].Value.Trim();
+                if (string.IsNullOrWhiteSpace(content))
+                {
+                    continue;
+                }
+
+                var timeRaw = match.Groups["time"].Value.Trim();
+                var timestamp = NormalizeTime(timeRaw);
+                return (timestamp, ServerNotificationSender, content);
+            }
+
+            return null;
+        }
+
         private static string NormalizeTime(string value)
         {
             if (!string.IsNullOrWhiteSpace(value))
@@ -3497,7 +3680,7 @@ public sealed class Vs2QQProcessService
 
     private readonly record struct Vs2QQRemoteGroupServerRecord(long GroupId, string ServerHost, long OwnerQqId);
 
-    private readonly record struct OsqForwardState(string? LastChatSignature, string? LastEventSignature);
+    private readonly record struct OsqForwardState(string? LastChatSignature, string? LastEventSignature, string? LastNotificationSignature);
 
     private sealed class OsqSnapshotEnvelope
     {
@@ -3510,6 +3693,8 @@ public sealed class Vs2QQProcessService
         public List<OsqPlayerEventInfo>? PlayerEvents { get; set; }
 
         public List<OsqChatInfo>? RecentChats { get; set; }
+
+        public List<OsqServerNotificationInfo>? ServerNotifications { get; set; }
     }
 
     private sealed class OsqServerInfo
@@ -3562,6 +3747,13 @@ public sealed class Vs2QQProcessService
         public string TimestampUtc { get; set; } = string.Empty;
 
         public string SenderName { get; set; } = string.Empty;
+
+        public string Message { get; set; } = string.Empty;
+    }
+
+    private sealed class OsqServerNotificationInfo
+    {
+        public string TimestampUtc { get; set; } = string.Empty;
 
         public string Message { get; set; } = string.Empty;
     }

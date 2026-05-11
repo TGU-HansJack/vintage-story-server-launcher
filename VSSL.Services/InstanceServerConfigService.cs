@@ -36,7 +36,9 @@ public class InstanceServerConfigService : IInstanceServerConfigService
             WhitelistMode = ReadInt(root["WhitelistMode"], 0),
             AllowPvP = ReadBool(root["AllowPvP"], true),
             AllowFireSpread = ReadBool(root["AllowFireSpread"], true),
-            AllowFallingBlocks = ReadBool(root["AllowFallingBlocks"], true)
+            AllowFallingBlocks = ReadBool(root["AllowFallingBlocks"], true),
+            ServerLanguage = ReadString(root["ServerLanguage"], "en"),
+            DefaultRoleCode = ReadString(root["DefaultRoleCode"], "suplayer")
         };
     }
 
@@ -108,6 +110,8 @@ public class InstanceServerConfigService : IInstanceServerConfigService
         root["AllowPvP"] = serverSettings.AllowPvP;
         root["AllowFireSpread"] = serverSettings.AllowFireSpread;
         root["AllowFallingBlocks"] = serverSettings.AllowFallingBlocks;
+        root["ServerLanguage"] = string.IsNullOrWhiteSpace(serverSettings.ServerLanguage) ? "en" : serverSettings.ServerLanguage.Trim();
+        root["DefaultRoleCode"] = string.IsNullOrWhiteSpace(serverSettings.DefaultRoleCode) ? "suplayer" : serverSettings.DefaultRoleCode.Trim();
 
         var worldConfig = GetOrCreateObject(root, "WorldConfig");
         worldConfig["Seed"] = worldSettings.Seed;
@@ -307,7 +311,9 @@ public class InstanceServerConfigService : IInstanceServerConfigService
             ["WhitelistMode"] = 0,
             ["AllowPvP"] = true,
             ["AllowFireSpread"] = true,
-            ["AllowFallingBlocks"] = true
+            ["AllowFallingBlocks"] = true,
+            ["ServerLanguage"] = "en",
+            ["DefaultRoleCode"] = "suplayer"
         };
 
         var worldConfig = new JsonObject

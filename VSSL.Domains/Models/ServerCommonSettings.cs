@@ -24,4 +24,8 @@ public class ServerCommonSettings
     public bool AllowFireSpread { get; set; } = true;
 
     public bool AllowFallingBlocks { get; set; } = true;
+
+    public string ServerLanguage { get; set; } = "en";
+
+    public string DefaultRoleCode { get; set; } = "suplayer";
 }

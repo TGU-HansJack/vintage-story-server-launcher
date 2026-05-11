@@ -70,6 +70,8 @@
   <data name="ConfigAllowPvpLabel" xml:space="preserve"><value>Allow PvP</value></data>
   <data name="ConfigAllowFireSpreadLabel" xml:space="preserve"><value>Allow Fire Spread</value></data>
   <data name="ConfigAllowFallingBlocksLabel" xml:space="preserve"><value>Allow Falling Blocks</value></data>
+  <data name="ConfigServerLanguageLabel" xml:space="preserve"><value>Server Language</value></data>
+  <data name="ConfigDefaultRoleCodeLabel" xml:space="preserve"><value>Default Role Code</value></data>
   <data name="ConfigWorldSectionTitle" xml:space="preserve"><value>World</value></data>
   <data name="ConfigSeedLabel" xml:space="preserve"><value>Seed</value></data>
   <data name="ConfigWorldNameLabel" xml:space="preserve"><value>World Name</value></data>
