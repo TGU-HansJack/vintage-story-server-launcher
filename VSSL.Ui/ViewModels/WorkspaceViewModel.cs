@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Diagnostics;
 using System.Linq;
+using Avalonia.Threading;
 using VSSL.Abstractions.Services;
 using VSSL.Abstractions.Services.Ui;
 using VSSL.Domains.Models;
@@ -20,6 +21,9 @@ public partial class WorkspaceViewModel : ViewModelBase
     private readonly ILogTailService? _logTailService;
     private readonly ILauncherPreferencesService? _launcherPreferencesService;
     private readonly IQuickCommandsDialogService? _quickCommandsDialogService;
+    private string? _runningProfileId;
+    private string? _tailingProfileId;
+    private int? _runningNoticeProcessId;
 
     [ObservableProperty] private InstanceProfile? _selectedProfile;
     [ObservableProperty] private string? _selectedInstalledVersion;
@@ -101,6 +105,7 @@ public partial class WorkspaceViewModel : ViewModelBase
             RefreshInstalledVersions();
             var oldSelectedId = SelectedProfile?.Id;
             var profiles = _instanceProfileService.GetProfiles();
+            var runningProfileId = _serverProcessService?.GetCurrentStatus().ProfileId ?? _runningProfileId;
 
             Profiles.Clear();
             foreach (var profile in profiles)
@@ -119,6 +124,9 @@ public partial class WorkspaceViewModel : ViewModelBase
             }
 
             SelectedProfile = Profiles.FirstOrDefault(profile =>
+                                  !string.IsNullOrWhiteSpace(runningProfileId) &&
+                                  profile.Id.Equals(runningProfileId, StringComparison.OrdinalIgnoreCase))
+                              ?? Profiles.FirstOrDefault(profile =>
                                   !string.IsNullOrWhiteSpace(oldSelectedId) &&
                                   profile.Id.Equals(oldSelectedId, StringComparison.OrdinalIgnoreCase))
                               ?? Profiles[0];
@@ -205,7 +213,8 @@ public partial class WorkspaceViewModel : ViewModelBase
 
             await _serverProcessService.StartAsync(SelectedProfile);
             StartupProgress = 75;
-            await _logTailService.StartAsync(SelectedProfile);
+            if (_tailingProfileId?.Equals(SelectedProfile.Id, StringComparison.OrdinalIgnoreCase) != true)
+                await StartLogTailAsync(SelectedProfile);
             StartupProgress = 100;
             StatusMessage = L("WorkspaceStatusStarted");
         }
@@ -377,20 +386,42 @@ public partial class WorkspaceViewModel : ViewModelBase
 
     private void OnProcessOutputReceived(object? sender, string line)
     {
-        AppendConsoleLine(line);
+        RunOnUiThread(() => AppendConsoleLine(line));
     }
 
     private void OnLogTailLineReceived(object? sender, string line)
     {
-        AppendConsoleLine($"[log] {line}");
+        RunOnUiThread(() => AppendConsoleLine($"[log] {line}"));
     }
 
     private void OnProcessStatusChanged(object? sender, ServerRuntimeStatus status)
+    {
+        RunOnUiThread(() => ApplyProcessStatus(status));
+    }
+
+    private void ApplyProcessStatus(ServerRuntimeStatus status)
     {
         IsRunning = status.IsRunning;
         OnlinePlayers = status.OnlinePlayers;
         RuntimeProcessId = status.ProcessId ?? 0;
         RuntimeStartedAt = status.StartedAtUtc;
+        _runningProfileId = status.ProfileId;
+
+        if (!status.IsRunning)
+        {
+            _runningNoticeProcessId = null;
+            StopLogTailForStoppedServer();
+            return;
+        }
+
+        if (status.ProcessId.HasValue && _runningNoticeProcessId != status.ProcessId.Value)
+        {
+            _runningNoticeProcessId = status.ProcessId.Value;
+            AppendConsoleLine($"[system] 已检测到服务端正在运行，PID={status.ProcessId.Value}。");
+        }
+
+        if (!string.IsNullOrWhiteSpace(status.ProfileId))
+            SelectAndTailRunningProfile(status.ProfileId);
     }
 
     private void AppendConsoleLine(string line)
@@ -401,6 +432,75 @@ public partial class WorkspaceViewModel : ViewModelBase
 
         OnPropertyChanged(nameof(HasConsoleLines));
         OnPropertyChanged(nameof(HasNoConsoleLines));
+    }
+
+    private void SelectAndTailRunningProfile(string profileId)
+    {
+        var profile = Profiles.FirstOrDefault(item =>
+            item.Id.Equals(profileId, StringComparison.OrdinalIgnoreCase));
+
+        if (profile is null && _instanceProfileService is not null)
+        {
+            profile = _instanceProfileService.GetProfileById(profileId);
+            if (profile is not null && Profiles.All(item =>
+                    !item.Id.Equals(profile.Id, StringComparison.OrdinalIgnoreCase)))
+            {
+                Profiles.Add(profile);
+                OnPropertyChanged(nameof(HasProfiles));
+                OnPropertyChanged(nameof(HasNoProfiles));
+            }
+        }
+
+        if (profile is null)
+            return;
+
+        if (SelectedProfile?.Id.Equals(profile.Id, StringComparison.OrdinalIgnoreCase) != true)
+            SelectedProfile = profile;
+
+        StartLogTailIfNeeded(profile);
+    }
+
+    private void StartLogTailIfNeeded(InstanceProfile profile)
+    {
+        if (_logTailService is null)
+            return;
+        if (_tailingProfileId?.Equals(profile.Id, StringComparison.OrdinalIgnoreCase) == true)
+            return;
+
+        _ = StartLogTailAsync(profile);
+    }
+
+    private async Task StartLogTailAsync(InstanceProfile profile)
+    {
+        _tailingProfileId = profile.Id;
+
+        try
+        {
+            await _logTailService!.StartAsync(profile);
+        }
+        catch (Exception ex)
+        {
+            if (_tailingProfileId?.Equals(profile.Id, StringComparison.OrdinalIgnoreCase) == true)
+                _tailingProfileId = null;
+            RunOnUiThread(() => StatusMessage = LF("WorkspaceStatusStartFailedFormat", ex.Message));
+        }
+    }
+
+    private void StopLogTailForStoppedServer()
+    {
+        if (_logTailService is null || _tailingProfileId is null)
+            return;
+
+        _tailingProfileId = null;
+        _ = _logTailService.StopAsync();
+    }
+
+    private static void RunOnUiThread(Action action)
+    {
+        if (Dispatcher.UIThread.CheckAccess())
+            action();
+        else
+            Dispatcher.UIThread.Post(action);
     }
 
     private static string FormatStartedAt(DateTimeOffset? startedAtUtc)

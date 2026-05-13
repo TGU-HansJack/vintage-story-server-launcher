@@ -7,8 +7,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\VSSL.Abstractions\VSSL.Abstractions.csproj"/>
-        <ProjectReference Include="..\VSSL.Common\VSSL.Common.csproj"/>
+        <ProjectReference Include="..\VSSL.Abstractions\VSSL.Abstractions.csproj" />
+        <ProjectReference Include="..\VSSL.Common\VSSL.Common.csproj" />
     </ItemGroup>
 
     <ItemGroup>
@@ -16,6 +16,7 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.1" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.1" />
         <PackageReference Include="protobuf-net" Version="3.2.56" />
+        <PackageReference Include="System.Management" Version="10.0.8" />
         <PackageReference Include="ZstdSharp.Port" Version="0.8.6" />
     </ItemGroup>
 

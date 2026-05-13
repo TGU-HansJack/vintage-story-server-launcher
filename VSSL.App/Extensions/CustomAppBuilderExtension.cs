@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using Avalonia;
 using VSSL.Services.Extensions;
 using VSSL.Ui;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Serilog;
+using Serilog.Events;
 using Path = System.IO.Path;
 
 namespace VSSL.App.Extensions;
@@ -28,22 +30,30 @@ public static class CustomAppBuilderExtension
                 {
                     builder.ClearProviders();
 
-                    // var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
-                    //     context.Configuration["Logging.Dir"]!, context.Configuration["Logging.FileName"]!);
+                    var logDirectory = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "VSSL",
+                        "logs");
+                    Directory.CreateDirectory(logDirectory);
+                    var logPath = Path.Combine(logDirectory, "VSSL-.log");
+                    var outputTemplate = context.Configuration["Serilog:WriteTo:1:Args:outputTemplate"]
+                                         ?? "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff} {Level:u3}] [{ThreadName}-{ThreadId}] [{SourceContext}] {Message:lj}{NewLine}{Exception}";
+
                     Log.Logger = new LoggerConfiguration()
-                        .ReadFrom.Configuration(context.Configuration)
-                        // .Enrich.WithThreadId()
-                        // .Enrich.WithThreadName()
-                        // .MinimumLevel.Debug()
-                        // .WriteTo.Console(outputTemplate: context.Configuration["Logging.OutputTemplate"]!)
-                        // .WriteTo.File(
-                        //     logPath,
-                        //     rollingInterval: RollingInterval.Day,
-                        //     retainedFileCountLimit: 7,
-                        //     outputTemplate: context.Configuration["Logging.OutputTemplate"]!
-                        // )
+                        .MinimumLevel.Debug()
+                        .Enrich.FromLogContext()
+                        .Enrich.WithThreadId()
+                        .Enrich.WithThreadName()
+                        .WriteTo.File(
+                            logPath,
+                            rollingInterval: RollingInterval.Day,
+                            retainedFileCountLimit: 14,
+                            shared: true,
+                            restrictedToMinimumLevel: LogEventLevel.Debug,
+                            outputTemplate: outputTemplate)
                         .CreateLogger();
                     builder.AddSerilog();
+                    Log.Information("VSSL application logger configured. LogPath={LogPath}", logPath);
                 });
 
                 services.AddServices();

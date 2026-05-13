@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Avalonia.Threading;
 using VSSL.Abstractions.Services;
 using VSSL.Domains.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -268,11 +269,22 @@ public partial class AutomationViewModel : ViewModelBase
 
         _automationService.RuntimeLogReceived += (_, line) =>
         {
-            RuntimeLogs.Add(line);
-            while (RuntimeLogs.Count > 2000)
-                RuntimeLogs.RemoveAt(0);
+            RunOnUiThread(() =>
+            {
+                RuntimeLogs.Add(line);
+                while (RuntimeLogs.Count > 2000)
+                    RuntimeLogs.RemoveAt(0);
+            });
         };
 
         _ = RefreshAsync();
+    }
+
+    private static void RunOnUiThread(Action action)
+    {
+        if (Dispatcher.UIThread.CheckAccess())
+            action();
+        else
+            Dispatcher.UIThread.Post(action);
     }
 }

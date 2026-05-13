@@ -1,7 +1,10 @@
 using System.Diagnostics;
+using System.Management;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using VSSL.Abstractions.Services;
 using VSSL.Domains.Models;
 
@@ -13,13 +16,29 @@ namespace VSSL.Services;
 public partial class ServerProcessService : IServerProcessService
 {
     private readonly SemaphoreSlim _processGate = new(1, 1);
+    private readonly IInstanceProfileService? _profileService;
+    private readonly ILogger<ServerProcessService> _logger;
     private Process? _process;
     private InstanceProfile? _currentProfile;
     private CancellationTokenSource? _monitorCts;
     private Task? _monitorTask;
+    private bool _canWriteStandardInput;
 
     private ServerRuntimeStatus _currentStatus = new();
     private int _onlinePlayers;
+
+    public ServerProcessService()
+        : this(null, NullLogger<ServerProcessService>.Instance)
+    {
+    }
+
+    public ServerProcessService(
+        IInstanceProfileService? profileService,
+        ILogger<ServerProcessService>? logger = null)
+    {
+        _profileService = profileService;
+        _logger = logger ?? NullLogger<ServerProcessService>.Instance;
+    }
 
     /// <inheritdoc />
     public event EventHandler<string>? OutputReceived;
@@ -30,7 +49,24 @@ public partial class ServerProcessService : IServerProcessService
     /// <inheritdoc />
     public ServerRuntimeStatus GetCurrentStatus()
     {
-        return _currentStatus;
+        if (!_processGate.Wait(0))
+            return _currentStatus;
+
+        try
+        {
+            ClearTrackedProcessIfTerminated();
+
+            if (_process is null)
+            {
+                TryAttachToExistingWorkspaceServerProcess(preferredProfile: null, emitOutput: false);
+            }
+
+            return _currentStatus;
+        }
+        finally
+        {
+            _processGate.Release();
+        }
     }
 
     /// <inheritdoc />
@@ -39,24 +75,33 @@ public partial class ServerProcessService : IServerProcessService
         await _processGate.WaitAsync(cancellationToken);
         try
         {
-            if (_process is not null && IsProcessTerminated(_process))
-            {
-                _process.Dispose();
-                _process = null;
-            }
+            ClearTrackedProcessIfTerminated();
 
             if (_process is { HasExited: false })
                 throw new InvalidOperationException("服务器已在运行中。");
 
             WorkspacePathHelper.EnsureWorkspace();
 
-            // 启动前清理工作区内残留的孤立服务端进程，避免端口/日志文件占用导致无法启动。
-            await StopOrphanWorkspaceServerProcessesAsync(cancellationToken);
+            if (TryAttachToExistingWorkspaceServerProcess(profile, emitOutput: true))
+            {
+                if (_currentProfile?.Id.Equals(profile.Id, StringComparison.OrdinalIgnoreCase) == true)
+                    return;
+
+                throw new InvalidOperationException(
+                    $"检测到已有服务端进程正在运行（PID={_currentStatus.ProcessId}），已接管其状态。请先停止当前服务端后再启动其他档案。");
+            }
 
             var installPath = WorkspacePathHelper.GetServerInstallPath(profile.Version);
             var serverExe = Path.Combine(installPath, "VintagestoryServer.exe");
             if (!File.Exists(serverExe))
                 throw new InvalidOperationException($"未找到服务端程序：{serverExe}");
+
+            _logger.LogInformation(
+                "Starting Vintage Story server. ProfileId={ProfileId}, ProfileName={ProfileName}, Version={Version}, DataPath={DataPath}.",
+                profile.Id,
+                profile.Name,
+                profile.Version,
+                profile.DirectoryPath);
 
             Directory.CreateDirectory(profile.DirectoryPath);
             var logsPath = WorkspacePathHelper.GetProfileLogsPath(profile.DirectoryPath);
@@ -95,11 +140,10 @@ public partial class ServerProcessService : IServerProcessService
 
             _process = process;
             _currentProfile = profile;
+            _canWriteStandardInput = true;
             _onlinePlayers = 0;
 
-            _monitorCts?.Cancel();
-            _monitorCts = new CancellationTokenSource();
-            _monitorTask = Task.Run(() => MonitorLoopAsync(_monitorCts.Token), CancellationToken.None);
+            StartMonitorLoop();
 
             UpdateStatus(new ServerRuntimeStatus
             {
@@ -112,6 +156,7 @@ public partial class ServerProcessService : IServerProcessService
             });
 
             OutputReceived?.Invoke(this, $"[system] 服务器进程已启动，PID={process.Id}");
+            _logger.LogInformation("Vintage Story server process started. ProcessId={ProcessId}.", process.Id);
         }
         finally
         {
@@ -125,11 +170,17 @@ public partial class ServerProcessService : IServerProcessService
         await _processGate.WaitAsync(cancellationToken);
         try
         {
+            ClearTrackedProcessIfTerminated();
+
             var process = _process;
             if (process is null || IsProcessTerminated(process))
             {
-                await StopOrphanWorkspaceServerProcessesAsync(cancellationToken);
-                return;
+                if (!TryAttachToExistingWorkspaceServerProcess(preferredProfile: null, emitOutput: true))
+                    return;
+
+                process = _process;
+                if (process is null || IsProcessTerminated(process))
+                    return;
             }
 
             var trackedProcessId = TryGetProcessId(process);
@@ -142,9 +193,10 @@ public partial class ServerProcessService : IServerProcessService
             {
                 // stdin 写入失败时，继续走强制终止兜底，避免出现“点击停止但进程仍存活”。
                 OutputReceived?.Invoke(this, $"[system] 发送停服命令失败，将尝试强制终止：{ex.Message}");
+                _logger.LogWarning(ex, "Failed to send graceful stop command to server process {ProcessId}.", trackedProcessId);
             }
 
-            if (!IsProcessTerminated(process))
+            if (_canWriteStandardInput && !IsProcessTerminated(process))
             {
                 try
                 {
@@ -176,11 +228,7 @@ public partial class ServerProcessService : IServerProcessService
                 }
             }
 
-            // 清理可能残留的同目录孤立服务端进程（例如应用重启后失去句柄的旧进程）。
-            if (trackedProcessId.HasValue)
-            {
-                await StopOrphanWorkspaceServerProcessesAsync(cancellationToken, trackedProcessId.Value);
-            }
+            _canWriteStandardInput = false;
         }
         finally
         {
@@ -206,6 +254,8 @@ public partial class ServerProcessService : IServerProcessService
     {
         if (_process is null || _process.HasExited)
             throw new InvalidOperationException("服务器未运行。");
+        if (!_canWriteStandardInput)
+            throw new InvalidOperationException("当前服务端进程不是由本次 VSSL 启动，无法发送控制台命令。请停止并由 VSSL 重新启动后再发送命令。");
 
         var normalized = string.IsNullOrWhiteSpace(command) ? string.Empty : command.Trim();
         if (string.IsNullOrWhiteSpace(normalized))
@@ -224,17 +274,18 @@ public partial class ServerProcessService : IServerProcessService
         {
             try
             {
-                if (_process is null || _process.HasExited)
+                var process = _process;
+                if (process is null || IsProcessTerminated(process))
                     break;
 
                 var startedAt = _currentStatus.StartedAtUtc ?? DateTimeOffset.UtcNow;
                 UpdateStatus(new ServerRuntimeStatus
                 {
                     IsRunning = true,
-                    ProcessId = _process.Id,
+                    ProcessId = TryGetProcessId(process),
                     StartedAtUtc = startedAt,
                     ProfileId = _currentProfile?.Id,
-                    MemoryBytes = _process.WorkingSet64,
+                    MemoryBytes = TryGetWorkingSet64(process),
                     OnlinePlayers = _onlinePlayers
                 });
 
@@ -306,12 +357,12 @@ public partial class ServerProcessService : IServerProcessService
 
     private void OnProcessExited(object? sender, EventArgs e)
     {
+        var previousProfileId = _currentProfile?.Id;
         _monitorCts?.Cancel();
         _monitorCts?.Dispose();
         _monitorCts = null;
         _monitorTask = null;
-
-        var previousProfileId = _currentProfile?.Id;
+        _canWriteStandardInput = false;
         _onlinePlayers = 0;
         UpdateStatus(new ServerRuntimeStatus
         {
@@ -324,6 +375,7 @@ public partial class ServerProcessService : IServerProcessService
         });
 
         OutputReceived?.Invoke(this, "[system] 服务器进程已退出。");
+        _logger.LogInformation("Vintage Story server process exited. PreviousProfileId={ProfileId}.", previousProfileId);
 
         if (_process is not null)
         {
@@ -332,6 +384,60 @@ public partial class ServerProcessService : IServerProcessService
             _process.Exited -= OnProcessExited;
             _process.Dispose();
             _process = null;
+        }
+    }
+
+    private void StartMonitorLoop()
+    {
+        try
+        {
+            _monitorCts?.Cancel();
+            _monitorCts?.Dispose();
+        }
+        catch
+        {
+            // ignore
+        }
+
+        _monitorCts = new CancellationTokenSource();
+        _monitorTask = Task.Run(() => MonitorLoopAsync(_monitorCts.Token), CancellationToken.None);
+    }
+
+    private void ClearTrackedProcessIfTerminated()
+    {
+        var process = _process;
+        if (process is null || !IsProcessTerminated(process))
+            return;
+
+        var previousProfileId = _currentProfile?.Id;
+        _canWriteStandardInput = false;
+        _onlinePlayers = 0;
+
+        try
+        {
+            process.OutputDataReceived -= OnOutputDataReceived;
+            process.ErrorDataReceived -= OnOutputDataReceived;
+            process.Exited -= OnProcessExited;
+            process.Dispose();
+        }
+        catch
+        {
+            // ignore
+        }
+
+        _process = null;
+
+        if (_currentStatus.IsRunning)
+        {
+            UpdateStatus(new ServerRuntimeStatus
+            {
+                IsRunning = false,
+                ProcessId = null,
+                StartedAtUtc = null,
+                ProfileId = previousProfileId,
+                MemoryBytes = 0,
+                OnlinePlayers = 0
+            });
         }
     }
 
@@ -362,6 +468,264 @@ public partial class ServerProcessService : IServerProcessService
         catch
         {
             return null;
+        }
+    }
+
+    private static long TryGetWorkingSet64(Process process)
+    {
+        try
+        {
+            return process.WorkingSet64;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    private static DateTimeOffset? TryGetStartTimeUtc(Process process)
+    {
+        try
+        {
+            return new DateTimeOffset(process.StartTime.ToUniversalTime(), TimeSpan.Zero);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private bool TryAttachToExistingWorkspaceServerProcess(InstanceProfile? preferredProfile, bool emitOutput)
+    {
+        var serversRoot = NormalizePath(WorkspacePathHelper.ServersRoot);
+        if (string.IsNullOrWhiteSpace(serversRoot))
+            return false;
+
+        Process[] candidates;
+        try
+        {
+            candidates = Process.GetProcessesByName("VintagestoryServer");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to enumerate VintagestoryServer processes.");
+            return false;
+        }
+
+        var profiles = SafeGetProfiles();
+        Process? selectedProcess = null;
+        InstanceProfile? selectedProfile = null;
+        var selectedScore = int.MinValue;
+        var selectedStartedAt = DateTimeOffset.MinValue;
+
+        foreach (var candidate in candidates)
+        {
+            var candidateSelected = false;
+            try
+            {
+                var pid = TryGetProcessId(candidate);
+                if (!pid.HasValue || IsProcessTerminated(candidate) || !IsWorkspaceServerProcess(candidate, serversRoot))
+                    continue;
+
+                var commandLine = TryReadCommandLine(pid.Value);
+                var dataPath = TryExtractDataPath(commandLine);
+                var version = TryResolveVersionFromExecutable(candidate, serversRoot);
+                var profile = ResolveProfileForProcess(preferredProfile, profiles, dataPath, version);
+                var score = ScoreProcessMatch(preferredProfile, profile, dataPath, version);
+                var startedAt = TryGetStartTimeUtc(candidate) ?? DateTimeOffset.MinValue;
+
+                if (score < selectedScore || score == selectedScore && startedAt <= selectedStartedAt)
+                    continue;
+
+                selectedProcess?.Dispose();
+                selectedProcess = candidate;
+                selectedProfile = profile;
+                selectedScore = score;
+                selectedStartedAt = startedAt;
+                candidateSelected = true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to inspect server process.");
+            }
+            finally
+            {
+                if (!candidateSelected)
+                    candidate.Dispose();
+            }
+        }
+
+        if (selectedProcess is null)
+            return false;
+
+        try
+        {
+            AttachToExistingProcess(selectedProcess, selectedProfile, emitOutput);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            selectedProcess.Dispose();
+            _logger.LogDebug(ex, "Failed to attach existing Vintage Story server process.");
+            return false;
+        }
+    }
+
+    private IReadOnlyList<InstanceProfile> SafeGetProfiles()
+    {
+        if (_profileService is null)
+            return [];
+
+        try
+        {
+            return _profileService.GetProfiles();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to read profiles while attaching existing server process.");
+            return [];
+        }
+    }
+
+    private void AttachToExistingProcess(Process process, InstanceProfile? profile, bool emitOutput)
+    {
+        process.EnableRaisingEvents = true;
+        process.Exited += OnProcessExited;
+
+        _process = process;
+        _currentProfile = profile;
+        _canWriteStandardInput = false;
+        _onlinePlayers = 0;
+        StartMonitorLoop();
+
+        var processId = TryGetProcessId(process);
+        UpdateStatus(new ServerRuntimeStatus
+        {
+            IsRunning = true,
+            ProcessId = processId,
+            StartedAtUtc = TryGetStartTimeUtc(process) ?? DateTimeOffset.UtcNow,
+            ProfileId = profile?.Id,
+            MemoryBytes = TryGetWorkingSet64(process),
+            OnlinePlayers = 0
+        });
+
+        var profileText = profile is null ? "未识别档案" : $"档案={profile.Name}";
+        var message = $"[system] 检测到已在运行的服务端进程并接管状态，PID={processId}，{profileText}。";
+        if (emitOutput)
+            OutputReceived?.Invoke(this, message);
+
+        _logger.LogInformation(
+            "Attached existing Vintage Story server process. ProcessId={ProcessId}, ProfileId={ProfileId}.",
+            processId,
+            profile?.Id);
+    }
+
+    private InstanceProfile? ResolveProfileForProcess(
+        InstanceProfile? preferredProfile,
+        IReadOnlyList<InstanceProfile> profiles,
+        string dataPath,
+        string version)
+    {
+        var normalizedDataPath = NormalizePath(dataPath);
+        if (!string.IsNullOrWhiteSpace(normalizedDataPath))
+        {
+            if (preferredProfile is not null &&
+                NormalizePath(preferredProfile.DirectoryPath).Equals(normalizedDataPath, StringComparison.OrdinalIgnoreCase))
+            {
+                return preferredProfile;
+            }
+
+            var dataPathMatch = profiles.FirstOrDefault(profile =>
+                NormalizePath(profile.DirectoryPath).Equals(normalizedDataPath, StringComparison.OrdinalIgnoreCase));
+            if (dataPathMatch is not null)
+                return dataPathMatch;
+        }
+
+        if (!string.IsNullOrWhiteSpace(version))
+        {
+            if (preferredProfile is not null &&
+                preferredProfile.Version.Equals(version, StringComparison.OrdinalIgnoreCase))
+            {
+                return preferredProfile;
+            }
+
+            var versionMatches = profiles
+                .Where(profile => profile.Version.Equals(version, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (versionMatches.Count == 1)
+                return versionMatches[0];
+        }
+
+        return null;
+    }
+
+    private static int ScoreProcessMatch(
+        InstanceProfile? preferredProfile,
+        InstanceProfile? matchedProfile,
+        string dataPath,
+        string version)
+    {
+        if (preferredProfile is not null && matchedProfile is not null &&
+            preferredProfile.Id.Equals(matchedProfile.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            return !string.IsNullOrWhiteSpace(dataPath) ? 100 : 70;
+        }
+
+        if (matchedProfile is not null)
+            return !string.IsNullOrWhiteSpace(dataPath) ? 90 : 50;
+
+        return !string.IsNullOrWhiteSpace(version) ? 20 : 10;
+    }
+
+    private string TryReadCommandLine(int processId)
+    {
+        if (!OperatingSystem.IsWindows())
+            return string.Empty;
+
+        try
+        {
+            using var searcher = new ManagementObjectSearcher(
+                $"SELECT CommandLine FROM Win32_Process WHERE ProcessId = {processId}");
+            foreach (ManagementObject item in searcher.Get())
+                return item["CommandLine"]?.ToString() ?? string.Empty;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to read command line for process {ProcessId}.", processId);
+        }
+
+        return string.Empty;
+    }
+
+    private static string TryExtractDataPath(string commandLine)
+    {
+        if (string.IsNullOrWhiteSpace(commandLine))
+            return string.Empty;
+
+        var match = DataPathArgumentPattern().Match(commandLine);
+        return match.Success ? match.Groups["path"].Value : string.Empty;
+    }
+
+    private static string TryResolveVersionFromExecutable(Process process, string serversRoot)
+    {
+        try
+        {
+            var executablePath = process.MainModule?.FileName;
+            if (string.IsNullOrWhiteSpace(executablePath))
+                return string.Empty;
+
+            var executableDirectory = NormalizePath(Path.GetDirectoryName(Path.GetFullPath(executablePath)));
+            if (string.IsNullOrWhiteSpace(executableDirectory) ||
+                !executableDirectory.StartsWith(serversRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                return string.Empty;
+            }
+
+            return Path.GetFileName(executableDirectory) ?? string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
         }
     }
 
@@ -588,4 +952,7 @@ public partial class ServerProcessService : IServerProcessService
 
     [GeneratedRegex(@"(?:\b(?:online|players)\b\D+(?<count>\d+))|(?:(?<count>\d+)\D*player(?:s|\(s\))?\D*online)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex OnlineCountPattern();
+
+    [GeneratedRegex(@"--dataPath(?:=|\s+)(?:""(?<path>[^""]+)""|(?<path>\S+))", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex DataPathArgumentPattern();
 }
