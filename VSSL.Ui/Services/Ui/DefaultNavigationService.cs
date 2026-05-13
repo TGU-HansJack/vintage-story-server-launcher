@@ -22,7 +22,6 @@ public class DefaultNavigationService(
         .Create<ViewName, Type>()
         .Add(ViewName.Home, typeof(HomeViewModel))
         .Add(ViewName.Workspace, typeof(WorkspaceViewModel))
-        .Add(ViewName.MapPreview, typeof(MapPreviewViewModel))
         .Add(ViewName.Automation, typeof(AutomationViewModel))
         .Add(ViewName.About, typeof(AboutViewModel))
         .Add(ViewName.BugReport, typeof(BugReportViewModel))
@@ -47,7 +46,12 @@ public class DefaultNavigationService(
         logger.LogInformation("Navigate to {ViewName}", viewName);
         if (viewName is null) return;
 
-        var vmType = ViewMappings[viewName.Value];
+        if (!ViewMappings.TryGetValue(viewName.Value, out var vmType))
+        {
+            logger.LogWarning("Failed to navigate. View mapping not found for {ViewName}", viewName);
+            return;
+        }
+
         if (!typeof(IViewModel).IsAssignableFrom(vmType))
         {
             logger.LogError("Failed to navigate to {ViewName}, {IViewModel} is not assignable from {VmType}", viewName,

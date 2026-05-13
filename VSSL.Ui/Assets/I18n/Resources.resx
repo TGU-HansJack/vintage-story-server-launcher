@@ -70,8 +70,10 @@
   <data name="ConfigAllowPvpLabel" xml:space="preserve"><value>Allow PvP</value></data>
   <data name="ConfigAllowFireSpreadLabel" xml:space="preserve"><value>Allow Fire Spread</value></data>
   <data name="ConfigAllowFallingBlocksLabel" xml:space="preserve"><value>Allow Falling Blocks</value></data>
+  <data name="ConfigVerifyPlayerAuthLabel" xml:space="preserve"><value>Enable Official Auth</value></data>
   <data name="ConfigServerLanguageLabel" xml:space="preserve"><value>Server Language</value></data>
   <data name="ConfigDefaultRoleCodeLabel" xml:space="preserve"><value>Default Role Code</value></data>
+  <data name="ConfigWelcomeMessageLabel" xml:space="preserve"><value>Welcome Message</value></data>
   <data name="ConfigWorldSectionTitle" xml:space="preserve"><value>World</value></data>
   <data name="ConfigSeedLabel" xml:space="preserve"><value>Seed</value></data>
   <data name="ConfigWorldNameLabel" xml:space="preserve"><value>World Name</value></data>
@@ -152,6 +154,11 @@
   <data name="InstanceDownloadStatusNoEntries" xml:space="preserve"><value>No entries found.</value></data>
   <data name="InstanceDownloadStatusLoadedEntriesFormat" xml:space="preserve"><value>Loaded {0} entries. Download directory: {1}</value></data>
   <data name="InstanceDownloadStatusLoadFailedFormat" xml:space="preserve"><value>Failed to load download list: {0}</value></data>
+  <data name="InstanceDownloadImportDialogTitle" xml:space="preserve"><value>Select Server Package</value></data>
+  <data name="InstanceDownloadImportFilterName" xml:space="preserve"><value>Server Package</value></data>
+  <data name="InstanceDownloadStatusImportingFormat" xml:space="preserve"><value>Importing: {0}</value></data>
+  <data name="InstanceDownloadStatusImportedFormat" xml:space="preserve"><value>Import completed: {0}</value></data>
+  <data name="InstanceDownloadStatusImportFailedFormat" xml:space="preserve"><value>Import failed: {0}</value></data>
   <data name="SaveNameWatermark" xml:space="preserve"><value>Save name</value></data>
   <data name="SaveCurrentProfileVersionFormat" xml:space="preserve"><value>Current profile version: {0}</value></data>
   <data name="SaveHeaderName" xml:space="preserve"><value>Name</value></data>

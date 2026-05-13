@@ -164,12 +164,13 @@ public class QuickCommandsEditorWindow : Window
 
     private void RemoveSelected()
     {
-        if (_commandsListBox.SelectedItem is not string selected)
+        var selected = _commandsListBox.SelectedItem as string;
+        if (string.IsNullOrWhiteSpace(selected))
         {
             return;
         }
 
-        var index = _commands.FindIndex(command => command.Equals(selected, StringComparison.Ordinal));
+        var index = _commands.FindIndex(command => command.Equals(selected, StringComparison.OrdinalIgnoreCase));
         if (index < 0)
         {
             return;

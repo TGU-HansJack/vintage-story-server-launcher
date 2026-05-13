@@ -160,7 +160,20 @@
         <Grid Grid.Row="4" RowDefinitions="Auto,Auto" RowSpacing="6">
             <TextBlock Grid.Row="0" Text="{Binding StatusMessage}" TextWrapping="Wrap" />
             <Border Grid.Row="1" BorderBrush="Gray" BorderThickness="1" CornerRadius="6">
-                <ListBox x:Name="AutomationRuntimeLogsList" Height="240" ItemsSource="{Binding RuntimeLogs}" />
+                <ScrollViewer
+                    x:Name="AutomationRuntimeLogsScrollViewer"
+                    Height="240"
+                    HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto"
+                    >
+                    <ItemsControl ItemsSource="{Binding RuntimeLogs}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Margin="8,3" Text="{Binding .}" TextWrapping="Wrap" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
             </Border>
         </Grid>
         </Grid>

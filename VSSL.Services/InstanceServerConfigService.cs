@@ -37,8 +37,10 @@ public class InstanceServerConfigService : IInstanceServerConfigService
             AllowPvP = ReadBool(root["AllowPvP"], true),
             AllowFireSpread = ReadBool(root["AllowFireSpread"], true),
             AllowFallingBlocks = ReadBool(root["AllowFallingBlocks"], true),
+            VerifyPlayerAuth = ReadBool(root["VerifyPlayerAuth"], true),
             ServerLanguage = ReadString(root["ServerLanguage"], "en"),
-            DefaultRoleCode = ReadString(root["DefaultRoleCode"], "suplayer")
+            DefaultRoleCode = ReadString(root["DefaultRoleCode"], "suplayer"),
+            WelcomeMessage = ReadString(root["WelcomeMessage"], string.Empty)
         };
     }
 
@@ -110,8 +112,12 @@ public class InstanceServerConfigService : IInstanceServerConfigService
         root["AllowPvP"] = serverSettings.AllowPvP;
         root["AllowFireSpread"] = serverSettings.AllowFireSpread;
         root["AllowFallingBlocks"] = serverSettings.AllowFallingBlocks;
+        root["VerifyPlayerAuth"] = serverSettings.VerifyPlayerAuth;
         root["ServerLanguage"] = string.IsNullOrWhiteSpace(serverSettings.ServerLanguage) ? "en" : serverSettings.ServerLanguage.Trim();
         root["DefaultRoleCode"] = string.IsNullOrWhiteSpace(serverSettings.DefaultRoleCode) ? "suplayer" : serverSettings.DefaultRoleCode.Trim();
+        root["WelcomeMessage"] = string.IsNullOrWhiteSpace(serverSettings.WelcomeMessage)
+            ? string.Empty
+            : serverSettings.WelcomeMessage;
 
         var worldConfig = GetOrCreateObject(root, "WorldConfig");
         worldConfig["Seed"] = worldSettings.Seed;
@@ -312,8 +318,10 @@ public class InstanceServerConfigService : IInstanceServerConfigService
             ["AllowPvP"] = true,
             ["AllowFireSpread"] = true,
             ["AllowFallingBlocks"] = true,
+            ["VerifyPlayerAuth"] = true,
             ["ServerLanguage"] = "en",
-            ["DefaultRoleCode"] = "suplayer"
+            ["DefaultRoleCode"] = "suplayer",
+            ["WelcomeMessage"] = string.Empty
         };
 
         var worldConfig = new JsonObject

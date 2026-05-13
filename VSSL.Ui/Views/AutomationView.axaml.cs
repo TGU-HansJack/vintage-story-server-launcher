@@ -1,4 +1,5 @@
 using System.Collections.Specialized;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using VSSL.Ui.ViewModels;
@@ -61,11 +62,12 @@ public partial class AutomationView : UserControl
     {
         if (_viewModel is null || _viewModel.RuntimeLogs.Count == 0) return;
 
-        var last = _viewModel.RuntimeLogs[^1];
         Dispatcher.UIThread.Post(() =>
         {
-            if (this.FindControl<ListBox>("AutomationRuntimeLogsList") is not { } listBox) return;
-            listBox.ScrollIntoView(last);
+            if (this.FindControl<ScrollViewer>("AutomationRuntimeLogsScrollViewer") is not { } scrollViewer) return;
+
+            var targetY = Math.Max(0, scrollViewer.Extent.Height - scrollViewer.Viewport.Height);
+            scrollViewer.Offset = new Vector(scrollViewer.Offset.X, targetY);
         }, DispatcherPriority.Background);
     }
 }

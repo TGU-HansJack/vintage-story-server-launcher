@@ -64,6 +64,10 @@
                                           SelectedItem="{Binding ServerLanguage, Mode=TwoWay}" />
                                 <TextBlock Grid.Row="4" Grid.Column="2" VerticalAlignment="Center" Text="{Binding [ConfigDefaultRoleCodeLabel]}" />
                                 <TextBox Grid.Row="4" Grid.Column="3" Text="{Binding DefaultRoleCode, UpdateSourceTrigger=PropertyChanged}" />
+
+                                <CheckBox Grid.Row="5" Content="{Binding [ConfigVerifyPlayerAuthLabel]}" IsChecked="{Binding VerifyPlayerAuth}" />
+                                <TextBlock Grid.Row="5" Grid.Column="2" VerticalAlignment="Center" Text="{Binding [ConfigWelcomeMessageLabel]}" />
+                                <TextBox Grid.Row="5" Grid.Column="3" Text="{Binding WelcomeMessage, UpdateSourceTrigger=PropertyChanged}" />
                             </Grid>
                         </StackPanel>
                     </Border>

@@ -3,7 +3,6 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
-using Avalonia.Threading;
 using VSSL.App.Extensions;
 using Serilog;
 using Serilog.Events;
@@ -85,11 +84,6 @@ internal static class Program
         {
             Log.Error(eventArgs.Exception, "Unobserved task exception.");
             eventArgs.SetObserved();
-        };
-
-        Dispatcher.UIThread.UnhandledException += (_, eventArgs) =>
-        {
-            Log.Error(eventArgs.Exception, "Unhandled UI dispatcher exception.");
         };
     }
 }

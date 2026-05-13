@@ -298,12 +298,6 @@ public partial class WorkspaceViewModel : ViewModelBase
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Take(100)
                 .ToList();
-            if (normalized.Count == 0)
-            {
-                normalized.Add("/players");
-                normalized.Add("/savegame");
-                normalized.Add("/stop");
-            }
 
             ApplyQuickCommands(normalized);
             SaveQuickCommands(normalized);
@@ -538,16 +532,9 @@ public partial class WorkspaceViewModel : ViewModelBase
 
     private void LoadQuickCommands()
     {
-        var defaults = new List<string>
-        {
-            "/players",
-            "/savegame",
-            "/stop"
-        };
-
         if (_launcherPreferencesService is null)
         {
-            ApplyQuickCommands(defaults);
+            ApplyQuickCommands([]);
             return;
         }
 
@@ -557,12 +544,6 @@ public partial class WorkspaceViewModel : ViewModelBase
             .Select(command => command.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
-        if (commands.Count == 0)
-        {
-            commands = defaults;
-            preferences.QuickCommands = commands;
-            _launcherPreferencesService.Save(preferences);
-        }
 
         ApplyQuickCommands(commands);
     }

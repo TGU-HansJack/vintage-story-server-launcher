@@ -114,4 +114,34 @@ public class InstanceDownloadService : IInstanceDownloadService
 
         progress?.Report(1.0d);
     }
+
+    /// <inheritdoc />
+    public async Task<string> ImportServerPackageAsync(
+        string sourceFilePath,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(sourceFilePath))
+            throw new InvalidOperationException("导入文件路径不能为空。");
+
+        var fullSourcePath = Path.GetFullPath(sourceFilePath.Trim());
+        if (!File.Exists(fullSourcePath))
+            throw new InvalidOperationException($"导入文件不存在：{fullSourcePath}");
+
+        var fileName = Path.GetFileName(fullSourcePath);
+        if (string.IsNullOrWhiteSpace(fileName) ||
+            string.IsNullOrWhiteSpace(WorkspacePathHelper.TryExtractVersionFromPackageName(fileName)))
+        {
+            throw new InvalidOperationException("仅支持导入服务端压缩包（vs_server_win-x64_*.zip）。");
+        }
+
+        var downloadDirectory = GetDefaultDownloadDirectory();
+        Directory.CreateDirectory(downloadDirectory);
+
+        var targetFilePath = Path.Combine(downloadDirectory, fileName);
+        await using var source = new FileStream(fullSourcePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        await using var destination = new FileStream(targetFilePath, FileMode.Create, FileAccess.Write, FileShare.None);
+        await source.CopyToAsync(destination, cancellationToken);
+
+        return targetFilePath;
+    }
 }

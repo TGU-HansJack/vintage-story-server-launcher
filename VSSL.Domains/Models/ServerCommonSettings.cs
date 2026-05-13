@@ -25,7 +25,11 @@ public class ServerCommonSettings
 
     public bool AllowFallingBlocks { get; set; } = true;
 
+    public bool VerifyPlayerAuth { get; set; } = true;
+
     public string ServerLanguage { get; set; } = "en";
 
     public string DefaultRoleCode { get; set; } = "suplayer";
+
+    public string WelcomeMessage { get; set; } = string.Empty;
 }

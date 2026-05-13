@@ -43,8 +43,10 @@ public partial class ConfigViewModel : ViewModelBase
     [ObservableProperty] private bool _allowPvP = true;
     [ObservableProperty] private bool _allowFireSpread = true;
     [ObservableProperty] private bool _allowFallingBlocks = true;
+    [ObservableProperty] private bool _verifyPlayerAuth = true;
     [ObservableProperty] private string _serverLanguage = "en";
     [ObservableProperty] private string _defaultRoleCode = "suplayer";
+    [ObservableProperty] private string _welcomeMessage = string.Empty;
 
     public ObservableCollection<string> ServerLanguageOptions { get; } = [];
 
@@ -177,8 +179,10 @@ public partial class ConfigViewModel : ViewModelBase
                 AllowPvP = AllowPvP,
                 AllowFireSpread = AllowFireSpread,
                 AllowFallingBlocks = AllowFallingBlocks,
+                VerifyPlayerAuth = VerifyPlayerAuth,
                 ServerLanguage = ServerLanguage.Trim(),
-                DefaultRoleCode = DefaultRoleCode.Trim()
+                DefaultRoleCode = DefaultRoleCode.Trim(),
+                WelcomeMessage = WelcomeMessage.Trim()
             };
 
             var worldSettings = new WorldSettings
@@ -635,8 +639,10 @@ public partial class ConfigViewModel : ViewModelBase
             AllowPvP = serverSettings.AllowPvP;
             AllowFireSpread = serverSettings.AllowFireSpread;
             AllowFallingBlocks = serverSettings.AllowFallingBlocks;
+            VerifyPlayerAuth = serverSettings.VerifyPlayerAuth;
             ServerLanguage = serverSettings.ServerLanguage;
             DefaultRoleCode = serverSettings.DefaultRoleCode;
+            WelcomeMessage = serverSettings.WelcomeMessage;
 
             Seed = worldSettings.Seed;
             WorldName = worldSettings.WorldName;
@@ -715,8 +721,10 @@ public partial class ConfigViewModel : ViewModelBase
         AllowPvP = true;
         AllowFireSpread = true;
         AllowFallingBlocks = true;
+        VerifyPlayerAuth = true;
         ServerLanguage = "en";
         DefaultRoleCode = "suplayer";
+        WelcomeMessage = string.Empty;
         Seed = "123456789";
         WorldName = "A new world";
         SaveFileLocation = string.Empty;

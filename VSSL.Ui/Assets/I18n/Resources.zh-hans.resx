@@ -70,8 +70,10 @@
   <data name="ConfigAllowPvpLabel" xml:space="preserve"><value>允许PvP</value></data>
   <data name="ConfigAllowFireSpreadLabel" xml:space="preserve"><value>允许火势蔓延</value></data>
   <data name="ConfigAllowFallingBlocksLabel" xml:space="preserve"><value>允许方块掉落</value></data>
+  <data name="ConfigVerifyPlayerAuthLabel" xml:space="preserve"><value>是否开启正版验证</value></data>
   <data name="ConfigServerLanguageLabel" xml:space="preserve"><value>服务器语言</value></data>
   <data name="ConfigDefaultRoleCodeLabel" xml:space="preserve"><value>默认角色代码</value></data>
+  <data name="ConfigWelcomeMessageLabel" xml:space="preserve"><value>进服提示</value></data>
   <data name="ConfigWorldSectionTitle" xml:space="preserve"><value>世界</value></data>
   <data name="ConfigSeedLabel" xml:space="preserve"><value>种子</value></data>
   <data name="ConfigWorldNameLabel" xml:space="preserve"><value>世界名称</value></data>
@@ -152,6 +154,11 @@
   <data name="InstanceDownloadStatusNoEntries" xml:space="preserve"><value>未找到可用条目。</value></data>
   <data name="InstanceDownloadStatusLoadedEntriesFormat" xml:space="preserve"><value>已加载 {0} 条记录。下载目录：{1}</value></data>
   <data name="InstanceDownloadStatusLoadFailedFormat" xml:space="preserve"><value>加载下载列表失败：{0}</value></data>
+  <data name="InstanceDownloadImportDialogTitle" xml:space="preserve"><value>选择服务端压缩包</value></data>
+  <data name="InstanceDownloadImportFilterName" xml:space="preserve"><value>服务端压缩包</value></data>
+  <data name="InstanceDownloadStatusImportingFormat" xml:space="preserve"><value>正在导入：{0}</value></data>
+  <data name="InstanceDownloadStatusImportedFormat" xml:space="preserve"><value>导入完成：{0}</value></data>
+  <data name="InstanceDownloadStatusImportFailedFormat" xml:space="preserve"><value>导入失败：{0}</value></data>
   <data name="SaveNameWatermark" xml:space="preserve"><value>存档名称</value></data>
   <data name="SaveCurrentProfileVersionFormat" xml:space="preserve"><value>当前档案版本：{0}</value></data>
   <data name="SaveHeaderName" xml:space="preserve"><value>名称</value></data>

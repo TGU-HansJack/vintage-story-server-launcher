@@ -18,7 +18,7 @@
 
     <Grid RowDefinitions="Auto,Auto,*" RowSpacing="10">
         <!--  Top toolbar  -->
-        <Grid Grid.Row="0" Margin="12,0,12,0" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+        <Grid Grid.Row="0" Margin="12,0,12,0" ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="8">
             <CheckBox
                 Content="{Binding [InstanceDownloadShowDownloadedOnlyLabel]}"
                 IsChecked="{Binding ShowDownloadedOnly}"
@@ -46,7 +46,8 @@
                 <controls:SvgIcon Width="18" Height="18" IconName="FiSearch" />
             </Button>
 
-            <Button Grid.Column="3" Height="34" Command="{Binding RefreshCommand}" Content="{Binding [CommonRefreshButtonText]}" />
+            <Button Grid.Column="3" Height="34" Command="{Binding ImportPackageCommand}" Content="{Binding [CommonImportButtonText]}" />
+            <Button Grid.Column="4" Height="34" Command="{Binding RefreshCommand}" Content="{Binding [CommonRefreshButtonText]}" />
         </Grid>
 
         <!--  Status line  -->

@@ -31,6 +31,11 @@ public class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        Dispatcher.UIThread.UnhandledException += (_, eventArgs) =>
+        {
+            Log.Error(eventArgs.Exception, "Unhandled UI dispatcher exception.");
+        };
+
         var launcherPreferencesService = ServiceLocator.GetRequiredService<ILauncherPreferencesService>();
         var localizationService = ServiceLocator.GetRequiredService<ILocalizationService>();
         var themeService = ServiceLocator.GetRequiredService<IThemeService>();

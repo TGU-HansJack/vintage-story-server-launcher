@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using VSSL.Abstractions.Services;
+using VSSL.Abstractions.Services.Ui;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -11,6 +12,7 @@ namespace VSSL.Ui.ViewModels;
 public partial class InstanceDownloadViewModel : ViewModelBase
 {
     private readonly IInstanceDownloadService? _instanceDownloadService;
+    private readonly IFilePickerService? _filePickerService;
     private readonly List<InstanceDownloadItemViewModel> _allEntries = [];
 
     [ObservableProperty] private bool _showDownloadedOnly;
@@ -75,6 +77,33 @@ public partial class InstanceDownloadViewModel : ViewModelBase
             entry.IsDownloading = false;
             entry.DownloadProgress = 0;
             ApplyFilters();
+        }
+    }
+
+    [RelayCommand]
+    private async Task ImportPackageAsync()
+    {
+        if (_instanceDownloadService is null || _filePickerService is null)
+            return;
+
+        var selectedPath = await _filePickerService.PickSingleFileAsync(
+            L("InstanceDownloadImportDialogTitle"),
+            L("InstanceDownloadImportFilterName"),
+            ["vs_server_win-x64_*.zip", "*.zip"]);
+        if (string.IsNullOrWhiteSpace(selectedPath))
+            return;
+
+        var selectedFileName = Path.GetFileName(selectedPath);
+        try
+        {
+            StatusMessage = LF("InstanceDownloadStatusImportingFormat", selectedFileName);
+            var importedPath = await _instanceDownloadService.ImportServerPackageAsync(selectedPath);
+            ApplyFilters();
+            StatusMessage = LF("InstanceDownloadStatusImportedFormat", Path.GetFileName(importedPath));
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = LF("InstanceDownloadStatusImportFailedFormat", ex.Message);
         }
     }
 
@@ -160,9 +189,12 @@ public partial class InstanceDownloadViewModel : ViewModelBase
     {
     }
 
-    public InstanceDownloadViewModel(IInstanceDownloadService instanceDownloadService)
+    public InstanceDownloadViewModel(
+        IInstanceDownloadService instanceDownloadService,
+        IFilePickerService filePickerService)
     {
         _instanceDownloadService = instanceDownloadService;
+        _filePickerService = filePickerService;
         DownloadRootDirectory = instanceDownloadService.GetDefaultDownloadDirectory();
 
         Entries.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasNoData));

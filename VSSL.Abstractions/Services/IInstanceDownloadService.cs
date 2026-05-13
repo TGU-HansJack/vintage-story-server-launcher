@@ -40,4 +40,14 @@ public interface IInstanceDownloadService
         string targetFilePath,
         IProgress<double>? progress = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     从本地导入服务端压缩包到 packages 目录
+    /// </summary>
+    /// <param name="sourceFilePath">本地压缩包路径</param>
+    /// <param name="cancellationToken">cancellation token</param>
+    /// <returns>导入后的目标文件路径</returns>
+    Task<string> ImportServerPackageAsync(
+        string sourceFilePath,
+        CancellationToken cancellationToken = default);
 }
