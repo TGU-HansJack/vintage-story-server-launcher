@@ -6,6 +6,7 @@ using Avalonia;
 using VSSL.App.Extensions;
 using Serilog;
 using Serilog.Events;
+using VSSL.Services;
 
 namespace VSSL.App;
 
@@ -26,6 +27,12 @@ internal static class Program
         try
         {
             Thread.CurrentThread.Name ??= "MainThread";
+
+            if (ServerProcessRelay.IsRelayInvocation(args))
+            {
+                Environment.ExitCode = ServerProcessRelay.RunAsync(args).GetAwaiter().GetResult();
+                return;
+            }
 
             BuildAvaloniaApp()
                 .StartWithClassicDesktopLifetime(args);

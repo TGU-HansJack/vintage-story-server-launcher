@@ -242,6 +242,9 @@
   <data name="WorkspaceQuickCommandsDialogTitle" xml:space="preserve"><value>管理快捷指令</value></data>
   <data name="ConsoleNoOutputText" xml:space="preserve"><value>暂无输出。</value></data>
   <data name="WorkspaceRuntimeRunningFormat" xml:space="preserve"><value>运行中（PID: {0}，在线：{1}，启动：{2}）</value></data>
+  <data name="WorkspaceRuntimeReadOnlySuffix" xml:space="preserve"><value>（控制只读）</value></data>
+  <data name="WorkspaceControlReadyText" xml:space="preserve"><value>控制通道已连接。</value></data>
+  <data name="WorkspaceControlReadOnlyText" xml:space="preserve"><value>已接管运行状态，但没有可恢复控制通道；需要用当前版本 VSSL 重启一次服务端后才能继续发送命令。</value></data>
   <data name="WorkspaceStartupProgressFormat" xml:space="preserve"><value>启动进度：{0:0}%</value></data>
   <data name="WorkspaceStatusStarting" xml:space="preserve"><value>正在启动服务器...</value></data>
   <data name="WorkspaceStatusStarted" xml:space="preserve"><value>服务器已启动。</value></data>

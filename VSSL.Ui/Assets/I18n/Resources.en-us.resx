@@ -242,6 +242,9 @@
   <data name="WorkspaceQuickCommandsDialogTitle" xml:space="preserve"><value>Manage Quick Commands</value></data>
   <data name="ConsoleNoOutputText" xml:space="preserve"><value>No output yet.</value></data>
   <data name="WorkspaceRuntimeRunningFormat" xml:space="preserve"><value>Running (PID: {0}, Players: {1}, Started: {2})</value></data>
+  <data name="WorkspaceRuntimeReadOnlySuffix" xml:space="preserve"><value>(read-only control)</value></data>
+  <data name="WorkspaceControlReadyText" xml:space="preserve"><value>Control channel is connected.</value></data>
+  <data name="WorkspaceControlReadOnlyText" xml:space="preserve"><value>Only runtime state was attached; command input is unavailable until the server is restarted by this VSSL version.</value></data>
   <data name="WorkspaceStartupProgressFormat" xml:space="preserve"><value>Startup progress: {0:0}%</value></data>
   <data name="WorkspaceStatusStarting" xml:space="preserve"><value>Starting server...</value></data>
   <data name="WorkspaceStatusStarted" xml:space="preserve"><value>Server started.</value></data>

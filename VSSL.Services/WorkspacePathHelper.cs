@@ -34,11 +34,18 @@ internal static partial class WorkspacePathHelper
 
     public static string TempRoot => Path.Combine(WorkspaceRoot, ".tmp");
 
+    public static string RuntimeRoot => Path.Combine(WorkspaceRoot, ".runtime");
+
+    public static string ServerRelayRoot => Path.Combine(RuntimeRoot, "server-relays");
+
     public static string ProfilesIndexPath => Path.Combine(WorkspaceRoot, "profiles.json");
 
     public static string RobotRoot => Path.Combine(WorkspaceRoot, "robot");
 
     public static string RobotSettingsPath => Path.Combine(RobotRoot, "vs2qq-settings.json");
+
+    public static string GetServerRelayStatePath(string profileId) =>
+        Path.Combine(ServerRelayRoot, $"{SanitizeFileName(profileId)}.json");
 
     public static string GetProfileDataPath(string profileId) => Path.Combine(DataRoot, profileId);
 
@@ -69,6 +76,8 @@ internal static partial class WorkspacePathHelper
         Directory.CreateDirectory(ServersRoot);
         Directory.CreateDirectory(PackagesRoot);
         Directory.CreateDirectory(TempRoot);
+        Directory.CreateDirectory(RuntimeRoot);
+        Directory.CreateDirectory(ServerRelayRoot);
     }
 
     public static string SanitizeFileName(string name)

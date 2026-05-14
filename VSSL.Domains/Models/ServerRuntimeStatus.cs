@@ -16,4 +16,8 @@ public class ServerRuntimeStatus
     public long MemoryBytes { get; init; }
 
     public int OnlinePlayers { get; init; }
+
+    public bool CanSendCommands { get; init; }
+
+    public string ControlMode { get; init; } = string.Empty;
 }

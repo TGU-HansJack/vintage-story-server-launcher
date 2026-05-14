@@ -79,9 +79,12 @@ public class LogTailService : ILogTailService
 
                 stream.Seek(_position, SeekOrigin.Begin);
                 using var reader = new StreamReader(stream, Encoding.UTF8);
-                while (!reader.EndOfStream)
+                while (true)
                 {
                     var line = await reader.ReadLineAsync(cancellationToken);
+                    if (line is null)
+                        break;
+
                     if (!string.IsNullOrWhiteSpace(line))
                         LogLineReceived?.Invoke(this, line);
                 }

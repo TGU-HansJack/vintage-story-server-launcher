@@ -34,6 +34,7 @@ public class App : Application
         Dispatcher.UIThread.UnhandledException += (_, eventArgs) =>
         {
             Log.Error(eventArgs.Exception, "Unhandled UI dispatcher exception.");
+            eventArgs.Handled = true;
         };
 
         var launcherPreferencesService = ServiceLocator.GetRequiredService<ILauncherPreferencesService>();

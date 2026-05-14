@@ -16,7 +16,7 @@ public sealed class LauncherStartupService : ILauncherStartupService
 
     public bool IsEnabled()
     {
-        if (!IsSupported)
+        if (!OperatingSystem.IsWindows())
         {
             return false;
         }
@@ -35,7 +35,7 @@ public sealed class LauncherStartupService : ILauncherStartupService
 
     public void SetEnabled(bool enabled)
     {
-        if (!IsSupported)
+        if (!OperatingSystem.IsWindows())
         {
             return;
         }

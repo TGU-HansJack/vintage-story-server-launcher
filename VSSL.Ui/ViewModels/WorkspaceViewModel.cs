@@ -48,6 +48,10 @@ public partial class WorkspaceViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(RuntimeStateText))]
+    private bool _canSendCommands;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RuntimeStateText))]
     private DateTimeOffset? _runtimeStartedAt;
 
     [ObservableProperty]
@@ -78,9 +82,18 @@ public partial class WorkspaceViewModel : ViewModelBase
 
     public bool HasNoQuickCommands => !HasQuickCommands;
 
-    public string RuntimeStateText => IsRunning
-        ? LF("WorkspaceRuntimeRunningFormat", RuntimeProcessId, OnlinePlayers, FormatStartedAt(RuntimeStartedAt))
-        : L("CommonStoppedState");
+    public string RuntimeStateText
+    {
+        get
+        {
+            if (!IsRunning)
+                return L("CommonStoppedState");
+
+            var runningText = LF("WorkspaceRuntimeRunningFormat", RuntimeProcessId, OnlinePlayers,
+                FormatStartedAt(RuntimeStartedAt));
+            return CanSendCommands ? runningText : $"{runningText} {L("WorkspaceRuntimeReadOnlySuffix")}";
+        }
+    }
 
     public string StartupProgressText => LF("WorkspaceStartupProgressFormat", StartupProgress);
 
@@ -399,6 +412,7 @@ public partial class WorkspaceViewModel : ViewModelBase
         OnlinePlayers = status.OnlinePlayers;
         RuntimeProcessId = status.ProcessId ?? 0;
         RuntimeStartedAt = status.StartedAtUtc;
+        CanSendCommands = status.CanSendCommands;
         _runningProfileId = status.ProfileId;
 
         if (!status.IsRunning)
@@ -411,7 +425,10 @@ public partial class WorkspaceViewModel : ViewModelBase
         if (status.ProcessId.HasValue && _runningNoticeProcessId != status.ProcessId.Value)
         {
             _runningNoticeProcessId = status.ProcessId.Value;
-            AppendConsoleLine($"[system] 已检测到服务端正在运行，PID={status.ProcessId.Value}。");
+            var controlText = status.CanSendCommands
+                ? L("WorkspaceControlReadyText")
+                : L("WorkspaceControlReadOnlyText");
+            AppendConsoleLine($"[system] 已检测到服务端正在运行，PID={status.ProcessId.Value}。{controlText}");
         }
 
         if (!string.IsNullOrWhiteSpace(status.ProfileId))

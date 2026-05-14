@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Management;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Data.Sqlite;
@@ -20,9 +21,12 @@ public partial class ServerProcessService : IServerProcessService
     private readonly ILogger<ServerProcessService> _logger;
     private Process? _process;
     private InstanceProfile? _currentProfile;
+    private ServerRelayState? _relayState;
     private CancellationTokenSource? _monitorCts;
     private Task? _monitorTask;
     private bool _canWriteStandardInput;
+    private string? _playerCountLogPath;
+    private long _playerCountLogPosition;
 
     private ServerRuntimeStatus _currentStatus = new();
     private int _onlinePlayers;
@@ -58,7 +62,8 @@ public partial class ServerProcessService : IServerProcessService
 
             if (_process is null)
             {
-                TryAttachToExistingWorkspaceServerProcess(preferredProfile: null, emitOutput: false);
+                if (!TryAttachToExistingWorkspaceServerRelay(preferredProfile: null, emitOutput: false))
+                    TryAttachToExistingWorkspaceServerProcess(preferredProfile: null, emitOutput: false);
             }
 
             return _currentStatus;
@@ -82,10 +87,17 @@ public partial class ServerProcessService : IServerProcessService
 
             WorkspacePathHelper.EnsureWorkspace();
 
-            if (TryAttachToExistingWorkspaceServerProcess(profile, emitOutput: true))
+            if (TryAttachToExistingWorkspaceServerRelay(profile, emitOutput: true) ||
+                TryAttachToExistingWorkspaceServerProcess(profile, emitOutput: true))
             {
                 if (_currentProfile?.Id.Equals(profile.Id, StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    if (!HasControlChannel())
+                        throw new InvalidOperationException(
+                            $"检测到该档案已有服务端进程正在运行（PID={_currentStatus.ProcessId}），但它没有可恢复控制通道。请先停止当前服务端，再由新版 VSSL 重新启动以恢复命令输入。");
+
                     return;
+                }
 
                 throw new InvalidOperationException(
                     $"检测到已有服务端进程正在运行（PID={_currentStatus.ProcessId}），已接管其状态。请先停止当前服务端后再启动其他档案。");
@@ -112,51 +124,15 @@ public partial class ServerProcessService : IServerProcessService
             PrepareSaveFileForStart(profile);
             SqliteConnection.ClearAllPools();
 
-            var process = new Process
-            {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = serverExe,
-                    WorkingDirectory = installPath,
-                    Arguments = $"--dataPath \"{profile.DirectoryPath}\"",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    RedirectStandardInput = true,
-                    CreateNoWindow = true,
-                    UseShellExecute = false
-                },
-                EnableRaisingEvents = true
-            };
+            var relayState = await StartRelayAsync(profile, serverExe, installPath, cancellationToken);
+            AttachToRelayState(relayState, profile, emitOutput: false);
 
-            process.OutputDataReceived += OnOutputDataReceived;
-            process.ErrorDataReceived += OnOutputDataReceived;
-            process.Exited += OnProcessExited;
-
-            if (!process.Start())
-                throw new InvalidOperationException("启动服务端失败。");
-
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
-
-            _process = process;
-            _currentProfile = profile;
-            _canWriteStandardInput = true;
-            _onlinePlayers = 0;
-
-            StartMonitorLoop();
-
-            UpdateStatus(new ServerRuntimeStatus
-            {
-                IsRunning = true,
-                ProcessId = process.Id,
-                StartedAtUtc = DateTimeOffset.UtcNow,
-                ProfileId = profile.Id,
-                MemoryBytes = process.WorkingSet64,
-                OnlinePlayers = 0
-            });
-
-            OutputReceived?.Invoke(this, $"[system] 服务器进程已启动，PID={process.Id}");
-            _logger.LogInformation("Vintage Story server process started. ProcessId={ProcessId}.", process.Id);
+            OutputReceived?.Invoke(this,
+                $"[system] 服务器进程已通过后台控制通道启动，PID={relayState.ServerProcessId}，Relay PID={relayState.RelayProcessId}");
+            _logger.LogInformation(
+                "Vintage Story server process started through relay. ProcessId={ProcessId}, RelayProcessId={RelayProcessId}.",
+                relayState.ServerProcessId,
+                relayState.RelayProcessId);
         }
         finally
         {
@@ -175,7 +151,8 @@ public partial class ServerProcessService : IServerProcessService
             var process = _process;
             if (process is null || IsProcessTerminated(process))
             {
-                if (!TryAttachToExistingWorkspaceServerProcess(preferredProfile: null, emitOutput: true))
+                if (!TryAttachToExistingWorkspaceServerRelay(preferredProfile: null, emitOutput: true) &&
+                    !TryAttachToExistingWorkspaceServerProcess(preferredProfile: null, emitOutput: true))
                     return;
 
                 process = _process;
@@ -184,10 +161,12 @@ public partial class ServerProcessService : IServerProcessService
             }
 
             var trackedProcessId = TryGetProcessId(process);
+            var gracefulCommandSent = false;
 
             try
             {
                 await SendCommandInternalAsync("/stop", cancellationToken);
+                gracefulCommandSent = true;
             }
             catch (Exception ex)
             {
@@ -196,7 +175,7 @@ public partial class ServerProcessService : IServerProcessService
                 _logger.LogWarning(ex, "Failed to send graceful stop command to server process {ProcessId}.", trackedProcessId);
             }
 
-            if (_canWriteStandardInput && !IsProcessTerminated(process))
+            if (gracefulCommandSent && !IsProcessTerminated(process))
             {
                 try
                 {
@@ -254,14 +233,42 @@ public partial class ServerProcessService : IServerProcessService
     {
         if (_process is null || _process.HasExited)
             throw new InvalidOperationException("服务器未运行。");
-        if (!_canWriteStandardInput)
-            throw new InvalidOperationException("当前服务端进程不是由本次 VSSL 启动，无法发送控制台命令。请停止并由 VSSL 重新启动后再发送命令。");
 
         var normalized = string.IsNullOrWhiteSpace(command) ? string.Empty : command.Trim();
         if (string.IsNullOrWhiteSpace(normalized))
             throw new InvalidOperationException("命令不能为空。");
         if (!normalized.StartsWith('/'))
             normalized = "/" + normalized;
+
+        if (_relayState is not null)
+        {
+            var response = await ServerRelayClient.SendCommandAsync(
+                _relayState.PipeName,
+                normalized,
+                cancellationToken);
+            if (!response.Success)
+            {
+                _logger.LogWarning(
+                    "Failed to send command through relay. ProcessId={ProcessId}, RelayProcessId={RelayProcessId}, Error={Error}.",
+                    _currentStatus.ProcessId,
+                    _relayState.RelayProcessId,
+                    response.Error);
+
+                if (!IsProcessIdRunning(_relayState.RelayProcessId))
+                    _relayState = null;
+
+                throw new InvalidOperationException(response.Error ?? "后台控制通道不可用。");
+            }
+
+            if (response.State is not null)
+                _relayState = response.State;
+
+            OutputReceived?.Invoke(this, $"[cmd] {normalized}");
+            return;
+        }
+
+        if (!_canWriteStandardInput)
+            throw new InvalidOperationException("当前服务端进程没有可用控制通道。若它是在旧版本 VSSL 崩溃前启动的，需要先停止该服务端，并由新版 VSSL 重新启动一次。");
 
         await _process.StandardInput.WriteLineAsync(normalized.AsMemory(), cancellationToken);
         await _process.StandardInput.FlushAsync(cancellationToken);
@@ -278,6 +285,8 @@ public partial class ServerProcessService : IServerProcessService
                 if (process is null || IsProcessTerminated(process))
                     break;
 
+                RefreshPlayerCountFromLog();
+
                 var startedAt = _currentStatus.StartedAtUtc ?? DateTimeOffset.UtcNow;
                 UpdateStatus(new ServerRuntimeStatus
                 {
@@ -286,7 +295,9 @@ public partial class ServerProcessService : IServerProcessService
                     StartedAtUtc = startedAt,
                     ProfileId = _currentProfile?.Id,
                     MemoryBytes = TryGetWorkingSet64(process),
-                    OnlinePlayers = _onlinePlayers
+                    OnlinePlayers = _onlinePlayers,
+                    CanSendCommands = HasControlChannel(),
+                    ControlMode = GetControlMode()
                 });
 
                 await Task.Delay(1000, cancellationToken);
@@ -351,8 +362,64 @@ public partial class ServerProcessService : IServerProcessService
             StartedAtUtc = _currentStatus.StartedAtUtc,
             ProfileId = _currentStatus.ProfileId,
             MemoryBytes = _currentStatus.MemoryBytes,
-            OnlinePlayers = _onlinePlayers
+            OnlinePlayers = _onlinePlayers,
+            CanSendCommands = HasControlChannel(),
+            ControlMode = GetControlMode()
         });
+    }
+
+    private void ResetPlayerCountLogMonitor(InstanceProfile? profile, string? dataPath = null)
+    {
+        var profileDataPath = !string.IsNullOrWhiteSpace(profile?.DirectoryPath)
+            ? profile.DirectoryPath
+            : dataPath;
+        if (string.IsNullOrWhiteSpace(profileDataPath))
+        {
+            _playerCountLogPath = null;
+            _playerCountLogPosition = 0;
+            return;
+        }
+
+        _playerCountLogPath = WorkspacePathHelper.GetServerMainLogPath(profileDataPath);
+        _playerCountLogPosition = 0;
+
+        try
+        {
+            if (File.Exists(_playerCountLogPath))
+                _playerCountLogPosition = new FileInfo(_playerCountLogPath).Length;
+        }
+        catch
+        {
+            _playerCountLogPosition = 0;
+        }
+    }
+
+    private void RefreshPlayerCountFromLog()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(_playerCountLogPath) || !File.Exists(_playerCountLogPath))
+                return;
+
+            using var stream = new FileStream(_playerCountLogPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            if (stream.Length < _playerCountLogPosition)
+                _playerCountLogPosition = 0;
+
+            stream.Seek(_playerCountLogPosition, SeekOrigin.Begin);
+            using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+            string? line;
+            while ((line = reader.ReadLine()) is not null)
+            {
+                if (!string.IsNullOrWhiteSpace(line))
+                    TryUpdatePlayerCountByLine(line);
+            }
+
+            _playerCountLogPosition = stream.Position;
+        }
+        catch
+        {
+            // Runtime status should not flap because a log file is rotating or temporarily locked.
+        }
     }
 
     private void OnProcessExited(object? sender, EventArgs e)
@@ -362,7 +429,10 @@ public partial class ServerProcessService : IServerProcessService
         _monitorCts?.Dispose();
         _monitorCts = null;
         _monitorTask = null;
+        _relayState = null;
         _canWriteStandardInput = false;
+        _playerCountLogPath = null;
+        _playerCountLogPosition = 0;
         _onlinePlayers = 0;
         UpdateStatus(new ServerRuntimeStatus
         {
@@ -411,6 +481,9 @@ public partial class ServerProcessService : IServerProcessService
 
         var previousProfileId = _currentProfile?.Id;
         _canWriteStandardInput = false;
+        _relayState = null;
+        _playerCountLogPath = null;
+        _playerCountLogPosition = 0;
         _onlinePlayers = 0;
 
         try
@@ -447,6 +520,22 @@ public partial class ServerProcessService : IServerProcessService
         StatusChanged?.Invoke(this, status);
     }
 
+    private bool HasControlChannel()
+    {
+        if (_canWriteStandardInput)
+            return true;
+
+        return _relayState is not null && IsProcessIdRunning(_relayState.RelayProcessId);
+    }
+
+    private string GetControlMode()
+    {
+        if (_relayState is not null && IsProcessIdRunning(_relayState.RelayProcessId))
+            return "relay";
+
+        return _canWriteStandardInput ? "direct" : string.Empty;
+    }
+
     private static bool IsProcessTerminated(Process process)
     {
         try
@@ -459,6 +548,22 @@ public partial class ServerProcessService : IServerProcessService
         }
     }
 
+    private static bool IsProcessIdRunning(int processId)
+    {
+        if (processId <= 0)
+            return false;
+
+        try
+        {
+            using var process = Process.GetProcessById(processId);
+            return !process.HasExited;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private static int? TryGetProcessId(Process process)
     {
         try
@@ -468,6 +573,38 @@ public partial class ServerProcessService : IServerProcessService
         catch
         {
             return null;
+        }
+    }
+
+    private static Process? TryOpenProcess(int? processId)
+    {
+        if (!processId.HasValue || processId.Value <= 0)
+            return null;
+
+        try
+        {
+            var process = Process.GetProcessById(processId.Value);
+            if (!process.HasExited)
+                return process;
+
+            process.Dispose();
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static int TryGetExitCode(Process process)
+    {
+        try
+        {
+            return process.ExitCode;
+        }
+        catch
+        {
+            return 0;
         }
     }
 
@@ -492,6 +629,182 @@ public partial class ServerProcessService : IServerProcessService
         catch
         {
             return null;
+        }
+    }
+
+    private async Task<ServerRelayState> StartRelayAsync(
+        InstanceProfile profile,
+        string serverExe,
+        string installPath,
+        CancellationToken cancellationToken)
+    {
+        var launcherPath = Environment.ProcessPath;
+        if (string.IsNullOrWhiteSpace(launcherPath) || !File.Exists(launcherPath))
+            throw new InvalidOperationException("无法定位 VSSL 主程序，不能启动后台控制通道。");
+
+        var pipeName = ServerRelayProtocol.CreatePipeName(profile.Id);
+        var statePath = WorkspacePathHelper.GetServerRelayStatePath(profile.Id);
+        TryDeleteFile(statePath);
+
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = launcherPath,
+            WorkingDirectory = Path.GetDirectoryName(launcherPath) ?? AppContext.BaseDirectory,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        startInfo.ArgumentList.Add(ServerRelayProtocol.LauncherArgument);
+        startInfo.ArgumentList.Add("--pipe-name");
+        startInfo.ArgumentList.Add(pipeName);
+        startInfo.ArgumentList.Add("--state-path");
+        startInfo.ArgumentList.Add(statePath);
+        startInfo.ArgumentList.Add("--server-exe");
+        startInfo.ArgumentList.Add(serverExe);
+        startInfo.ArgumentList.Add("--working-dir");
+        startInfo.ArgumentList.Add(installPath);
+        startInfo.ArgumentList.Add("--data-path");
+        startInfo.ArgumentList.Add(profile.DirectoryPath);
+        startInfo.ArgumentList.Add("--profile-id");
+        startInfo.ArgumentList.Add(profile.Id);
+        startInfo.ArgumentList.Add("--profile-name");
+        startInfo.ArgumentList.Add(profile.Name);
+        startInfo.ArgumentList.Add("--version");
+        startInfo.ArgumentList.Add(profile.Version);
+
+        using var relayProcess = new Process { StartInfo = startInfo };
+        if (!relayProcess.Start())
+            throw new InvalidOperationException("启动后台控制通道失败。");
+
+        return await WaitForRelayStateAsync(relayProcess, statePath, pipeName, cancellationToken);
+    }
+
+    private async Task<ServerRelayState> WaitForRelayStateAsync(
+        Process relayProcess,
+        string statePath,
+        string pipeName,
+        CancellationToken cancellationToken)
+    {
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(20);
+        string? lastError = null;
+
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (IsProcessTerminated(relayProcess))
+                throw new InvalidOperationException($"后台控制通道启动后已退出，退出码：{TryGetExitCode(relayProcess)}。");
+
+            var state = TryReadRelayState(statePath);
+            if (state is not null && state.PipeName.Equals(pipeName, StringComparison.Ordinal))
+            {
+                var response = await ServerRelayClient.PingAsync(pipeName, cancellationToken);
+                if (response.Success && response.State is { } liveState)
+                    return liveState;
+
+                lastError = response.Error;
+            }
+
+            await Task.Delay(250, cancellationToken);
+        }
+
+        throw new InvalidOperationException(
+            string.IsNullOrWhiteSpace(lastError)
+                ? "等待后台控制通道就绪超时。"
+                : $"等待后台控制通道就绪超时：{lastError}");
+    }
+
+    private bool TryAttachToExistingWorkspaceServerRelay(InstanceProfile? preferredProfile, bool emitOutput)
+    {
+        WorkspacePathHelper.EnsureWorkspace();
+
+        string[] stateFiles;
+        try
+        {
+            stateFiles = Directory.GetFiles(WorkspacePathHelper.ServerRelayRoot, "*.json", SearchOption.TopDirectoryOnly);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to enumerate server relay state files.");
+            return false;
+        }
+
+        var profiles = SafeGetProfiles();
+        Process? selectedProcess = null;
+        ServerRelayState? selectedState = null;
+        InstanceProfile? selectedProfile = null;
+        var selectedScore = int.MinValue;
+        var selectedStartedAt = DateTimeOffset.MinValue;
+
+        foreach (var stateFile in stateFiles)
+        {
+            Process? process = null;
+            var processSelected = false;
+
+            try
+            {
+                var state = TryReadRelayState(stateFile);
+                if (state is null || string.IsNullOrWhiteSpace(state.PipeName))
+                {
+                    TryDeleteFile(stateFile);
+                    continue;
+                }
+
+                var response = ServerRelayClient.PingAsync(state.PipeName).GetAwaiter().GetResult();
+                if (!response.Success)
+                {
+                    if (!IsProcessIdRunning(state.RelayProcessId))
+                        TryDeleteFile(stateFile);
+                    continue;
+                }
+
+                var liveState = response.State ?? state;
+                process = TryOpenProcess(liveState.ServerProcessId);
+                if (process is null || IsProcessTerminated(process))
+                    continue;
+
+                var profile = ResolveProfileForProcess(
+                    preferredProfile,
+                    profiles,
+                    liveState.DataPath,
+                    liveState.Version);
+                var score = ScoreProcessMatch(preferredProfile, profile, liveState.DataPath, liveState.Version);
+                var startedAt = liveState.StartedAtUtc;
+
+                if (score < selectedScore || score == selectedScore && startedAt <= selectedStartedAt)
+                    continue;
+
+                selectedProcess?.Dispose();
+                selectedProcess = process;
+                selectedState = liveState;
+                selectedProfile = profile;
+                selectedScore = score;
+                selectedStartedAt = startedAt;
+                processSelected = true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to inspect server relay state file {StateFile}.", stateFile);
+            }
+            finally
+            {
+                if (!processSelected)
+                    process?.Dispose();
+            }
+        }
+
+        if (selectedProcess is null || selectedState is null)
+            return false;
+
+        try
+        {
+            AttachToRelayProcess(selectedProcess, selectedState, selectedProfile, emitOutput);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            selectedProcess.Dispose();
+            _logger.LogDebug(ex, "Failed to attach existing Vintage Story server relay.");
+            return false;
         }
     }
 
@@ -587,6 +900,62 @@ public partial class ServerProcessService : IServerProcessService
         }
     }
 
+    private void AttachToRelayState(ServerRelayState state, InstanceProfile? profile, bool emitOutput)
+    {
+        var process = TryOpenProcess(state.ServerProcessId)
+                      ?? throw new InvalidOperationException("后台控制通道已启动，但未能打开服务端进程。");
+
+        try
+        {
+            AttachToRelayProcess(process, state, profile, emitOutput);
+        }
+        catch
+        {
+            process.Dispose();
+            throw;
+        }
+    }
+
+    private void AttachToRelayProcess(Process process, ServerRelayState state, InstanceProfile? profile, bool emitOutput)
+    {
+        process.EnableRaisingEvents = true;
+        process.Exited += OnProcessExited;
+
+        _process = process;
+        _currentProfile = profile;
+        _relayState = state;
+        _canWriteStandardInput = false;
+        _onlinePlayers = 0;
+        ResetPlayerCountLogMonitor(profile, state.DataPath);
+        StartMonitorLoop();
+
+        var processId = TryGetProcessId(process);
+        UpdateStatus(new ServerRuntimeStatus
+        {
+            IsRunning = true,
+            ProcessId = processId,
+            StartedAtUtc = state.StartedAtUtc == default
+                ? TryGetStartTimeUtc(process) ?? DateTimeOffset.UtcNow
+                : state.StartedAtUtc,
+            ProfileId = profile?.Id ?? state.ProfileId,
+            MemoryBytes = TryGetWorkingSet64(process),
+            OnlinePlayers = 0,
+            CanSendCommands = HasControlChannel(),
+            ControlMode = GetControlMode()
+        });
+
+        var profileText = profile is null ? "未识别档案" : $"档案={profile.Name}";
+        var message = $"[system] 已连接后台控制通道并接管服务端，PID={processId}，Relay PID={state.RelayProcessId}，{profileText}。";
+        if (emitOutput)
+            OutputReceived?.Invoke(this, message);
+
+        _logger.LogInformation(
+            "Attached Vintage Story server relay. ProcessId={ProcessId}, RelayProcessId={RelayProcessId}, ProfileId={ProfileId}.",
+            processId,
+            state.RelayProcessId,
+            profile?.Id ?? state.ProfileId);
+    }
+
     private void AttachToExistingProcess(Process process, InstanceProfile? profile, bool emitOutput)
     {
         process.EnableRaisingEvents = true;
@@ -594,8 +963,10 @@ public partial class ServerProcessService : IServerProcessService
 
         _process = process;
         _currentProfile = profile;
+        _relayState = null;
         _canWriteStandardInput = false;
         _onlinePlayers = 0;
+        ResetPlayerCountLogMonitor(profile);
         StartMonitorLoop();
 
         var processId = TryGetProcessId(process);
@@ -606,11 +977,13 @@ public partial class ServerProcessService : IServerProcessService
             StartedAtUtc = TryGetStartTimeUtc(process) ?? DateTimeOffset.UtcNow,
             ProfileId = profile?.Id,
             MemoryBytes = TryGetWorkingSet64(process),
-            OnlinePlayers = 0
+            OnlinePlayers = 0,
+            CanSendCommands = false,
+            ControlMode = string.Empty
         });
 
         var profileText = profile is null ? "未识别档案" : $"档案={profile.Name}";
-        var message = $"[system] 检测到已在运行的服务端进程并接管状态，PID={processId}，{profileText}。";
+        var message = $"[system] 检测到已在运行的服务端进程并接管状态，PID={processId}，{profileText}。该进程没有可恢复控制通道，命令发送不可用。";
         if (emitOutput)
             OutputReceived?.Invoke(this, message);
 
@@ -815,6 +1188,35 @@ public partial class ServerProcessService : IServerProcessService
         catch
         {
             return string.Empty;
+        }
+    }
+
+    private static ServerRelayState? TryReadRelayState(string statePath)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(statePath) || !File.Exists(statePath))
+                return null;
+
+            var json = File.ReadAllText(statePath);
+            return JsonSerializer.Deserialize<ServerRelayState>(json, ServerRelayProtocol.JsonOptions);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static void TryDeleteFile(string path)
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(path))
+                File.Delete(path);
+        }
+        catch
+        {
+            // Stale runtime files are harmless and validated before use.
         }
     }
 
