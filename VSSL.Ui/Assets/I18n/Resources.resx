@@ -16,6 +16,7 @@
   <data name="LightThemeName" xml:space="preserve"><value>Light</value></data>
   <data name="DarkThemeName" xml:space="preserve"><value>Dark</value></data>
   <data name="OverviewMenuTitle" xml:space="preserve"><value>Dashboard</value></data>
+  <data name="OverviewLinkageMenuTitle" xml:space="preserve"><value>Linkage</value></data>
   <data name="ProjectInfoMenuTitle" xml:space="preserve"><value>Project Info</value></data>
   <data name="WorkspaceMenuTitle" xml:space="preserve"><value>Console</value></data>
   <data name="BugReportMenuTitle" xml:space="preserve"><value>Feedback</value></data>
@@ -267,6 +268,34 @@
   <data name="HomePlayersAxisLabel" xml:space="preserve"><value>Players</value></data>
   <data name="HomeMemoryFormat" xml:space="preserve"><value>Memory: {0}</value></data>
   <data name="HomeUptimeFormat" xml:space="preserve"><value>Uptime: {0}</value></data>
+  <data name="HomeLinkageTitle" xml:space="preserve"><value>Overview - Linkage (OSQ)</value></data>
+  <data name="HomeLinkageEnabledLabel" xml:space="preserve"><value>Enable Linkage</value></data>
+  <data name="HomeLinkageStateLabel" xml:space="preserve"><value>Runtime State</value></data>
+  <data name="HomeLinkageListenPrefixLabel" xml:space="preserve"><value>Listen Prefix</value></data>
+  <data name="HomeLinkageAllowHttpLabel" xml:space="preserve"><value>Allow HTTP</value></data>
+  <data name="HomeLinkageRequestTimeoutLabel" xml:space="preserve"><value>Request Timeout (s)</value></data>
+  <data name="HomeLinkageIncludeServerInfoLabel" xml:space="preserve"><value>Server Info</value></data>
+  <data name="HomeLinkageIncludePlayersLabel" xml:space="preserve"><value>Players</value></data>
+  <data name="HomeLinkageIncludeEventsLabel" xml:space="preserve"><value>Player Events</value></data>
+  <data name="HomeLinkageIncludeChatsLabel" xml:space="preserve"><value>Chats</value></data>
+  <data name="HomeLinkageIncludeNotificationsLabel" xml:space="preserve"><value>Notifications</value></data>
+  <data name="HomeLinkageIncludeMapLabel" xml:space="preserve"><value>Map Data</value></data>
+  <data name="HomeLinkageIncludeImagesLabel" xml:space="preserve"><value>Image Data</value></data>
+  <data name="HomeLinkageEndpointsTitle" xml:space="preserve"><value>Remote Server Bindings</value></data>
+  <data name="HomeLinkageEndpointHostWatermark" xml:space="preserve"><value>Server Host or IP:Port</value></data>
+  <data name="HomeLinkageEndpointTokenWatermark" xml:space="preserve"><value>Token</value></data>
+  <data name="HomeLinkageStatusLoaded" xml:space="preserve"><value>Linkage settings loaded.</value></data>
+  <data name="HomeLinkageStatusLoadFailedFormat" xml:space="preserve"><value>Failed to load linkage settings: {0}</value></data>
+  <data name="HomeLinkageStatusSaved" xml:space="preserve"><value>Linkage settings saved.</value></data>
+  <data name="HomeLinkageStatusSaveFailedFormat" xml:space="preserve"><value>Failed to save linkage settings: {0}</value></data>
+  <data name="HomeLinkageStatusStarted" xml:space="preserve"><value>Linkage listener started.</value></data>
+  <data name="HomeLinkageStatusStartFailedFormat" xml:space="preserve"><value>Failed to start linkage listener: {0}</value></data>
+  <data name="HomeLinkageStatusStopped" xml:space="preserve"><value>Linkage listener stopped.</value></data>
+  <data name="HomeLinkageStatusStopFailedFormat" xml:space="preserve"><value>Failed to stop linkage listener: {0}</value></data>
+  <data name="HomeLinkageStatusEndpointInputRequired" xml:space="preserve"><value>Please enter server host and token.</value></data>
+  <data name="HomeLinkageStatusEndpointDuplicate" xml:space="preserve"><value>Server binding already exists.</value></data>
+  <data name="HomeLinkageStatusEndpointAdded" xml:space="preserve"><value>Server binding added.</value></data>
+  <data name="HomeLinkageStatusEndpointRemoved" xml:space="preserve"><value>Server binding removed.</value></data>
   <data name="InstanceManageTitle" xml:space="preserve"><value>Instance / Manage</value></data>
   <data name="InstanceManageDescription" xml:space="preserve"><value>Manage page content coming soon.</value></data>
   <data name="MapPreviewMenuTitle" xml:space="preserve"><value>Map Preview</value></data>

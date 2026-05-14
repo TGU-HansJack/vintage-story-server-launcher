@@ -9,6 +9,11 @@
         "viewName": "Home"
       },
       {
+        "title": "OverviewLinkageMenuTitle",
+        "icon": "SourcePull",
+        "viewName": "OverviewLinkage"
+      },
+      {
         "title": "WorkspaceMenuTitle",
         "icon": "FiConsole",
         "viewName": "Workspace"

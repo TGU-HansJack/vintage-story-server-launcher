@@ -4,20 +4,20 @@ using VSSL.Ui.ViewModels;
 
 namespace VSSL.Ui.Views;
 
-public partial class HomeView : UserControl
+public partial class OverviewLinkageView : UserControl
 {
     private readonly DispatcherTimer _refreshTimer = new()
     {
         Interval = TimeSpan.FromSeconds(1)
     };
 
-    public HomeView()
+    public OverviewLinkageView()
     {
         InitializeComponent();
         InitTimer();
     }
 
-    public HomeView(HomeViewModel viewModel)
+    public OverviewLinkageView(OverviewLinkageViewModel viewModel)
     {
         InitializeComponent();
         DataContext = viewModel;
@@ -27,9 +27,10 @@ public partial class HomeView : UserControl
     protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-
-        if (DataContext is HomeViewModel viewModel)
-            viewModel.RefreshMetricsCommand.Execute(null);
+        if (DataContext is OverviewLinkageViewModel viewModel)
+        {
+            viewModel.RefreshLinkageCommand.Execute(null);
+        }
 
         _refreshTimer.Start();
     }
@@ -44,9 +45,9 @@ public partial class HomeView : UserControl
     {
         _refreshTimer.Tick += (_, _) =>
         {
-            if (DataContext is HomeViewModel viewModel)
+            if (DataContext is OverviewLinkageViewModel viewModel)
             {
-                viewModel.RefreshMetricsCommand.Execute(null);
+                viewModel.RefreshLinkageRuntime();
             }
         };
     }

@@ -1,0 +1,116 @@
+<UserControl
+    x:Class="VSSL.Ui.Views.OverviewLinkageView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="clr-namespace:VSSL.Ui.ViewModels"
+    d:DesignHeight="450"
+    d:DesignWidth="800"
+    x:DataType="vm:OverviewLinkageViewModel"
+    mc:Ignorable="d">
+    <Design.DataContext>
+        <vm:OverviewLinkageViewModel />
+    </Design.DataContext>
+
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <Grid RowDefinitions="Auto,Auto,*" RowSpacing="12">
+            <Border Grid.Row="0" Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
+                <StackPanel Spacing="10">
+                    <TextBlock FontSize="16" FontWeight="SemiBold" Text="{Binding [HomeLinkageTitle]}" />
+
+                    <Grid ColumnDefinitions="Auto,220,Auto,220,Auto,220" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="8" ColumnSpacing="8">
+                        <TextBlock VerticalAlignment="Center" Text="{Binding [HomeLinkageEnabledLabel]}" />
+                        <CheckBox Grid.Column="1" IsChecked="{Binding LinkageEnabled}" />
+
+                        <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="{Binding [HomeLinkageStateLabel]}" />
+                        <TextBlock Grid.Column="3" VerticalAlignment="Center" Text="{Binding LinkageRuntimeStateText}" />
+
+                        <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="{Binding [HomeLinkageListenPrefixLabel]}" />
+                        <TextBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding LinkageListenPrefix, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="{Binding [HomeLinkageAllowHttpLabel]}" />
+                        <CheckBox Grid.Row="2" Grid.Column="1" IsChecked="{Binding LinkageAllowInsecureHttp}" />
+
+                        <TextBlock Grid.Row="2" Grid.Column="2" VerticalAlignment="Center" Text="{Binding [HomeLinkageRequestTimeoutLabel]}" />
+                        <NumericUpDown Grid.Row="2" Grid.Column="3" Minimum="3" Maximum="60" Value="{Binding LinkageRequestTimeoutSec}" />
+
+                        <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="{Binding [HomeLinkageIncludeServerInfoLabel]}" />
+                        <CheckBox Grid.Row="3" Grid.Column="1" IsChecked="{Binding LinkageIncludeServerInfo}" />
+                        <TextBlock Grid.Row="3" Grid.Column="2" VerticalAlignment="Center" Text="{Binding [HomeLinkageIncludePlayersLabel]}" />
+                        <CheckBox Grid.Row="3" Grid.Column="3" IsChecked="{Binding LinkageIncludePlayers}" />
+
+                        <TextBlock Grid.Row="4" VerticalAlignment="Center" Text="{Binding [HomeLinkageIncludeEventsLabel]}" />
+                        <CheckBox Grid.Row="4" Grid.Column="1" IsChecked="{Binding LinkageIncludePlayerEvents}" />
+                        <TextBlock Grid.Row="4" Grid.Column="2" VerticalAlignment="Center" Text="{Binding [HomeLinkageIncludeChatsLabel]}" />
+                        <CheckBox Grid.Row="4" Grid.Column="3" IsChecked="{Binding LinkageIncludeChats}" />
+
+                        <TextBlock Grid.Row="5" VerticalAlignment="Center" Text="{Binding [HomeLinkageIncludeNotificationsLabel]}" />
+                        <CheckBox Grid.Row="5" Grid.Column="1" IsChecked="{Binding LinkageIncludeNotifications}" />
+                        <TextBlock Grid.Row="5" Grid.Column="2" VerticalAlignment="Center" Text="{Binding [HomeLinkageIncludeMapLabel]}" />
+                        <CheckBox Grid.Row="5" Grid.Column="3" IsChecked="{Binding LinkageIncludeMapData}" />
+
+                        <TextBlock Grid.Row="6" VerticalAlignment="Center" Text="{Binding [HomeLinkageIncludeImagesLabel]}" />
+                        <CheckBox Grid.Row="6" Grid.Column="1" IsChecked="{Binding LinkageIncludeImages}" />
+
+                        <StackPanel Grid.Row="7" Grid.ColumnSpan="6" Orientation="Horizontal" Spacing="8">
+                            <Button Command="{Binding SaveLinkageCommand}" Content="{Binding [CommonSaveButtonText]}" />
+                            <Button Command="{Binding RefreshLinkageCommand}" Content="{Binding [CommonRefreshButtonText]}" />
+                            <Button Command="{Binding StartLinkageCommand}" Content="{Binding [CommonStartButtonText]}" />
+                            <Button Command="{Binding StopLinkageCommand}" Content="{Binding [CommonStopButtonText]}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Border Padding="10" BorderBrush="Gray" BorderThickness="1" CornerRadius="6">
+                        <StackPanel Spacing="8">
+                            <TextBlock FontWeight="SemiBold" Text="{Binding [HomeLinkageEndpointsTitle]}" />
+                            <Grid ColumnDefinitions="2.0*,2.2*,Auto" ColumnSpacing="8">
+                                <TextBox Grid.Column="0" Text="{Binding NewEndpointHost, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding [HomeLinkageEndpointHostWatermark]}" />
+                                <TextBox Grid.Column="1" Text="{Binding NewEndpointToken, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding [HomeLinkageEndpointTokenWatermark]}" />
+                                <Button Grid.Column="2" Command="{Binding AddLinkageEndpointCommand}" Content="{Binding [CommonCreateButtonText]}" />
+                            </Grid>
+
+                            <ItemsControl ItemsSource="{Binding LinkageEndpoints}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:HomeLinkageEndpointItemViewModel">
+                                        <Border Margin="0,0,0,6" Padding="8" BorderBrush="Gray" BorderThickness="1" CornerRadius="6">
+                                            <Grid ColumnDefinitions="Auto,2.0*,2.2*,Auto,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
+                                                <CheckBox Grid.Row="0" Grid.Column="0" IsChecked="{Binding Enabled}" />
+                                                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ServerHost, UpdateSourceTrigger=PropertyChanged}" />
+                                                <TextBox Grid.Row="0" Grid.Column="2" Text="{Binding Token, UpdateSourceTrigger=PropertyChanged}" />
+                                                <Button Grid.Row="0" Grid.Column="3" Command="{Binding DataContext.RemoveLinkageEndpointCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding .}" Content="{Binding DataContext[CommonDeleteButtonText], RelativeSource={RelativeSource AncestorType=UserControl}}" />
+
+                                                <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="4" Opacity="0.85" Text="{Binding StatusLine}" />
+                                                <TextBlock Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="4" Opacity="0.75" Text="{Binding LastReceivedUtc}" />
+                                                <TextBlock Grid.Row="2" Grid.Column="4" HorizontalAlignment="Right" Foreground="#CC3333" Text="{Binding LastError}" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Text="{Binding LinkageStatusMessage}" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="1" Padding="10" BorderBrush="Gray" BorderThickness="1" CornerRadius="8">
+                <ScrollViewer
+                    x:Name="OverviewLinkageLogsScrollViewer"
+                    Height="300"
+                    HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto"
+                    >
+                    <ItemsControl ItemsSource="{Binding LinkageLogs}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Margin="4,2" Text="{Binding .}" TextWrapping="Wrap" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

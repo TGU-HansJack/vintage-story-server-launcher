@@ -16,6 +16,7 @@
   <data name="LightThemeName" xml:space="preserve"><value>浅色</value></data>
   <data name="DarkThemeName" xml:space="preserve"><value>深色</value></data>
   <data name="OverviewMenuTitle" xml:space="preserve"><value>状态图表</value></data>
+  <data name="OverviewLinkageMenuTitle" xml:space="preserve"><value>联结</value></data>
   <data name="ProjectInfoMenuTitle" xml:space="preserve"><value>项目信息</value></data>
   <data name="WorkspaceMenuTitle" xml:space="preserve"><value>控制台</value></data>
   <data name="BugReportMenuTitle" xml:space="preserve"><value>问题反馈</value></data>
@@ -267,6 +268,34 @@
   <data name="HomePlayersAxisLabel" xml:space="preserve"><value>玩家数</value></data>
   <data name="HomeMemoryFormat" xml:space="preserve"><value>内存：{0}</value></data>
   <data name="HomeUptimeFormat" xml:space="preserve"><value>运行时间：{0}</value></data>
+  <data name="HomeLinkageTitle" xml:space="preserve"><value>总览-联结（OSQ）</value></data>
+  <data name="HomeLinkageEnabledLabel" xml:space="preserve"><value>启用联结</value></data>
+  <data name="HomeLinkageStateLabel" xml:space="preserve"><value>运行状态</value></data>
+  <data name="HomeLinkageListenPrefixLabel" xml:space="preserve"><value>监听地址前缀</value></data>
+  <data name="HomeLinkageAllowHttpLabel" xml:space="preserve"><value>允许 HTTP</value></data>
+  <data name="HomeLinkageRequestTimeoutLabel" xml:space="preserve"><value>请求超时（秒）</value></data>
+  <data name="HomeLinkageIncludeServerInfoLabel" xml:space="preserve"><value>服务器信息</value></data>
+  <data name="HomeLinkageIncludePlayersLabel" xml:space="preserve"><value>玩家信息</value></data>
+  <data name="HomeLinkageIncludeEventsLabel" xml:space="preserve"><value>连接事件</value></data>
+  <data name="HomeLinkageIncludeChatsLabel" xml:space="preserve"><value>聊天信息</value></data>
+  <data name="HomeLinkageIncludeNotificationsLabel" xml:space="preserve"><value>系统通知</value></data>
+  <data name="HomeLinkageIncludeMapLabel" xml:space="preserve"><value>地图数据</value></data>
+  <data name="HomeLinkageIncludeImagesLabel" xml:space="preserve"><value>图片数据</value></data>
+  <data name="HomeLinkageEndpointsTitle" xml:space="preserve"><value>远程服务器绑定</value></data>
+  <data name="HomeLinkageEndpointHostWatermark" xml:space="preserve"><value>服务器域名或IP:端口</value></data>
+  <data name="HomeLinkageEndpointTokenWatermark" xml:space="preserve"><value>Token</value></data>
+  <data name="HomeLinkageStatusLoaded" xml:space="preserve"><value>联结配置已加载。</value></data>
+  <data name="HomeLinkageStatusLoadFailedFormat" xml:space="preserve"><value>加载联结配置失败：{0}</value></data>
+  <data name="HomeLinkageStatusSaved" xml:space="preserve"><value>联结配置已保存。</value></data>
+  <data name="HomeLinkageStatusSaveFailedFormat" xml:space="preserve"><value>保存联结配置失败：{0}</value></data>
+  <data name="HomeLinkageStatusStarted" xml:space="preserve"><value>联结监听已启动。</value></data>
+  <data name="HomeLinkageStatusStartFailedFormat" xml:space="preserve"><value>启动联结监听失败：{0}</value></data>
+  <data name="HomeLinkageStatusStopped" xml:space="preserve"><value>联结监听已停止。</value></data>
+  <data name="HomeLinkageStatusStopFailedFormat" xml:space="preserve"><value>停止联结监听失败：{0}</value></data>
+  <data name="HomeLinkageStatusEndpointInputRequired" xml:space="preserve"><value>请填写服务器地址和 Token。</value></data>
+  <data name="HomeLinkageStatusEndpointDuplicate" xml:space="preserve"><value>该服务器已存在。</value></data>
+  <data name="HomeLinkageStatusEndpointAdded" xml:space="preserve"><value>已添加服务器绑定。</value></data>
+  <data name="HomeLinkageStatusEndpointRemoved" xml:space="preserve"><value>已删除服务器绑定。</value></data>
   <data name="MapPreviewMenuTitle" xml:space="preserve"><value>地图预览</value></data>
   <data name="AutomationMenuTitle" xml:space="preserve"><value>自动化</value></data>
   <data name="DirectorySettingsMenuTitle" xml:space="preserve"><value>目录设置</value></data>

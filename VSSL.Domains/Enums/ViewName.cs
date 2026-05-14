@@ -6,6 +6,7 @@ namespace VSSL.Domains.Enums;
 public enum ViewName
 {
     Home,
+    OverviewLinkage,
     Workspace,
     Automation,
     About,

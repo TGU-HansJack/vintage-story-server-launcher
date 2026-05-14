@@ -21,6 +21,7 @@ public class DefaultNavigationService(
     private static readonly ImmutableDictionary<ViewName, Type> ViewMappings = ImmutableDictionary
         .Create<ViewName, Type>()
         .Add(ViewName.Home, typeof(HomeViewModel))
+        .Add(ViewName.OverviewLinkage, typeof(OverviewLinkageViewModel))
         .Add(ViewName.Workspace, typeof(WorkspaceViewModel))
         .Add(ViewName.Automation, typeof(AutomationViewModel))
         .Add(ViewName.About, typeof(AboutViewModel))
