@@ -83,6 +83,10 @@
   <data name="ConfigWorldTypeLabel" xml:space="preserve"><value>World Type</value></data>
   <data name="ConfigWorldHeightLabel" xml:space="preserve"><value>World Height</value></data>
   <data name="ConfigWorldRulesSectionTitle" xml:space="preserve"><value>World Rules</value></data>
+  <data name="ConfigSaveFilePlaceholder" xml:space="preserve"><value>Select save file</value></data>
+  <data name="ConfigPlayStylePlaceholder" xml:space="preserve"><value>Select play style</value></data>
+  <data name="ConfigWorldTypePlaceholder" xml:space="preserve"><value>Select world type</value></data>
+  <data name="ConfigWorldGeneratedLockNotice" xml:space="preserve"><value>This save already has a generated world: seed, play style, world type, world height, and world-creation-only rules (such as world width/length) are locked.</value></data>
   <data name="ConfigServerImagesSectionTitle" xml:space="preserve"><value>Server Images</value></data>
   <data name="ConfigServerImagesRootLabel" xml:space="preserve"><value>Image Folder</value></data>
   <data name="ConfigServerImagesCoverTitle" xml:space="preserve"><value>Cover Image</value></data>

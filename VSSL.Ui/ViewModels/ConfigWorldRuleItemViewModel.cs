@@ -21,11 +21,17 @@ public partial class ConfigWorldRuleItemViewModel : ViewModelBase
 
     public IReadOnlyList<string> Choices { get; init; } = [];
 
+    public IReadOnlyList<string> ChoiceNames { get; init; } = [];
+
+    public IReadOnlyList<ConfigChoiceOptionViewModel> ChoiceOptions { get; init; } = [];
+
     public string? DescriptionZh { get; init; }
 
     public string? DescriptionEn { get; init; }
 
     public string? Description => SelectLocalized(DescriptionZh, DescriptionEn);
+
+    public bool IsOnlyDuringWorldCreate { get; init; }
 
     public bool IsBoolean => Type == WorldRuleType.Boolean;
 
@@ -33,14 +39,38 @@ public partial class ConfigWorldRuleItemViewModel : ViewModelBase
 
     public bool IsText => Type is WorldRuleType.Text or WorldRuleType.Number;
 
+    [ObservableProperty] private bool _canEdit = true;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(BoolValue))]
+    [NotifyPropertyChangedFor(nameof(SelectedChoiceOption))]
     private string _value = string.Empty;
 
     public bool BoolValue
     {
         get => ParseBool(Value);
         set => Value = value ? "true" : "false";
+    }
+
+    public ConfigChoiceOptionViewModel? SelectedChoiceOption
+    {
+        get
+        {
+            if (ChoiceOptions.Count == 0) return null;
+            return ChoiceOptions.FirstOrDefault(option =>
+                option.Value.Equals(Value, StringComparison.OrdinalIgnoreCase));
+        }
+        set
+        {
+            if (value is null) return;
+            if (value.Value.Equals(Value, StringComparison.OrdinalIgnoreCase)) return;
+            Value = value.Value;
+        }
+    }
+
+    partial void OnValueChanged(string value)
+    {
+        OnPropertyChanged(nameof(SelectedChoiceOption));
     }
 
     private static string SelectLocalized(string? zh, string? en)

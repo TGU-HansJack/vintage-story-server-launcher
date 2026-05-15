@@ -26,7 +26,12 @@
         <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
             <!--  应用 LOGO + 名称（左对齐）  -->
             <Grid Grid.Row="0" Grid.Column="0" Margin="8,0,0,0" ColumnDefinitions="Auto,*" ColumnSpacing="8">
-                <controls:SvgIcon Grid.Column="0" VerticalAlignment="Center" IconName="Logo" />
+                <Image Grid.Column="0"
+                       Width="20"
+                       Height="20"
+                       VerticalAlignment="Center"
+                       Source="/Assets/app-icon.png"
+                       Stretch="Uniform" />
                 <TextBlock
                     Grid.Column="1"
                     VerticalAlignment="Center"

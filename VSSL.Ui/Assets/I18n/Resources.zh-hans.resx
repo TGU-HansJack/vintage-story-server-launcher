@@ -83,6 +83,10 @@
   <data name="ConfigWorldTypeLabel" xml:space="preserve"><value>世界类型</value></data>
   <data name="ConfigWorldHeightLabel" xml:space="preserve"><value>世界高度</value></data>
   <data name="ConfigWorldRulesSectionTitle" xml:space="preserve"><value>世界规则</value></data>
+  <data name="ConfigSaveFilePlaceholder" xml:space="preserve"><value>请选择存档文件</value></data>
+  <data name="ConfigPlayStylePlaceholder" xml:space="preserve"><value>请选择游玩风格</value></data>
+  <data name="ConfigWorldTypePlaceholder" xml:space="preserve"><value>请选择世界类型</value></data>
+  <data name="ConfigWorldGeneratedLockNotice" xml:space="preserve"><value>当前存档已生成世界：种子、游玩风格、世界类型、世界高度，以及仅限建档阶段的世界规则（如世界宽度/长度）已锁定。</value></data>
   <data name="ConfigServerImagesSectionTitle" xml:space="preserve"><value>服务器图片</value></data>
   <data name="ConfigServerImagesRootLabel" xml:space="preserve"><value>图片目录</value></data>
   <data name="ConfigServerImagesCoverTitle" xml:space="preserve"><value>封面图（cover）</value></data>

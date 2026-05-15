@@ -246,11 +246,16 @@ public class InstanceProfileService : IInstanceProfileService
             return false;
 
         var changed = false;
-        var existingIds = new HashSet<string>(
-            index.Profiles
-                .Where(profile => !string.IsNullOrWhiteSpace(profile.Id))
-                .Select(profile => profile.Id),
-            StringComparer.OrdinalIgnoreCase);
+        var existingIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var profile in index.Profiles)
+        {
+            if (!string.IsNullOrWhiteSpace(profile.Id))
+                existingIds.Add(profile.Id);
+
+            var inferredId = TryGetProfileIdFromDirectoryPath(profile.DirectoryPath);
+            if (!string.IsNullOrWhiteSpace(inferredId))
+                existingIds.Add(inferredId);
+        }
 
         var fallbackVersion = index.Profiles
             .Select(profile => profile.Version)
@@ -461,6 +466,14 @@ public class InstanceProfileService : IInstanceProfileService
     {
         var changed = false;
 
+        var inferredProfileId = TryGetProfileIdFromDirectoryPath(profile.DirectoryPath);
+        if (!string.IsNullOrWhiteSpace(inferredProfileId) &&
+            !inferredProfileId.Equals(profile.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            profile.Id = inferredProfileId;
+            changed = true;
+        }
+
         if (string.IsNullOrWhiteSpace(profile.Id))
         {
             profile.Id = Guid.NewGuid().ToString("N");
@@ -546,6 +559,38 @@ public class InstanceProfileService : IInstanceProfileService
         }
 
         return changed;
+    }
+
+    private static string TryGetProfileIdFromDirectoryPath(string? directoryPath)
+    {
+        var fullPath = SafeGetFullPath(directoryPath);
+        if (string.IsNullOrWhiteSpace(fullPath))
+            return string.Empty;
+
+        var dataRoot = SafeGetFullPath(WorkspacePathHelper.DataRoot);
+        if (string.IsNullOrWhiteSpace(dataRoot))
+            return string.Empty;
+
+        var normalizedFullPath = fullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var normalizedDataRoot = dataRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        if (!normalizedFullPath.StartsWith(normalizedDataRoot, StringComparison.OrdinalIgnoreCase))
+            return string.Empty;
+
+        if (normalizedFullPath.Length <= normalizedDataRoot.Length)
+            return string.Empty;
+
+        var separator = normalizedFullPath[normalizedDataRoot.Length];
+        if (separator != Path.DirectorySeparatorChar && separator != Path.AltDirectorySeparatorChar)
+            return string.Empty;
+
+        var relative = normalizedFullPath[(normalizedDataRoot.Length + 1)..];
+        if (string.IsNullOrWhiteSpace(relative))
+            return string.Empty;
+
+        if (relative.Contains(Path.DirectorySeparatorChar) || relative.Contains(Path.AltDirectorySeparatorChar))
+            return string.Empty;
+
+        return relative;
     }
 
     private static string ResolveActiveSaveFile(string profileId, string saveDirectory, string configuredSavePath)

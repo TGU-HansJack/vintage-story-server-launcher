@@ -15,6 +15,8 @@ public class WorldRuleDefinition
 
     public IReadOnlyList<string> Choices { get; init; } = [];
 
+    public IReadOnlyList<string> ChoiceNames { get; init; } = [];
+
     public string? DefaultValue { get; init; }
 
     public string? DescriptionZh { get; init; }

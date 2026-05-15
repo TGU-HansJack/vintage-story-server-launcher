@@ -76,16 +76,19 @@
                     <Border Padding="12" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
                         <StackPanel Spacing="10">
                             <TextBlock FontSize="16" FontWeight="SemiBold" Text="{Binding [ConfigWorldSectionTitle]}" />
-                            <Grid ColumnDefinitions="Auto,2*,Auto,2*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="8">
+                            <Grid ColumnDefinitions="Auto,2*,Auto,2*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="8">
                                 <TextBlock VerticalAlignment="Center" Text="{Binding [ConfigSeedLabel]}" />
-                                <TextBox Grid.Column="1" Text="{Binding Seed, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBox Grid.Column="1"
+                                         IsEnabled="{Binding CanEditWorldGenerationSettings}"
+                                         Text="{Binding Seed, UpdateSourceTrigger=PropertyChanged}" />
                                 <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="{Binding [ConfigWorldNameLabel]}" />
                                 <TextBox Grid.Column="3" Text="{Binding WorldName, UpdateSourceTrigger=PropertyChanged}" />
 
                                 <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="{Binding [ConfigSaveFileLabel]}" />
                                 <ComboBox Grid.Row="1" Grid.Column="1"
                                           ItemsSource="{Binding Saves}"
-                                          SelectedItem="{Binding SelectedSave}">
+                                          SelectedItem="{Binding SelectedSave}"
+                                          PlaceholderText="{Binding [ConfigSaveFilePlaceholder]}">
                                     <ComboBox.ItemTemplate>
                                         <DataTemplate x:DataType="vm:SaveFileItemViewModel">
                                             <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis" />
@@ -93,12 +96,44 @@
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
                                 <TextBlock Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" Text="{Binding [ConfigPlayStyleLabel]}" />
-                                <TextBox Grid.Row="1" Grid.Column="3" Text="{Binding PlayStyle, UpdateSourceTrigger=PropertyChanged}" />
+                                <ComboBox Grid.Row="1" Grid.Column="3"
+                                          IsEnabled="{Binding CanEditWorldGenerationSettings}"
+                                          ItemsSource="{Binding PlayStyleOptions}"
+                                          SelectedItem="{Binding SelectedPlayStyleOption}"
+                                          PlaceholderText="{Binding [ConfigPlayStylePlaceholder]}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:ConfigChoiceOptionViewModel">
+                                            <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
 
                                 <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="{Binding [ConfigWorldTypeLabel]}" />
-                                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding WorldType, UpdateSourceTrigger=PropertyChanged}" />
+                                <ComboBox Grid.Row="2" Grid.Column="1"
+                                          IsEnabled="{Binding CanEditWorldGenerationSettings}"
+                                          ItemsSource="{Binding WorldTypeOptions}"
+                                          SelectedItem="{Binding SelectedWorldTypeOption}"
+                                          PlaceholderText="{Binding [ConfigWorldTypePlaceholder]}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:ConfigChoiceOptionViewModel">
+                                            <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
                                 <TextBlock Grid.Row="2" Grid.Column="2" VerticalAlignment="Center" Text="{Binding [ConfigWorldHeightLabel]}" />
-                                <NumericUpDown Grid.Row="2" Grid.Column="3" Minimum="64" Maximum="2048" Value="{Binding WorldHeight}" />
+                                <NumericUpDown Grid.Row="2"
+                                               Grid.Column="3"
+                                               IsEnabled="{Binding CanEditWorldGenerationSettings}"
+                                               Minimum="64"
+                                               Maximum="2048"
+                                               Value="{Binding WorldHeight}" />
+
+                                <TextBlock Grid.Row="3"
+                                           Grid.ColumnSpan="4"
+                                           IsVisible="{Binding IsWorldGenerated}"
+                                           Opacity="0.82"
+                                           Text="{Binding [ConfigWorldGeneratedLockNotice]}"
+                                           TextWrapping="Wrap" />
                             </Grid>
                         </StackPanel>
                     </Border>
@@ -180,11 +215,19 @@
                             <ItemsControl ItemsSource="{Binding WorldRules}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:ConfigWorldRuleItemViewModel">
-                                        <Grid Margin="0,0,0,8" ColumnDefinitions="1.5*,2.5*,*" ColumnSpacing="10">
+                                        <Grid Margin="0,0,0,8" ColumnDefinitions="1.5*,2.5*,*" ColumnSpacing="10" IsEnabled="{Binding CanEdit}">
                                             <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Text="{Binding Label}" />
                                             <StackPanel Grid.Column="1" Spacing="6">
                                                 <CheckBox IsVisible="{Binding IsBoolean}" IsChecked="{Binding BoolValue, Mode=TwoWay}" />
-                                                <ComboBox IsVisible="{Binding IsChoice}" ItemsSource="{Binding Choices}" SelectedItem="{Binding Value, Mode=TwoWay}" />
+                                                <ComboBox IsVisible="{Binding IsChoice}"
+                                                          ItemsSource="{Binding ChoiceOptions}"
+                                                          SelectedItem="{Binding SelectedChoiceOption, Mode=TwoWay}">
+                                                    <ComboBox.ItemTemplate>
+                                                        <DataTemplate x:DataType="vm:ConfigChoiceOptionViewModel">
+                                                            <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+                                                        </DataTemplate>
+                                                    </ComboBox.ItemTemplate>
+                                                </ComboBox>
                                                 <TextBox IsVisible="{Binding IsText}" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" />
                                             </StackPanel>
                                             <TextBlock Grid.Column="2" VerticalAlignment="Center" Opacity="0.72" Text="{Binding Description}" TextWrapping="Wrap" />
