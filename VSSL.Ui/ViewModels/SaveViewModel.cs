@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using VSSL.Abstractions.Services;
 using VSSL.Domains.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -274,6 +275,7 @@ public partial class SaveViewModel : ViewModelBase
                 {
                     FullPath = saveEntry.FullPath,
                     FileName = saveEntry.FileName,
+                    SizeBytes = saveEntry.SizeBytes,
                     LastWriteTimeUtc = saveEntry.LastWriteTimeUtc,
                     IsActive = saveEntry.FullPath.Equals(profile.ActiveSaveFile, StringComparison.OrdinalIgnoreCase)
                 };
@@ -306,6 +308,51 @@ public partial class SaveViewModel : ViewModelBase
         _syncingSelectAll = true;
         SelectAll = Saves.Count > 0 && Saves.All(item => item.IsSelected);
         _syncingSelectAll = false;
+    }
+
+    [RelayCommand]
+    private void OpenSaveDirectory(SaveFileItemViewModel? saveItem)
+    {
+        if (saveItem is null || string.IsNullOrWhiteSpace(saveItem.FullPath))
+        {
+            return;
+        }
+
+        var fullPath = Path.GetFullPath(saveItem.FullPath);
+        if (!File.Exists(fullPath))
+        {
+            StatusMessage = LF("SaveStatusOpenDirectoryFailedFormat", L("SaveStatusDirectoryNotFound"));
+            return;
+        }
+
+        try
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = $"/select,\"{fullPath}\"",
+                    UseShellExecute = true
+                });
+            }
+            else
+            {
+                var directory = Path.GetDirectoryName(fullPath);
+                if (string.IsNullOrWhiteSpace(directory))
+                    return;
+
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = directory,
+                    UseShellExecute = true
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = LF("SaveStatusOpenDirectoryFailedFormat", ex.Message);
+        }
     }
 
     #region Constructors

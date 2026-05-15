@@ -15,7 +15,7 @@
     </Design.DataContext>
 
     <Grid RowDefinitions="Auto,Auto,*" RowSpacing="10">
-        <Grid Grid.Row="0" Margin="12,0,12,0" ColumnDefinitions="2.6*,Auto,Auto,Auto" ColumnSpacing="8">
+        <Grid Grid.Row="0" Margin="12,0,12,0" ColumnDefinitions="2.6*,Auto,Auto,Auto,Auto" ColumnSpacing="8">
             <ComboBox Grid.Column="0" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
                 <ComboBox.ItemTemplate>
                     <DataTemplate>
@@ -25,8 +25,9 @@
             </ComboBox>
 
             <Button Grid.Column="1" Command="{Binding RefreshCommand}" Content="{Binding [CommonRefreshButtonText]}" />
-            <Button Grid.Column="2" Command="{Binding SaveCommand}" Content="{Binding [CommonSaveButtonText]}" />
-            <Button Grid.Column="3" Command="{Binding EditAdvancedJsonCommand}" Content="{Binding [ConfigAdvancedJsonButtonText]}" />
+            <Button Grid.Column="2" Command="{Binding ImportServerConfigCommand}" Content="{Binding [CommonImportButtonText]}" />
+            <Button Grid.Column="3" Command="{Binding SaveCommand}" Content="{Binding [CommonSaveButtonText]}" />
+            <Button Grid.Column="4" Command="{Binding EditAdvancedJsonCommand}" Content="{Binding [ConfigAdvancedJsonButtonText]}" />
         </Grid>
 
         <TextBlock Grid.Row="1" Text="{Binding StatusMessage}" TextWrapping="Wrap" />

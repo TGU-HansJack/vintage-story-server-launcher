@@ -270,6 +270,54 @@ public partial class ConfigViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private async Task ImportServerConfigAsync()
+    {
+        if (_instanceServerConfigService is null || _filePickerService is null || _instanceProfileService is null)
+        {
+            return;
+        }
+
+        var profile = SelectedProfile;
+        if (profile is null)
+        {
+            StatusMessage = L("StatusSelectProfileFirst");
+            return;
+        }
+
+        var selected = await _filePickerService.PickSingleFileAsync(
+            L("ConfigImportDialogTitle"),
+            L("ConfigImportFilterName"),
+            ["*.json"]);
+        if (string.IsNullOrWhiteSpace(selected))
+        {
+            return;
+        }
+
+        try
+        {
+            IsBusy = true;
+            await _instanceServerConfigService.ImportRawJsonAsync(profile, selected);
+
+            var worldSettings = await _instanceServerConfigService.LoadWorldSettingsAsync(profile);
+            profile.ActiveSaveFile = worldSettings.SaveFileLocation;
+            profile.SaveDirectory = Path.GetDirectoryName(worldSettings.SaveFileLocation) ?? profile.SaveDirectory;
+            profile.LastUpdatedUtc = DateTimeOffset.UtcNow;
+            _instanceProfileService.UpdateProfile(profile);
+
+            await LoadSelectedProfileAsync(profile);
+            StatusMessage = LF("ConfigStatusImportedFormat", Path.GetFileName(selected));
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = LF("ConfigStatusImportFailedFormat", ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
     private async Task BrowseCoverImageAsync()
     {
         if (_filePickerService is null)

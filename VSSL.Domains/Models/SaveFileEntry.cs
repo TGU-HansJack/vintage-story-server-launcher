@@ -9,5 +9,7 @@ public class SaveFileEntry
 
     public required string FileName { get; init; }
 
+    public long SizeBytes { get; init; }
+
     public DateTimeOffset LastWriteTimeUtc { get; init; }
 }

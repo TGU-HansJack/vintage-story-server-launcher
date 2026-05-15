@@ -208,6 +208,27 @@ public class InstanceServerConfigService : IInstanceServerConfigService
         await SaveRootAsync(profile, root, cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task ImportRawJsonAsync(
+        InstanceProfile profile,
+        string jsonFilePath,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(jsonFilePath))
+            throw new InvalidOperationException("导入配置文件路径不能为空。");
+
+        var fullPath = Path.GetFullPath(jsonFilePath.Trim());
+        if (!File.Exists(fullPath))
+            throw new InvalidOperationException($"导入配置文件不存在：{fullPath}");
+
+        var ext = Path.GetExtension(fullPath);
+        if (!ext.Equals(".json", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("仅支持导入 JSON 配置文件。");
+
+        var rawJson = await File.ReadAllTextAsync(fullPath, cancellationToken);
+        await SaveRawJsonAsync(profile, rawJson, cancellationToken);
+    }
+
     private static async Task<JsonObject> LoadRootAsync(InstanceProfile profile, CancellationToken cancellationToken)
     {
         var configPath = WorkspacePathHelper.GetProfileConfigPath(profile.DirectoryPath);

@@ -27,6 +27,7 @@ public class InstanceSaveService(IInstanceServerConfigService serverConfigServic
                 {
                     FullPath = fileInfo.FullName,
                     FileName = fileInfo.Name,
+                    SizeBytes = fileInfo.Length,
                     LastWriteTimeUtc = fileInfo.LastWriteTimeUtc
                 };
             })
@@ -46,6 +47,7 @@ public class InstanceSaveService(IInstanceServerConfigService serverConfigServic
                 {
                     FullPath = activePath,
                     FileName = Path.GetFileName(activePath),
+                    SizeBytes = File.Exists(activePath) ? new FileInfo(activePath).Length : 0,
                     LastWriteTimeUtc = File.Exists(activePath)
                         ? new FileInfo(activePath).LastWriteTimeUtc
                         : profile.LastUpdatedUtc

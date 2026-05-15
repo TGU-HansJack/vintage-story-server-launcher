@@ -34,4 +34,9 @@ public interface IInstanceServerConfigService
         InstanceProfile profile,
         string json,
         CancellationToken cancellationToken = default);
+
+    Task ImportRawJsonAsync(
+        InstanceProfile profile,
+        string jsonFilePath,
+        CancellationToken cancellationToken = default);
 }

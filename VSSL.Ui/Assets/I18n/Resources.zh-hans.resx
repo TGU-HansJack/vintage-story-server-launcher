@@ -164,6 +164,7 @@
   <data name="SaveCurrentProfileVersionFormat" xml:space="preserve"><value>当前档案版本：{0}</value></data>
   <data name="SaveHeaderName" xml:space="preserve"><value>名称</value></data>
   <data name="SaveHeaderDirectory" xml:space="preserve"><value>目录</value></data>
+  <data name="SaveHeaderSize" xml:space="preserve"><value>大小</value></data>
   <data name="SaveHeaderTime" xml:space="preserve"><value>时间</value></data>
   <data name="SaveHeaderCurrent" xml:space="preserve"><value>当前</value></data>
   <data name="SaveHeaderAction" xml:space="preserve"><value>操作</value></data>
@@ -179,6 +180,8 @@
   <data name="SaveStatusSetActiveFailedFormat" xml:space="preserve"><value>设置当前存档失败：{0}</value></data>
   <data name="SaveStatusLoadedFormat" xml:space="preserve"><value>已加载 {0} 个存档（版本 {1}）。</value></data>
   <data name="SaveStatusLoadFailedFormat" xml:space="preserve"><value>加载存档失败：{0}</value></data>
+  <data name="SaveStatusDirectoryNotFound" xml:space="preserve"><value>存档文件不存在。</value></data>
+  <data name="SaveStatusOpenDirectoryFailedFormat" xml:space="preserve"><value>打开存档位置失败：{0}</value></data>
   <data name="ModZipPathWatermark" xml:space="preserve"><value>模组压缩包路径</value></data>
   <data name="ModBrowseDialogTitle" xml:space="preserve"><value>选择模组压缩包</value></data>
   <data name="ModBrowseFilterName" xml:space="preserve"><value>模组压缩包</value></data>
@@ -301,7 +304,7 @@
   <data name="HomeLinkageStatusEndpointRemoved" xml:space="preserve"><value>已删除服务器绑定。</value></data>
   <data name="MapPreviewMenuTitle" xml:space="preserve"><value>地图预览</value></data>
   <data name="AutomationMenuTitle" xml:space="preserve"><value>自动化</value></data>
-  <data name="DirectorySettingsMenuTitle" xml:space="preserve"><value>目录设置</value></data>
+  <data name="DirectorySettingsMenuTitle" xml:space="preserve"><value>设置</value></data>
   <data name="AutomationTitle" xml:space="preserve"><value>自动化</value></data>
   <data name="AutomationDescription" xml:space="preserve"><value>定时重启、定时播报和日志导出。</value></data>
   <data name="AutomationTargetProfileLabel" xml:space="preserve"><value>目标档案</value></data>
@@ -313,8 +316,8 @@
   <data name="AutomationBrowseFolderButtonText" xml:space="preserve"><value>选择文件夹</value></data>
   <data name="AutomationResetFolderButtonText" xml:space="preserve"><value>恢复默认</value></data>
   <data name="AutomationSaveButtonText" xml:space="preserve"><value>保存</value></data>
-  <data name="DirectorySettingsTitle" xml:space="preserve"><value>目录设置</value></data>
-  <data name="DirectorySettingsDescription" xml:space="preserve"><value>服务端目录与启动行为将统一影响下载、档案、存档、机器人目录、托盘行为和开机自启。</value></data>
+  <data name="DirectorySettingsTitle" xml:space="preserve"><value>设置</value></data>
+  <data name="DirectorySettingsDescription" xml:space="preserve"><value>这里的设置会统一影响工作区路径、启动选项、托盘行为，以及服务器和 QQ 机器人的自动启动行为。</value></data>
   <data name="DirectorySettingsWorkspaceLabel" xml:space="preserve"><value>工作区根目录</value></data>
   <data name="DirectorySettingsStartWithWindows" xml:space="preserve"><value>开机启动启动器</value></data>
   <data name="DirectorySettingsStartHiddenOnLaunch" xml:space="preserve"><value>启动时隐藏到托盘</value></data>
@@ -322,7 +325,11 @@
   <data name="DirectorySettingsAutoStartRobotOnLaunch" xml:space="preserve"><value>启动时自动启动 QQ 机器人</value></data>
   <data name="DirectorySettingsAutoStartServerOnLaunch" xml:space="preserve"><value>启动时自动启动服务器</value></data>
   <data name="DirectorySettingsAutoStartServerProfileLabel" xml:space="preserve"><value>自动启动服务器档案</value></data>
-  <data name="DirectorySettingsSaveButtonText" xml:space="preserve"><value>保存目录</value></data>
+  <data name="DirectorySettingsSaveButtonText" xml:space="preserve"><value>保存设置</value></data>
+  <data name="ConfigImportDialogTitle" xml:space="preserve"><value>选择服务器配置文件</value></data>
+  <data name="ConfigImportFilterName" xml:space="preserve"><value>服务器配置 JSON</value></data>
+  <data name="ConfigStatusImportedFormat" xml:space="preserve"><value>已导入配置：{0}</value></data>
+  <data name="ConfigStatusImportFailedFormat" xml:space="preserve"><value>导入配置失败：{0}</value></data>
   <data name="DirectorySettingsResetButtonText" xml:space="preserve"><value>恢复默认</value></data>
   <data name="TrayShowWindowText" xml:space="preserve"><value>显示窗口</value></data>
   <data name="TrayStartServerText" xml:space="preserve"><value>启动服务器</value></data>

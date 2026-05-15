@@ -1,5 +1,1 @@
-﻿<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-    <rect width="24" height="24" fill="none"/>
-    <path fill="currentColor"
-          d="M2.175 19.8q-.45.075-.812-.213T1 18.826V5.175q0-.475.363-.762t.812-.213l4 .65q.35.05.588.338T7 5.85v12.3q0 .375-.238.663t-.587.337zM10 19q-.425 0-.712-.288T9 18V6q0-.425.288-.712T10 5h4q.425 0 .713.288T15 6v12q0 .425-.288.713T14 19zm7.825.15q-.35-.05-.587-.337T17 18.15V5.85q0-.375.238-.662t.587-.338l4-.65q.45-.075.813.213t.362.762v13.65q0 .475-.363.763t-.812.212z"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><!--! Font Awesome Free 7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc. --><path fill="currentColor" d="M480 160L352 160L352 288L480 288L480 160zM544 288L544 480C544 515.3 515.3 544 480 544L160 544C124.7 544 96 515.3 96 480L96 160C96 124.7 124.7 96 160 96L480 96C515.3 96 544 124.7 544 160L544 288zM160 352L160 480L288 480L288 352L160 352zM288 288L288 160L160 160L160 288L288 288zM352 352L352 480L480 480L480 352L352 352z"/></svg>

@@ -43,13 +43,14 @@
 
         <Grid Grid.Row="2" RowDefinitions="Auto,*">
             <Border Grid.Row="0" Padding="10,8" CornerRadius="6,6,0,0" BorderBrush="Gray" BorderThickness="1">
-                <Grid ColumnDefinitions="52,1.5*,3.8*,1.6*,0.9*,Auto" ColumnSpacing="8">
+                <Grid ColumnDefinitions="52,1.5*,2.8*,1.1*,1.6*,0.9*,Auto" ColumnSpacing="8">
                     <CheckBox IsChecked="{Binding SelectAll}" />
                     <TextBlock Grid.Column="1" FontWeight="SemiBold" Text="{Binding [SaveHeaderName]}" />
                     <TextBlock Grid.Column="2" FontWeight="SemiBold" Text="{Binding [SaveHeaderDirectory]}" />
-                    <TextBlock Grid.Column="3" FontWeight="SemiBold" Text="{Binding [SaveHeaderTime]}" />
-                    <TextBlock Grid.Column="4" HorizontalAlignment="Center" FontWeight="SemiBold" Text="{Binding [SaveHeaderCurrent]}" />
-                    <TextBlock Grid.Column="5" HorizontalAlignment="Center" FontWeight="SemiBold" Text="{Binding [SaveHeaderAction]}" />
+                    <TextBlock Grid.Column="3" FontWeight="SemiBold" Text="{Binding [SaveHeaderSize]}" />
+                    <TextBlock Grid.Column="4" FontWeight="SemiBold" Text="{Binding [SaveHeaderTime]}" />
+                    <TextBlock Grid.Column="5" HorizontalAlignment="Center" FontWeight="SemiBold" Text="{Binding [SaveHeaderCurrent]}" />
+                    <TextBlock Grid.Column="6" HorizontalAlignment="Center" FontWeight="SemiBold" Text="{Binding [SaveHeaderAction]}" />
                 </Grid>
             </Border>
 
@@ -59,14 +60,22 @@
                         <ItemsControl ItemsSource="{Binding Saves}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:SaveFileItemViewModel">
-                                    <Grid Margin="8,0,8,8" ColumnDefinitions="52,1.5*,3.8*,1.6*,0.9*,Auto" ColumnSpacing="8">
+                                    <Grid Margin="8,0,8,8" ColumnDefinitions="52,1.5*,2.8*,1.1*,1.6*,0.9*,Auto" ColumnSpacing="8">
                                         <CheckBox IsChecked="{Binding IsSelected}" />
                                         <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding FileName}" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="{Binding FullPath}" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Grid.Column="3" VerticalAlignment="Center" Text="{Binding LastWriteText}" TextTrimming="CharacterEllipsis" />
-                                        <CheckBox Grid.Column="4" HorizontalAlignment="Center" IsChecked="{Binding IsActive}" IsEnabled="False" />
+                                        <Button Grid.Column="2"
+                                                HorizontalAlignment="Left"
+                                                Command="{Binding DataContext.OpenSaveDirectoryCommand, ElementName=SaveRoot}"
+                                                CommandParameter="{Binding}">
+                                            <TextBlock Text="{Binding DirectoryPath}"
+                                                       TextDecorations="Underline"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </Button>
+                                        <TextBlock Grid.Column="3" VerticalAlignment="Center" Text="{Binding SizeText}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Column="4" VerticalAlignment="Center" Text="{Binding LastWriteText}" TextTrimming="CharacterEllipsis" />
+                                        <CheckBox Grid.Column="5" HorizontalAlignment="Center" IsChecked="{Binding IsActive}" IsEnabled="False" />
                                         <Button
-                                            Grid.Column="5"
+                                            Grid.Column="6"
                                             Command="{Binding DataContext.SetActiveCommand, ElementName=SaveRoot}"
                                             CommandParameter="{Binding}"
                                             Content="{Binding DataContext[SaveSetActiveButtonText], ElementName=SaveRoot}"

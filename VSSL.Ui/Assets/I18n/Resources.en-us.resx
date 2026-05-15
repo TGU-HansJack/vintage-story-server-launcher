@@ -164,6 +164,7 @@
   <data name="SaveCurrentProfileVersionFormat" xml:space="preserve"><value>Current profile version: {0}</value></data>
   <data name="SaveHeaderName" xml:space="preserve"><value>Name</value></data>
   <data name="SaveHeaderDirectory" xml:space="preserve"><value>Directory</value></data>
+  <data name="SaveHeaderSize" xml:space="preserve"><value>Size</value></data>
   <data name="SaveHeaderTime" xml:space="preserve"><value>Time</value></data>
   <data name="SaveHeaderCurrent" xml:space="preserve"><value>Current</value></data>
   <data name="SaveHeaderAction" xml:space="preserve"><value>Action</value></data>
@@ -179,6 +180,8 @@
   <data name="SaveStatusSetActiveFailedFormat" xml:space="preserve"><value>Failed to set active save: {0}</value></data>
   <data name="SaveStatusLoadedFormat" xml:space="preserve"><value>Loaded {0} save(s) for version {1}.</value></data>
   <data name="SaveStatusLoadFailedFormat" xml:space="preserve"><value>Failed to load saves: {0}</value></data>
+  <data name="SaveStatusDirectoryNotFound" xml:space="preserve"><value>Save file does not exist.</value></data>
+  <data name="SaveStatusOpenDirectoryFailedFormat" xml:space="preserve"><value>Failed to open save location: {0}</value></data>
   <data name="ModZipPathWatermark" xml:space="preserve"><value>Mod zip path</value></data>
   <data name="ModBrowseDialogTitle" xml:space="preserve"><value>Select Mod Zip</value></data>
   <data name="ModBrowseFilterName" xml:space="preserve"><value>Mod Zip File</value></data>
@@ -333,8 +336,9 @@
   <data name="AutomationTimeStartLabel" xml:space="preserve"><value>Time Start</value></data>
   <data name="AutomationTimeEndLabel" xml:space="preserve"><value>Time End</value></data>
   <data name="AutomationActionLabel" xml:space="preserve"><value>Action</value></data>
-  <data name="DirectorySettingsTitle" xml:space="preserve"><value>Directory Settings</value></data>
-  <data name="DirectorySettingsDescription" xml:space="preserve"><value>Server directory and startup behavior control downloads, profiles, saves, robot data, tray behavior, and auto-start.</value></data>
+  <data name="DirectorySettingsMenuTitle" xml:space="preserve"><value>Settings</value></data>
+  <data name="DirectorySettingsTitle" xml:space="preserve"><value>Settings</value></data>
+  <data name="DirectorySettingsDescription" xml:space="preserve"><value>Settings here affect workspace path, startup options, tray behavior, and auto-start behavior for server and QQ bot.</value></data>
   <data name="DirectorySettingsWorkspaceLabel" xml:space="preserve"><value>Workspace Root</value></data>
   <data name="DirectorySettingsStartWithWindows" xml:space="preserve"><value>Start with Windows</value></data>
   <data name="DirectorySettingsStartHiddenOnLaunch" xml:space="preserve"><value>Start hidden to tray</value></data>
@@ -342,7 +346,11 @@
   <data name="DirectorySettingsAutoStartRobotOnLaunch" xml:space="preserve"><value>Auto-start QQ bot on launch</value></data>
   <data name="DirectorySettingsAutoStartServerOnLaunch" xml:space="preserve"><value>Auto-start server on launch</value></data>
   <data name="DirectorySettingsAutoStartServerProfileLabel" xml:space="preserve"><value>Auto-start server profile</value></data>
-  <data name="DirectorySettingsSaveButtonText" xml:space="preserve"><value>Save Directory</value></data>
+  <data name="DirectorySettingsSaveButtonText" xml:space="preserve"><value>Save Settings</value></data>
+  <data name="ConfigImportDialogTitle" xml:space="preserve"><value>Select Server Config File</value></data>
+  <data name="ConfigImportFilterName" xml:space="preserve"><value>Server Config JSON</value></data>
+  <data name="ConfigStatusImportedFormat" xml:space="preserve"><value>Configuration imported: {0}</value></data>
+  <data name="ConfigStatusImportFailedFormat" xml:space="preserve"><value>Failed to import configuration: {0}</value></data>
   <data name="DirectorySettingsResetButtonText" xml:space="preserve"><value>Reset Default</value></data>
   <data name="TrayShowWindowText" xml:space="preserve"><value>Show Window</value></data>
   <data name="TrayStartServerText" xml:space="preserve"><value>Start Server</value></data>

@@ -10,12 +10,12 @@
       },
       {
         "title": "OverviewLinkageMenuTitle",
-        "icon": "SourcePull",
+        "icon": "LinkRounded",
         "viewName": "OverviewLinkage"
       },
       {
         "title": "OverviewRestrictionsMenuTitle",
-        "icon": "FiConfig",
+        "icon": "LockRounded",
         "viewName": "OverviewRestrictions"
       },
       {
