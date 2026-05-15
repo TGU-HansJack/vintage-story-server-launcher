@@ -22,6 +22,7 @@ public class DefaultNavigationService(
         .Create<ViewName, Type>()
         .Add(ViewName.Home, typeof(HomeViewModel))
         .Add(ViewName.OverviewLinkage, typeof(OverviewLinkageViewModel))
+        .Add(ViewName.OverviewRestrictions, typeof(OverviewRestrictionsViewModel))
         .Add(ViewName.Workspace, typeof(WorkspaceViewModel))
         .Add(ViewName.Automation, typeof(AutomationViewModel))
         .Add(ViewName.About, typeof(AboutViewModel))

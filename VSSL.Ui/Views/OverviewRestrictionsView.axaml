@@ -1,0 +1,79 @@
+<UserControl
+    x:Class="VSSL.Ui.Views.OverviewRestrictionsView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="clr-namespace:VSSL.Ui.ViewModels"
+    x:Name="RestrictionsRoot"
+    d:DesignHeight="450"
+    d:DesignWidth="800"
+    x:DataType="vm:OverviewRestrictionsViewModel"
+    mc:Ignorable="d"
+    >
+    <Design.DataContext>
+        <vm:OverviewRestrictionsViewModel />
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="10">
+        <Grid Grid.Row="0" Margin="12,0,12,0" ColumnDefinitions="2.3*,Auto,Auto,Auto" ColumnSpacing="8">
+            <ComboBox Grid.Column="0" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+
+            <Button Grid.Column="1" Command="{Binding BlockSelectedCommand}" Content="{Binding [RestrictionsBlockSelectedButtonText]}" />
+            <Button Grid.Column="2" Command="{Binding UnblockSelectedCommand}" Content="{Binding [RestrictionsUnblockSelectedButtonText]}" />
+            <Button Grid.Column="3" Command="{Binding RefreshCommand}" Content="{Binding [CommonRefreshButtonText]}" />
+        </Grid>
+
+        <StackPanel Grid.Row="1" Spacing="2">
+            <TextBlock Text="{Binding [RestrictionsDescription]}" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <Grid Grid.Row="2" RowDefinitions="Auto,*">
+            <Border Grid.Row="0" Padding="10,8" CornerRadius="6,6,0,0" BorderBrush="Gray" BorderThickness="1">
+                <Grid ColumnDefinitions="52,2.8*,1.2*,1.8*,1.0*" ColumnSpacing="8">
+                    <CheckBox IsChecked="{Binding SelectAll}" />
+                    <TextBlock Grid.Column="1" FontWeight="SemiBold" Text="{Binding [RestrictionsHeaderModId]}" />
+                    <TextBlock Grid.Column="2" FontWeight="SemiBold" Text="{Binding [RestrictionsHeaderSeenCount]}" />
+                    <TextBlock Grid.Column="3" FontWeight="SemiBold" Text="{Binding [RestrictionsHeaderLastSeen]}" />
+                    <TextBlock Grid.Column="4" HorizontalAlignment="Center" FontWeight="SemiBold" Text="{Binding [RestrictionsHeaderBlocked]}" />
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="1" Padding="0,8,0,0" CornerRadius="0,0,6,6" BorderBrush="Gray" BorderThickness="1">
+                <Grid>
+                    <ScrollViewer IsVisible="{Binding HasMods}">
+                        <ItemsControl ItemsSource="{Binding Mods}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:OverviewRestrictionModItemViewModel">
+                                    <Grid Margin="8,0,8,8" ColumnDefinitions="52,2.8*,1.2*,1.8*,1.0*" ColumnSpacing="8">
+                                        <CheckBox IsChecked="{Binding IsSelected}" />
+                                        <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding ModId}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="{Binding SeenCount}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Column="3" VerticalAlignment="Center" Text="{Binding LastSeenText}" TextTrimming="CharacterEllipsis" />
+                                        <CheckBox Grid.Column="4" HorizontalAlignment="Center" IsChecked="{Binding IsBlacklisted}" IsEnabled="False" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        FontSize="16"
+                        FontWeight="SemiBold"
+                        IsVisible="{Binding HasNoMods}"
+                        Text="{Binding [RestrictionsNoModsText]}"
+                        />
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

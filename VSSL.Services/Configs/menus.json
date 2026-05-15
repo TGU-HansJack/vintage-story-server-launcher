@@ -14,6 +14,11 @@
         "viewName": "OverviewLinkage"
       },
       {
+        "title": "OverviewRestrictionsMenuTitle",
+        "icon": "FiConfig",
+        "viewName": "OverviewRestrictions"
+      },
+      {
         "title": "WorkspaceMenuTitle",
         "icon": "FiConsole",
         "viewName": "Workspace"

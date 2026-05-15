@@ -7,6 +7,7 @@ public enum ViewName
 {
     Home,
     OverviewLinkage,
+    OverviewRestrictions,
     Workspace,
     Automation,
     About,

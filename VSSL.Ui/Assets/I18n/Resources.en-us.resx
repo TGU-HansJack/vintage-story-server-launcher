@@ -350,5 +350,29 @@
   <data name="TrayStartRobotText" xml:space="preserve"><value>Start QQ Bot</value></data>
   <data name="TrayStopRobotText" xml:space="preserve"><value>Stop QQ Bot</value></data>
   <data name="TrayExitText" xml:space="preserve"><value>Exit</value></data>
+  <data name="OverviewRestrictionsMenuTitle" xml:space="preserve"><value>Restrictions</value></data>
+  <data name="ModStatusSelectModsToDelete" xml:space="preserve"><value>Please select mod(s) to delete.</value></data>
+  <data name="ModStatusDeletedFormat" xml:space="preserve"><value>Deleted {0} mod(s).</value></data>
+  <data name="ModStatusNoDeletes" xml:space="preserve"><value>No mods were deleted.</value></data>
+  <data name="ModStatusDeleteFailedFormat" xml:space="preserve"><value>Failed to delete mod(s): {0}</value></data>
+  <data name="RestrictionsDescription" xml:space="preserve"><value>Reads historical client-side mods from server logs and applies blocking to ModIdBlackList.</value></data>
+  <data name="RestrictionsBlockSelectedButtonText" xml:space="preserve"><value>Block Selected</value></data>
+  <data name="RestrictionsUnblockSelectedButtonText" xml:space="preserve"><value>Unblock Selected</value></data>
+  <data name="RestrictionsHeaderModId" xml:space="preserve"><value>Mod ID</value></data>
+  <data name="RestrictionsHeaderSeenCount" xml:space="preserve"><value>Seen</value></data>
+  <data name="RestrictionsHeaderLastSeen" xml:space="preserve"><value>Last Seen</value></data>
+  <data name="RestrictionsHeaderBlocked" xml:space="preserve"><value>Blocked</value></data>
+  <data name="RestrictionsNoModsText" xml:space="preserve"><value>No historical client mods.</value></data>
+  <data name="RestrictionsStatusNoHistory" xml:space="preserve"><value>No historical client-side mods were found in logs.</value></data>
+  <data name="RestrictionsStatusLoadedFormat" xml:space="preserve"><value>Loaded {0} mod(s), blocked {1}.</value></data>
+  <data name="RestrictionsStatusLoadFailedFormat" xml:space="preserve"><value>Failed to load restrictions data: {0}</value></data>
+  <data name="RestrictionsStatusSelectModsToBlock" xml:space="preserve"><value>Please select mod(s) to block.</value></data>
+  <data name="RestrictionsStatusBlockedFormat" xml:space="preserve"><value>Blocked {0} mod(s).</value></data>
+  <data name="RestrictionsStatusBlockFailedFormat" xml:space="preserve"><value>Failed to block selected mods: {0}</value></data>
+  <data name="RestrictionsStatusSelectModsToUnblock" xml:space="preserve"><value>Please select mod(s) to unblock.</value></data>
+  <data name="RestrictionsStatusUnblockedFormat" xml:space="preserve"><value>Unblocked {0} mod(s).</value></data>
+  <data name="RestrictionsStatusUnblockFailedFormat" xml:space="preserve"><value>Failed to unblock selected mods: {0}</value></data>
+  <data name="RestrictionsStatusNoChanges" xml:space="preserve"><value>No changes were made.</value></data>
 </root>
+
 

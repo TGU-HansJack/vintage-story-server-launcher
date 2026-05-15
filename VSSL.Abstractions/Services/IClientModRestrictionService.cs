@@ -3,28 +3,25 @@ using VSSL.Domains.Models;
 namespace VSSL.Abstractions.Services;
 
 /// <summary>
-///     实例模组服务
+///     客户端模组限制服务
 /// </summary>
-public interface IInstanceModService
+public interface IClientModRestrictionService
 {
-    Task<IReadOnlyList<ModEntry>> GetModsAsync(
+    Task<IReadOnlyList<ClientModHistoryEntry>> GetHistoricalClientModsAsync(
         InstanceProfile profile,
         CancellationToken cancellationToken = default);
 
-    Task<ModEntry> ImportModZipAsync(
+    Task<IReadOnlySet<string>> GetBlacklistedModIdsAsync(
         InstanceProfile profile,
-        string zipPath,
         CancellationToken cancellationToken = default);
 
-    Task SetModEnabledAsync(
+    Task<int> AddModIdsToBlacklistAsync(
         InstanceProfile profile,
-        string modId,
-        string version,
-        bool enabled,
+        IReadOnlyCollection<string> modIds,
         CancellationToken cancellationToken = default);
 
-    Task<int> DeleteModsAsync(
+    Task<int> RemoveModIdsFromBlacklistAsync(
         InstanceProfile profile,
-        IReadOnlyCollection<ModEntry> mods,
+        IReadOnlyCollection<string> modIds,
         CancellationToken cancellationToken = default);
 }

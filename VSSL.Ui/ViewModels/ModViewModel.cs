@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using VSSL.Abstractions.Services;
 using VSSL.Abstractions.Services.Ui;
 using VSSL.Domains.Models;
@@ -15,9 +16,11 @@ public partial class ModViewModel : ViewModelBase
     private readonly IInstanceProfileService? _instanceProfileService;
     private readonly IInstanceModService? _instanceModService;
     private readonly IFilePickerService? _filePickerService;
+    private bool _syncingSelectAll;
 
     [ObservableProperty] private InstanceProfile? _selectedProfile;
     [ObservableProperty] private string _modZipPath = string.Empty;
+    [ObservableProperty] private bool _selectAll;
     [ObservableProperty] private string _statusMessage = string.Empty;
     [ObservableProperty] private bool _isBusy;
 
@@ -33,9 +36,23 @@ public partial class ModViewModel : ViewModelBase
 
     public bool HasNoMods => !HasMods;
 
+    public bool HasSelectedMods => Mods.Any(mod => mod.IsSelected);
+
     partial void OnSelectedProfileChanged(InstanceProfile? value)
     {
         _ = LoadModsAsync(value);
+    }
+
+    partial void OnSelectAllChanged(bool value)
+    {
+        if (_syncingSelectAll) return;
+
+        _syncingSelectAll = true;
+        foreach (var mod in Mods)
+            mod.IsSelected = value;
+        _syncingSelectAll = false;
+
+        OnPropertyChanged(nameof(HasSelectedMods));
     }
 
     [RelayCommand]
@@ -123,6 +140,56 @@ public partial class ModViewModel : ViewModelBase
         }
     }
 
+    [RelayCommand]
+    private async Task DeleteSelectedAsync()
+    {
+        if (_instanceModService is null) return;
+        var profile = SelectedProfile;
+        if (profile is null)
+        {
+            StatusMessage = L("StatusSelectProfileFirst");
+            return;
+        }
+
+        var selectedMods = Mods
+            .Where(mod => mod.IsSelected)
+            .Select(mod => new ModEntry
+            {
+                ModId = mod.ModId,
+                Version = mod.Version,
+                FilePath = mod.FilePath,
+                Status = mod.Status,
+                IsDisabled = mod.IsDisabled,
+                Dependencies = [],
+                DependencyIssues = []
+            })
+            .ToList();
+
+        if (selectedMods.Count == 0)
+        {
+            StatusMessage = L("ModStatusSelectModsToDelete");
+            return;
+        }
+
+        try
+        {
+            IsBusy = true;
+            var deleted = await _instanceModService.DeleteModsAsync(profile, selectedMods);
+            await LoadModsAsync(profile);
+            StatusMessage = deleted > 0
+                ? LF("ModStatusDeletedFormat", deleted)
+                : L("ModStatusNoDeletes");
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = LF("ModStatusDeleteFailedFormat", ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     private async Task RefreshProfilesAsync()
     {
         if (_instanceProfileService is null) return;
@@ -141,9 +208,12 @@ public partial class ModViewModel : ViewModelBase
             if (Profiles.Count == 0)
             {
                 SelectedProfile = null;
+                foreach (var mod in Mods) mod.PropertyChanged -= OnModItemPropertyChanged;
                 Mods.Clear();
+                SyncSelectAllByRows();
                 OnPropertyChanged(nameof(HasMods));
                 OnPropertyChanged(nameof(HasNoMods));
+                OnPropertyChanged(nameof(HasSelectedMods));
                 StatusMessage = L("StatusNoProfileCreateFirst");
                 return;
             }
@@ -176,27 +246,51 @@ public partial class ModViewModel : ViewModelBase
     {
         if (_instanceModService is null || profile is null)
         {
+            foreach (var mod in Mods) mod.PropertyChanged -= OnModItemPropertyChanged;
             Mods.Clear();
+            SyncSelectAllByRows();
             OnPropertyChanged(nameof(HasMods));
             OnPropertyChanged(nameof(HasNoMods));
+            OnPropertyChanged(nameof(HasSelectedMods));
             return;
         }
 
         try
         {
             var mods = await _instanceModService.GetModsAsync(profile);
+            foreach (var mod in Mods) mod.PropertyChanged -= OnModItemPropertyChanged;
             Mods.Clear();
             foreach (var mod in mods)
-                Mods.Add(ModItemViewModel.FromModel(mod));
+            {
+                var item = ModItemViewModel.FromModel(mod);
+                item.PropertyChanged += OnModItemPropertyChanged;
+                Mods.Add(item);
+            }
 
+            SyncSelectAllByRows();
             OnPropertyChanged(nameof(HasMods));
             OnPropertyChanged(nameof(HasNoMods));
+            OnPropertyChanged(nameof(HasSelectedMods));
             StatusMessage = LF("ModStatusLoadedFormat", Mods.Count);
         }
         catch (Exception ex)
         {
             StatusMessage = LF("ModStatusLoadFailedFormat", ex.Message);
         }
+    }
+
+    private void OnModItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ModItemViewModel.IsSelected)) return;
+        SyncSelectAllByRows();
+        OnPropertyChanged(nameof(HasSelectedMods));
+    }
+
+    private void SyncSelectAllByRows()
+    {
+        _syncingSelectAll = true;
+        SelectAll = Mods.Count > 0 && Mods.All(item => item.IsSelected);
+        _syncingSelectAll = false;
     }
 
     #region Constructors

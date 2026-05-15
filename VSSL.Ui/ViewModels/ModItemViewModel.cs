@@ -1,11 +1,12 @@
 using VSSL.Domains.Models;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace VSSL.Ui.ViewModels;
 
 /// <summary>
 ///     模组列表项视图模型
 /// </summary>
-public class ModItemViewModel : ViewModelBase
+public partial class ModItemViewModel : ViewModelBase
 {
     public required string ModId { get; init; }
 
@@ -20,6 +21,8 @@ public class ModItemViewModel : ViewModelBase
     public string DependenciesText { get; init; } = "-";
 
     public string IssuesText { get; init; } = "-";
+
+    [ObservableProperty] private bool _isSelected;
 
     public static ModItemViewModel FromModel(ModEntry model)
     {

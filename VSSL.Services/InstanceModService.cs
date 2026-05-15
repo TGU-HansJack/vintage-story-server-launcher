@@ -118,6 +118,64 @@ public class InstanceModService(IInstanceServerConfigService serverConfigService
             cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task<int> DeleteModsAsync(
+        InstanceProfile profile,
+        IReadOnlyCollection<ModEntry> mods,
+        CancellationToken cancellationToken = default)
+    {
+        if (mods.Count == 0) return 0;
+
+        var modsRoot = EnsureDirectoryPrefix(WorkspacePathHelper.GetProfileModsPath(profile.DirectoryPath));
+        var deleted = 0;
+        var deletedModIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var deletedVersionKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var mod in mods.Where(static mod => mod is not null))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            string fullPath;
+            try
+            {
+                fullPath = Path.GetFullPath(mod.FilePath);
+            }
+            catch
+            {
+                continue;
+            }
+
+            if (!IsWithinDirectory(fullPath, modsRoot))
+                continue;
+
+            if (File.Exists(fullPath))
+            {
+                File.Delete(fullPath);
+            }
+            else if (Directory.Exists(fullPath))
+            {
+                Directory.Delete(fullPath, recursive: true);
+            }
+            else
+            {
+                continue;
+            }
+
+            deleted++;
+            deletedModIds.Add(mod.ModId);
+            deletedVersionKeys.Add($"{mod.ModId}@{mod.Version}");
+        }
+
+        if (deleted > 0)
+            await RemoveDeletedModsFromDisabledListAsync(
+                profile,
+                deletedModIds,
+                deletedVersionKeys,
+                cancellationToken);
+
+        return deleted;
+    }
+
     private static ModEntry ReadModFromZip(string zipPath, HashSet<string> disabledSet)
     {
         try
@@ -248,5 +306,63 @@ public class InstanceModService(IInstanceServerConfigService serverConfigService
         disabledMods = new JsonArray();
         worldConfig["DisabledMods"] = disabledMods;
         return disabledMods;
+    }
+
+    private async Task RemoveDeletedModsFromDisabledListAsync(
+        InstanceProfile profile,
+        HashSet<string> deletedModIds,
+        HashSet<string> deletedVersionKeys,
+        CancellationToken cancellationToken)
+    {
+        if (deletedModIds.Count == 0) return;
+
+        try
+        {
+            var rawJson = await serverConfigService.LoadRawJsonAsync(profile, cancellationToken);
+            var root = JsonNode.Parse(rawJson) as JsonObject
+                       ?? throw new InvalidOperationException("配置格式错误。");
+
+            var disabledArray = GetOrCreateDisabledModsArray(root);
+            var originalValues = disabledArray
+                .Where(static item => item is not null)
+                .Select(static item => item!.GetValue<string>())
+                .ToList();
+
+            var cleaned = originalValues
+                .Where(value =>
+                {
+                    if (deletedModIds.Contains(value)) return false;
+                    return !deletedVersionKeys.Contains(value);
+                })
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (cleaned.Count == originalValues.Count) return;
+
+            disabledArray.Clear();
+            foreach (var value in cleaned)
+                disabledArray.Add(value);
+
+            await serverConfigService.SaveRawJsonAsync(
+                profile,
+                root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }),
+                cancellationToken);
+        }
+        catch
+        {
+            // 删除模组已完成；配置清理失败时不阻断主流程。
+        }
+    }
+
+    private static string EnsureDirectoryPrefix(string path)
+    {
+        var fullPath = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        return fullPath + Path.DirectorySeparatorChar;
+    }
+
+    private static bool IsWithinDirectory(string candidatePath, string directoryPrefix)
+    {
+        var fullCandidate = Path.GetFullPath(candidatePath);
+        return fullCandidate.StartsWith(directoryPrefix, StringComparison.OrdinalIgnoreCase);
     }
 }
