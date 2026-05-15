@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using VSSL.Abstractions.Services;
 using VSSL.Abstractions.Services.Ui;
 using VSSL.Domains.Models;
@@ -24,6 +25,7 @@ public partial class ConfigViewModel : ViewModelBase
 
     private readonly IInstanceProfileService? _instanceProfileService;
     private readonly IInstanceServerConfigService? _instanceServerConfigService;
+    private readonly IInstanceSaveService? _instanceSaveService;
     private readonly IAdvancedJsonDialogService? _advancedJsonDialogService;
     private readonly IFilePickerService? _filePickerService;
     private readonly IServerImageService? _serverImageService;
@@ -44,7 +46,7 @@ public partial class ConfigViewModel : ViewModelBase
     [ObservableProperty] private bool _allowFireSpread = true;
     [ObservableProperty] private bool _allowFallingBlocks = true;
     [ObservableProperty] private bool _verifyPlayerAuth = true;
-    [ObservableProperty] private string _serverLanguage = "en";
+    [ObservableProperty] private string _serverLanguage = ResolveDefaultServerLanguage();
     [ObservableProperty] private string _defaultRoleCode = "suplayer";
     [ObservableProperty] private string _welcomeMessage = string.Empty;
 
@@ -52,6 +54,7 @@ public partial class ConfigViewModel : ViewModelBase
 
     [ObservableProperty] private string _seed = "123456789";
     [ObservableProperty] private string _worldName = "A new world";
+    [ObservableProperty] private SaveFileItemViewModel? _selectedSave;
     [ObservableProperty] private string _saveFileLocation = string.Empty;
     [ObservableProperty] private string _playStyle = "surviveandbuild";
     [ObservableProperty] private string _worldType = "standard";
@@ -69,12 +72,17 @@ public partial class ConfigViewModel : ViewModelBase
     public ObservableCollection<InstanceProfile> Profiles { get; } = [];
 
     public ObservableCollection<ConfigWorldRuleItemViewModel> WorldRules { get; } = [];
+    public ObservableCollection<SaveFileItemViewModel> Saves { get; } = [];
 
     public ObservableCollection<ConfigServerImageItemViewModel> ShowcaseImages { get; } = [];
 
     public bool HasProfiles => Profiles.Count > 0;
 
     public bool HasNoProfiles => !HasProfiles;
+
+    public bool HasSaves => Saves.Count > 0;
+
+    public bool HasNoSaves => !HasSaves;
 
     public bool HasCoverImage => CoverImage is not null;
 
@@ -97,6 +105,13 @@ public partial class ConfigViewModel : ViewModelBase
     partial void OnSelectedProfileChanged(InstanceProfile? value)
     {
         _ = LoadSelectedProfileAsync(value);
+    }
+
+    partial void OnSelectedSaveChanged(SaveFileItemViewModel? value)
+    {
+        if (value is null) return;
+
+        SaveFileLocation = value.FullPath;
     }
 
     [RelayCommand]
@@ -152,7 +167,7 @@ public partial class ConfigViewModel : ViewModelBase
     [RelayCommand]
     private async Task SaveAsync()
     {
-        if (_instanceProfileService is null || _instanceServerConfigService is null) return;
+        if (_instanceProfileService is null || _instanceServerConfigService is null || _instanceSaveService is null) return;
         var profile = SelectedProfile;
         if (profile is null)
         {
@@ -163,9 +178,14 @@ public partial class ConfigViewModel : ViewModelBase
         try
         {
             IsBusy = true;
-            var saveFile = string.IsNullOrWhiteSpace(SaveFileLocation)
-                ? _instanceProfileService.GetDefaultSaveFilePath(profile.Id)
-                : Path.GetFullPath(SaveFileLocation.Trim());
+            var selectedSaveFile = SelectedSave?.FullPath;
+            var saveFile = string.IsNullOrWhiteSpace(selectedSaveFile)
+                ? (string.IsNullOrWhiteSpace(SaveFileLocation)
+                    ? _instanceProfileService.GetDefaultSaveFilePath(profile.Id)
+                    : Path.GetFullPath(SaveFileLocation.Trim()))
+                : Path.GetFullPath(selectedSaveFile);
+
+            await _instanceSaveService.SetActiveSaveAsync(profile, saveFile);
 
             var serverSettings = new ServerCommonSettings
             {
@@ -221,6 +241,7 @@ public partial class ConfigViewModel : ViewModelBase
             _instanceProfileService.UpdateProfile(profile);
 
             SaveFileLocation = saveFile;
+            await LoadSavesAsync(profile);
             StatusMessage = L("ConfigStatusSaved");
         }
         catch (Exception ex)
@@ -699,6 +720,31 @@ public partial class ConfigViewModel : ViewModelBase
             WorldType = worldSettings.WorldType;
             WorldHeight = worldSettings.WorldHeight ?? 256;
 
+            await LoadSavesAsync(profile);
+            if (Saves.Count == 0)
+            {
+                var defaultSavePath = _instanceProfileService.GetDefaultSaveFilePath(profile.Id);
+                var defaultDirectory = Path.GetDirectoryName(defaultSavePath);
+                Saves.Add(new SaveFileItemViewModel
+                {
+                    FullPath = defaultSavePath,
+                    FileName = Path.GetFileName(defaultSavePath),
+                    SizeBytes = 0,
+                    LastWriteTimeUtc = profile.LastUpdatedUtc
+                });
+                profile.ActiveSaveFile = defaultSavePath;
+                profile.SaveDirectory = defaultDirectory ?? profile.SaveDirectory;
+                profile.LastUpdatedUtc = DateTimeOffset.UtcNow;
+                _instanceProfileService.UpdateProfile(profile);
+            }
+
+            SelectedSave = Saves.FirstOrDefault(item =>
+                               item.FullPath.Equals(worldSettings.SaveFileLocation, StringComparison.OrdinalIgnoreCase))
+                           ?? Saves.FirstOrDefault(item =>
+                               item.FullPath.Equals(profile.ActiveSaveFile, StringComparison.OrdinalIgnoreCase))
+                           ?? Saves.FirstOrDefault();
+            SaveFileLocation = SelectedSave?.FullPath ?? worldSettings.SaveFileLocation;
+
             WorldRules.Clear();
             foreach (var rule in rules)
             {
@@ -770,17 +816,49 @@ public partial class ConfigViewModel : ViewModelBase
         AllowFireSpread = true;
         AllowFallingBlocks = true;
         VerifyPlayerAuth = true;
-        ServerLanguage = "en";
+        ServerLanguage = ResolveDefaultServerLanguage();
         DefaultRoleCode = "suplayer";
         WelcomeMessage = string.Empty;
         Seed = "123456789";
         WorldName = "A new world";
+        SelectedSave = null;
         SaveFileLocation = string.Empty;
         PlayStyle = "surviveandbuild";
         WorldType = "standard";
         WorldHeight = 256;
+        Saves.Clear();
+        OnPropertyChanged(nameof(HasSaves));
+        OnPropertyChanged(nameof(HasNoSaves));
         WorldRules.Clear();
         ClearImageForm();
+    }
+
+    private async Task LoadSavesAsync(InstanceProfile profile)
+    {
+        Saves.Clear();
+
+        if (_instanceSaveService is null)
+        {
+            OnPropertyChanged(nameof(HasSaves));
+            OnPropertyChanged(nameof(HasNoSaves));
+            return;
+        }
+
+        var saveEntries = await _instanceSaveService.GetSavesAsync(profile);
+        foreach (var saveEntry in saveEntries)
+        {
+            Saves.Add(new SaveFileItemViewModel
+            {
+                FullPath = saveEntry.FullPath,
+                FileName = saveEntry.FileName,
+                SizeBytes = saveEntry.SizeBytes,
+                LastWriteTimeUtc = saveEntry.LastWriteTimeUtc,
+                IsActive = saveEntry.FullPath.Equals(profile.ActiveSaveFile, StringComparison.OrdinalIgnoreCase)
+            });
+        }
+
+        OnPropertyChanged(nameof(HasSaves));
+        OnPropertyChanged(nameof(HasNoSaves));
     }
 
     private void ClearImageForm()
@@ -872,6 +950,12 @@ public partial class ConfigViewModel : ViewModelBase
         }
     }
 
+    private static string ResolveDefaultServerLanguage()
+    {
+        var culture = CultureInfo.CurrentUICulture.Name;
+        return culture.StartsWith("zh", StringComparison.OrdinalIgnoreCase) ? "zh-cn" : "en";
+    }
+
     #region Constructors
 
     public ConfigViewModel()
@@ -882,6 +966,7 @@ public partial class ConfigViewModel : ViewModelBase
     public ConfigViewModel(
         IInstanceProfileService instanceProfileService,
         IInstanceServerConfigService instanceServerConfigService,
+        IInstanceSaveService instanceSaveService,
         IAdvancedJsonDialogService advancedJsonDialogService,
         IFilePickerService filePickerService,
         IServerImageService serverImageService,
@@ -889,6 +974,7 @@ public partial class ConfigViewModel : ViewModelBase
     {
         _instanceProfileService = instanceProfileService;
         _instanceServerConfigService = instanceServerConfigService;
+        _instanceSaveService = instanceSaveService;
         _advancedJsonDialogService = advancedJsonDialogService;
         _filePickerService = filePickerService;
         _serverImageService = serverImageService;

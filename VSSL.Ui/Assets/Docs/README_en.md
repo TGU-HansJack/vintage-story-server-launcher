@@ -21,12 +21,12 @@ The application uses a three-zone layout. The top area contains window controls 
 | Module | User Value | Current Behavior |
 | --- | --- | --- |
 | Dashboard | Unified status view for server and robot runtime. | Shows runtime state, memory usage, uptime, online player count, and recent trend charts. |
-| Workspace Console | Fast server startup and daily operations. | Supports quick create-and-start, start/stop, command input, log tailing, and log export. |
+| Workspace Console | Fast server startup and daily operations. | Supports quick create-and-start, active save switching, start/stop, command input, log tailing, and log export. |
 | Map Preview | Inspect terrain and coordinates without launching the game. | Reads `.vcdbs` directly, renders color and grayscale maps, supports zoom, drag, and coordinate hover. |
 | Instance Download | Fetch server packages. | Loads official entries from `stable-unstable.json`, filters Windows server builds, and downloads to local workspace. |
 | Instance Create | Manage profile lifecycle. | Creates profiles by installed version, manages profile list, and supports bulk delete. |
-| Config | Visual configuration for `serverconfig.json`. | Edits server basics, world parameters, world rules, and supports advanced JSON editing. |
-| Save | Manage `.vcdbs` save files. | Creates saves, switches active save, deletes saves, and writes changes back to profile config. |
+| Config | Visual configuration for `serverconfig.json`. | Edits server basics, world parameters, world rules, supports active save selection per profile, and supports advanced JSON editing. |
+| Save | Manage `.vcdbs` save files. | Creates saves, switches active save, deletes saves, and writes changes back to profile config; no empty database file is pre-created before first start. |
 | Mod | Manage the Mods directory. | Imports zip mods, parses `modinfo.json`, toggles enable state, and reports missing dependencies. |
 | Robot Config | Configure VS2QQ integration. | Configures OneBot WebSocket, token, polling, encoding, super admins, and database path. |
 | Robot Console | Operate VS2QQ runtime. | Starts and stops robot service, refreshes and clears logs, and shows runtime connection state. |
@@ -37,7 +37,7 @@ The application uses a three-zone layout. The top area contains window controls 
 | --- | --- |
 | Download Package | Download `vs_server_win-x64_*.zip` from the Instance Download page. |
 | Create Profile | Select a version and create a profile in Instance Create. |
-| Check Config | Verify port, world rules, and save path in Config. |
+| Check Config | Verify port, world rules, and active save in Config. |
 | Start Server | Start the server and monitor output in Workspace Console. |
 | Maintain Assets | Maintain saves and mods in the Save and Mod pages. |
 | Bridge to QQ | Enable VS2QQ in Robot Config and Robot Console. |

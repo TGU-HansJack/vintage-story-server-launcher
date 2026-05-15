@@ -259,6 +259,9 @@
   <data name="WorkspaceStatusNoExportLogs" xml:space="preserve"><value>No logs to export.</value></data>
   <data name="WorkspaceStatusExportedFormat" xml:space="preserve"><value>Log exported: {0}</value></data>
   <data name="WorkspaceStatusExportFailedFormat" xml:space="preserve"><value>Failed to export log: {0}</value></data>
+  <data name="WorkspaceStatusLoadSavesFailedFormat" xml:space="preserve"><value>Failed to load saves: {0}</value></data>
+  <data name="WorkspaceStatusActiveSaveSwitchedFormat" xml:space="preserve"><value>Active save switched: {0}</value></data>
+  <data name="WorkspaceStatusSwitchSaveFailedFormat" xml:space="preserve"><value>Failed to switch save: {0}</value></data>
   <data name="HomeServerCardTitle" xml:space="preserve"><value>Server</value></data>
   <data name="HomeRobotCardTitle" xml:space="preserve"><value>Robot</value></data>
   <data name="HomeOnlinePlayersCardTitle" xml:space="preserve"><value>Online Players</value></data>

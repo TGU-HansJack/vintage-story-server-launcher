@@ -10,6 +10,8 @@ namespace VSSL.Services;
 /// </summary>
 public class InstanceProfileService : IInstanceProfileService
 {
+    private static readonly object IndexFileLock = new();
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true
@@ -61,15 +63,19 @@ public class InstanceProfileService : IInstanceProfileService
     public IReadOnlyList<InstanceProfile> GetProfiles()
     {
         WorkspacePathHelper.EnsureWorkspace();
-        var index = ReadProfileIndex();
-        var normalized = DiscoverProfilesFromWorkspace(index);
-        foreach (var profile in index.Profiles)
-            normalized |= NormalizeProfile(profile);
-        if (normalized) WriteProfileIndex(index);
+        lock (IndexFileLock)
+        {
+            var index = ReadProfileIndex();
+            var normalized = DiscoverProfilesFromWorkspace(index);
+            normalized |= DeduplicateProfiles(index);
+            foreach (var profile in index.Profiles)
+                normalized |= NormalizeProfile(profile);
+            if (normalized) WriteProfileIndex(index);
 
-        return index.Profiles
-            .OrderByDescending(p => p.LastUpdatedUtc)
-            .ToList();
+            return index.Profiles
+                .OrderByDescending(p => p.LastUpdatedUtc)
+                .ToList();
+        }
     }
 
     /// <inheritdoc />
@@ -78,11 +84,21 @@ public class InstanceProfileService : IInstanceProfileService
         WorkspacePathHelper.EnsureWorkspace();
         if (string.IsNullOrWhiteSpace(profileId)) return null;
 
-        var index = ReadProfileIndex();
-        var profile = index.Profiles.FirstOrDefault(x => x.Id.Equals(profileId.Trim(), StringComparison.OrdinalIgnoreCase));
-        if (profile is null) return null;
-        if (NormalizeProfile(profile)) WriteProfileIndex(index);
-        return profile;
+        lock (IndexFileLock)
+        {
+            var index = ReadProfileIndex();
+            var normalized = DeduplicateProfiles(index);
+            var profile = index.Profiles.FirstOrDefault(x => x.Id.Equals(profileId.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (profile is null)
+            {
+                if (normalized) WriteProfileIndex(index);
+                return null;
+            }
+
+            normalized |= NormalizeProfile(profile);
+            if (normalized) WriteProfileIndex(index);
+            return profile;
+        }
     }
 
     /// <inheritdoc />
@@ -99,35 +115,41 @@ public class InstanceProfileService : IInstanceProfileService
         if (!Directory.Exists(installPath))
             installPath = EnsureVersionInstalledFromPackage(selectedVersion);
 
-        var profileId = Guid.NewGuid().ToString("N");
-        var profileDirectory = WorkspacePathHelper.GetProfileDataPath(profileId);
-        var saveDirectory = WorkspacePathHelper.GetProfileSavesPath(profileId);
-        var defaultSaveFile = WorkspacePathHelper.GetProfileDefaultSaveFile(profileId);
-
-        Directory.CreateDirectory(profileDirectory);
-        Directory.CreateDirectory(saveDirectory);
-        Directory.CreateDirectory(Path.Combine(profileDirectory, "Mods"));
-        Directory.CreateDirectory(Path.Combine(profileDirectory, "Logs"));
-
-        var profile = new InstanceProfile
+        lock (IndexFileLock)
         {
-            Id = profileId,
-            Name = profileName.Trim(),
-            Version = selectedVersion,
-            DirectoryPath = profileDirectory,
-            ActiveSaveFile = defaultSaveFile,
-            SaveDirectory = saveDirectory,
-            CreatedAtUtc = DateTimeOffset.UtcNow,
-            LastUpdatedUtc = DateTimeOffset.UtcNow
-        };
+            var profileId = Guid.NewGuid().ToString("N");
+            var profileDirectory = WorkspacePathHelper.GetProfileDataPath(profileId);
+            var saveDirectory = WorkspacePathHelper.GetProfileSavesPath(profileId);
+            var defaultSaveFile = WorkspacePathHelper.GetProfileDefaultSaveFile(profileId);
 
-        EnsureServerConfig(profile, installPath);
-        NormalizeProfile(profile);
+            Directory.CreateDirectory(profileDirectory);
+            Directory.CreateDirectory(saveDirectory);
+            Directory.CreateDirectory(Path.Combine(profileDirectory, "Mods"));
+            Directory.CreateDirectory(Path.Combine(profileDirectory, "Logs"));
 
-        var index = ReadProfileIndex();
-        index.Profiles.Add(profile);
-        WriteProfileIndex(index);
-        return profile;
+            var profile = new InstanceProfile
+            {
+                Id = profileId,
+                Name = profileName.Trim(),
+                Version = selectedVersion,
+                DirectoryPath = profileDirectory,
+                ActiveSaveFile = defaultSaveFile,
+                SaveDirectory = saveDirectory,
+                CreatedAtUtc = DateTimeOffset.UtcNow,
+                LastUpdatedUtc = DateTimeOffset.UtcNow
+            };
+
+            EnsureServerConfig(profile, installPath);
+            NormalizeProfile(profile);
+
+            var index = ReadProfileIndex();
+            DeduplicateProfiles(index);
+            if (index.Profiles.All(x => !x.Id.Equals(profile.Id, StringComparison.OrdinalIgnoreCase)))
+                index.Profiles.Add(profile);
+            WriteProfileIndex(index);
+
+            return profile;
+        }
     }
 
     /// <inheritdoc />
@@ -137,20 +159,24 @@ public class InstanceProfileService : IInstanceProfileService
         if (string.IsNullOrWhiteSpace(profile.Id))
             throw new InvalidOperationException("档案 Id 不能为空。");
 
-        var index = ReadProfileIndex();
-        var current = index.Profiles.FirstOrDefault(x => x.Id.Equals(profile.Id, StringComparison.OrdinalIgnoreCase));
-        if (current is null)
-            throw new InvalidOperationException("档案不存在。");
+        lock (IndexFileLock)
+        {
+            var index = ReadProfileIndex();
+            DeduplicateProfiles(index);
+            var current = index.Profiles.FirstOrDefault(x => x.Id.Equals(profile.Id, StringComparison.OrdinalIgnoreCase));
+            if (current is null)
+                throw new InvalidOperationException("档案不存在。");
 
-        current.Name = profile.Name.Trim();
-        current.Version = profile.Version.Trim();
-        current.DirectoryPath = profile.DirectoryPath;
-        current.ActiveSaveFile = profile.ActiveSaveFile;
-        current.SaveDirectory = profile.SaveDirectory;
-        current.LastUpdatedUtc = DateTimeOffset.UtcNow;
+            current.Name = profile.Name.Trim();
+            current.Version = profile.Version.Trim();
+            current.DirectoryPath = profile.DirectoryPath;
+            current.ActiveSaveFile = profile.ActiveSaveFile;
+            current.SaveDirectory = profile.SaveDirectory;
+            current.LastUpdatedUtc = DateTimeOffset.UtcNow;
 
-        NormalizeProfile(current);
-        WriteProfileIndex(index);
+            NormalizeProfile(current);
+            WriteProfileIndex(index);
+        }
     }
 
     /// <inheritdoc />
@@ -164,16 +190,21 @@ public class InstanceProfileService : IInstanceProfileService
             StringComparer.OrdinalIgnoreCase);
         if (profileIdSet.Count == 0) return 0;
 
-        var index = ReadProfileIndex();
-        var deletingProfiles = index.Profiles
-            .Where(profile => profileIdSet.Contains(profile.Id))
-            .ToList();
-        if (deletingProfiles.Count == 0) return 0;
+        List<InstanceProfile> deletingProfiles;
+        lock (IndexFileLock)
+        {
+            var index = ReadProfileIndex();
+            DeduplicateProfiles(index);
+            deletingProfiles = index.Profiles
+                .Where(profile => profileIdSet.Contains(profile.Id))
+                .ToList();
+            if (deletingProfiles.Count == 0) return 0;
 
-        index.Profiles = index.Profiles
-            .Where(profile => !profileIdSet.Contains(profile.Id))
-            .ToList();
-        WriteProfileIndex(index);
+            index.Profiles = index.Profiles
+                .Where(profile => !profileIdSet.Contains(profile.Id))
+                .ToList();
+            WriteProfileIndex(index);
+        }
 
         foreach (var profile in deletingProfiles)
         {
@@ -240,6 +271,59 @@ public class InstanceProfileService : IInstanceProfileService
         }
 
         return changed;
+    }
+
+    private static bool DeduplicateProfiles(InstanceProfileIndex index)
+    {
+        if (index.Profiles.Count <= 1)
+            return false;
+
+        var grouped = index.Profiles
+            .Where(profile => !string.IsNullOrWhiteSpace(profile.Id))
+            .GroupBy(profile => profile.Id, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (!grouped.Any(group => group.Count() > 1))
+            return false;
+
+        var deduplicated = new List<InstanceProfile>(index.Profiles.Count);
+        var handledIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var profile in index.Profiles)
+        {
+            if (string.IsNullOrWhiteSpace(profile.Id))
+            {
+                deduplicated.Add(profile);
+                continue;
+            }
+
+            if (!handledIds.Add(profile.Id))
+                continue;
+
+            var candidates = grouped
+                .First(group => group.Key.Equals(profile.Id, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            var preferred = SelectPreferredProfile(candidates);
+            deduplicated.Add(preferred);
+        }
+
+        index.Profiles = deduplicated;
+        return true;
+    }
+
+    private static InstanceProfile SelectPreferredProfile(IReadOnlyList<InstanceProfile> candidates)
+    {
+        if (candidates.Count == 1)
+            return candidates[0];
+
+        var nonRecovered = candidates
+            .Where(profile => !profile.Name.StartsWith("Recovered-", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var pool = nonRecovered.Count > 0 ? nonRecovered : candidates.ToList();
+
+        return pool
+            .OrderByDescending(profile => profile.LastUpdatedUtc)
+            .ThenByDescending(profile => profile.CreatedAtUtc)
+            .First();
     }
 
     private static InstanceProfile BuildRecoveredProfile(string profileId, string profileDirectory, string fallbackVersion)

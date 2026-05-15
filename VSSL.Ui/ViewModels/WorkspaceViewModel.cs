@@ -17,6 +17,7 @@ namespace VSSL.Ui.ViewModels;
 public partial class WorkspaceViewModel : ViewModelBase
 {
     private readonly IInstanceProfileService? _instanceProfileService;
+    private readonly IInstanceSaveService? _instanceSaveService;
     private readonly IServerProcessService? _serverProcessService;
     private readonly ILogTailService? _logTailService;
     private readonly ILauncherPreferencesService? _launcherPreferencesService;
@@ -33,6 +34,7 @@ public partial class WorkspaceViewModel : ViewModelBase
     [ObservableProperty] private string _statusMessage = string.Empty;
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private bool _isConsoleAutoFollow = true;
+    [ObservableProperty] private SaveFileItemViewModel? _selectedSave;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(RuntimeStateText))]
@@ -61,6 +63,7 @@ public partial class WorkspaceViewModel : ViewModelBase
     [ObservableProperty] private bool _isStartupProgressVisible;
 
     public ObservableCollection<InstanceProfile> Profiles { get; } = [];
+    public ObservableCollection<SaveFileItemViewModel> Saves { get; } = [];
     public ObservableCollection<string> InstalledVersions { get; } = [];
     public ObservableCollection<string> QuickCommands { get; } = [];
 
@@ -69,6 +72,10 @@ public partial class WorkspaceViewModel : ViewModelBase
     public bool HasProfiles => Profiles.Count > 0;
 
     public bool HasNoProfiles => !HasProfiles;
+
+    public bool HasSaves => Saves.Count > 0;
+
+    public bool HasNoSaves => !HasSaves;
 
     public bool HasInstalledVersions => InstalledVersions.Count > 0;
 
@@ -96,6 +103,17 @@ public partial class WorkspaceViewModel : ViewModelBase
     }
 
     public string StartupProgressText => LF("WorkspaceStartupProgressFormat", StartupProgress);
+
+    partial void OnSelectedProfileChanged(InstanceProfile? value)
+    {
+        _ = LoadSavesForProfileAsync(value);
+    }
+
+    partial void OnSelectedSaveChanged(SaveFileItemViewModel? value)
+    {
+        if (value is null) return;
+        _ = SetActiveSaveFromWorkspaceAsync(value);
+    }
 
     partial void OnSelectedQuickCommandChanged(string? value)
     {
@@ -130,6 +148,10 @@ public partial class WorkspaceViewModel : ViewModelBase
             if (Profiles.Count == 0)
             {
                 SelectedProfile = null;
+                Saves.Clear();
+                SelectedSave = null;
+                OnPropertyChanged(nameof(HasSaves));
+                OnPropertyChanged(nameof(HasNoSaves));
                 StatusMessage = HasInstalledVersions
                     ? L("WorkspaceQuickNoProfileTip")
                     : L("WorkspaceQuickNoVersionText");
@@ -506,6 +528,88 @@ public partial class WorkspaceViewModel : ViewModelBase
         _ = _logTailService.StopAsync();
     }
 
+    private async Task LoadSavesForProfileAsync(InstanceProfile? profile)
+    {
+        if (_instanceSaveService is null || profile is null)
+        {
+            Saves.Clear();
+            SelectedSave = null;
+            OnPropertyChanged(nameof(HasSaves));
+            OnPropertyChanged(nameof(HasNoSaves));
+            return;
+        }
+
+        try
+        {
+            var entries = await _instanceSaveService.GetSavesAsync(profile);
+            var previousPath = SelectedSave?.FullPath;
+            var activePath = profile.ActiveSaveFile;
+
+            Saves.Clear();
+            foreach (var entry in entries)
+            {
+                Saves.Add(new SaveFileItemViewModel
+                {
+                    FullPath = entry.FullPath,
+                    FileName = entry.FileName,
+                    SizeBytes = entry.SizeBytes,
+                    LastWriteTimeUtc = entry.LastWriteTimeUtc,
+                    IsActive = entry.FullPath.Equals(activePath, StringComparison.OrdinalIgnoreCase)
+                });
+            }
+
+            SelectedSave = Saves.FirstOrDefault(item =>
+                               !string.IsNullOrWhiteSpace(activePath) &&
+                               item.FullPath.Equals(activePath, StringComparison.OrdinalIgnoreCase))
+                           ?? Saves.FirstOrDefault(item =>
+                               !string.IsNullOrWhiteSpace(previousPath) &&
+                               item.FullPath.Equals(previousPath, StringComparison.OrdinalIgnoreCase))
+                           ?? Saves.FirstOrDefault();
+
+            OnPropertyChanged(nameof(HasSaves));
+            OnPropertyChanged(nameof(HasNoSaves));
+        }
+        catch (Exception ex)
+        {
+            Saves.Clear();
+            SelectedSave = null;
+            OnPropertyChanged(nameof(HasSaves));
+            OnPropertyChanged(nameof(HasNoSaves));
+            StatusMessage = LF("WorkspaceStatusLoadSavesFailedFormat", ex.Message);
+        }
+    }
+
+    private async Task SetActiveSaveFromWorkspaceAsync(SaveFileItemViewModel selected)
+    {
+        if (_instanceProfileService is null || _instanceSaveService is null) return;
+
+        var profile = SelectedProfile;
+        if (profile is null) return;
+        if (string.IsNullOrWhiteSpace(selected.FullPath)) return;
+
+        var selectedPath = Path.GetFullPath(selected.FullPath);
+        if (selectedPath.Equals(profile.ActiveSaveFile, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        try
+        {
+            await _instanceSaveService.SetActiveSaveAsync(profile, selectedPath);
+            profile.ActiveSaveFile = selectedPath;
+            profile.SaveDirectory = Path.GetDirectoryName(selectedPath) ?? profile.SaveDirectory;
+            profile.LastUpdatedUtc = DateTimeOffset.UtcNow;
+            _instanceProfileService.UpdateProfile(profile);
+
+            await LoadSavesForProfileAsync(profile);
+            var selectedName = Path.GetFileName(selectedPath);
+            StatusMessage = LF("WorkspaceStatusActiveSaveSwitchedFormat", selectedName);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = LF("WorkspaceStatusSwitchSaveFailedFormat", ex.Message);
+            await LoadSavesForProfileAsync(profile);
+        }
+    }
+
     private static void RunOnUiThread(Action action)
     {
         if (Dispatcher.UIThread.CheckAccess())
@@ -603,12 +707,14 @@ public partial class WorkspaceViewModel : ViewModelBase
 
     public WorkspaceViewModel(
         IInstanceProfileService instanceProfileService,
+        IInstanceSaveService instanceSaveService,
         IServerProcessService serverProcessService,
         ILogTailService logTailService,
         ILauncherPreferencesService launcherPreferencesService,
         IQuickCommandsDialogService quickCommandsDialogService)
     {
         _instanceProfileService = instanceProfileService;
+        _instanceSaveService = instanceSaveService;
         _serverProcessService = serverProcessService;
         _logTailService = logTailService;
         _launcherPreferencesService = launcherPreferencesService;

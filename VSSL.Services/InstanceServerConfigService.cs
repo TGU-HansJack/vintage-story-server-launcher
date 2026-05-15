@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Collections.Concurrent;
+using System.Globalization;
 using VSSL.Abstractions.Services;
 using VSSL.Domains.Models;
 
@@ -38,7 +39,7 @@ public class InstanceServerConfigService : IInstanceServerConfigService
             AllowFireSpread = ReadBool(root["AllowFireSpread"], true),
             AllowFallingBlocks = ReadBool(root["AllowFallingBlocks"], true),
             VerifyPlayerAuth = ReadBool(root["VerifyPlayerAuth"], true),
-            ServerLanguage = ReadString(root["ServerLanguage"], "en"),
+            ServerLanguage = ReadString(root["ServerLanguage"], ResolveDefaultServerLanguage()),
             DefaultRoleCode = ReadString(root["DefaultRoleCode"], "suplayer"),
             WelcomeMessage = ReadString(root["WelcomeMessage"], string.Empty)
         };
@@ -113,7 +114,9 @@ public class InstanceServerConfigService : IInstanceServerConfigService
         root["AllowFireSpread"] = serverSettings.AllowFireSpread;
         root["AllowFallingBlocks"] = serverSettings.AllowFallingBlocks;
         root["VerifyPlayerAuth"] = serverSettings.VerifyPlayerAuth;
-        root["ServerLanguage"] = string.IsNullOrWhiteSpace(serverSettings.ServerLanguage) ? "en" : serverSettings.ServerLanguage.Trim();
+        root["ServerLanguage"] = string.IsNullOrWhiteSpace(serverSettings.ServerLanguage)
+            ? ResolveDefaultServerLanguage()
+            : serverSettings.ServerLanguage.Trim();
         root["DefaultRoleCode"] = string.IsNullOrWhiteSpace(serverSettings.DefaultRoleCode) ? "suplayer" : serverSettings.DefaultRoleCode.Trim();
         root["WelcomeMessage"] = string.IsNullOrWhiteSpace(serverSettings.WelcomeMessage)
             ? string.Empty
@@ -340,7 +343,7 @@ public class InstanceServerConfigService : IInstanceServerConfigService
             ["AllowFireSpread"] = true,
             ["AllowFallingBlocks"] = true,
             ["VerifyPlayerAuth"] = true,
-            ["ServerLanguage"] = "en",
+            ["ServerLanguage"] = ResolveDefaultServerLanguage(),
             ["DefaultRoleCode"] = "suplayer",
             ["WelcomeMessage"] = string.Empty
         };
@@ -459,5 +462,11 @@ public class InstanceServerConfigService : IInstanceServerConfigService
             "colorAccurateWorldmap" => ReadFlexibleString(worldConfig["colorAccurateWorldmap"]),
             _ => null
         };
+    }
+
+    private static string ResolveDefaultServerLanguage()
+    {
+        var culture = CultureInfo.CurrentUICulture.Name;
+        return culture.StartsWith("zh", StringComparison.OrdinalIgnoreCase) ? "zh-cn" : "en";
     }
 }

@@ -66,6 +66,16 @@
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
                 </ComboBox>
+                <ComboBox Width="180"
+                          ItemsSource="{Binding Saves}"
+                          SelectedItem="{Binding SelectedSave}"
+                          IsEnabled="{Binding HasSaves}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:SaveFileItemViewModel">
+                            <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
                 <Button Command="{Binding StartServerCommand}" Content="{Binding [WorkspaceStartServerButtonText]}" />
                 <Button Command="{Binding StopServerCommand}" Content="{Binding [WorkspaceStopServerButtonText]}" />
             </StackPanel>

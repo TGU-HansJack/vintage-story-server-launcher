@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Text;
+using System.Globalization;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace VSSL.Services;
@@ -70,6 +72,8 @@ internal static class ServerConfigBootstrapper
 
         if (!File.Exists(configPath))
             throw new InvalidOperationException("服务端未生成 serverconfig.json。");
+
+        ApplyLocalizedServerLanguageDefault(configPath);
     }
 
     private static bool IsLegacyMinimalConfig(string configPath)
@@ -128,5 +132,50 @@ internal static class ServerConfigBootstrapper
         }
 
         return ContainsRoleCode(roles, defaultRoleCode);
+    }
+
+    private static void ApplyLocalizedServerLanguageDefault(string configPath)
+    {
+        try
+        {
+            var json = File.ReadAllText(configPath);
+            if (string.IsNullOrWhiteSpace(json))
+                return;
+
+            if (JsonNode.Parse(json) is not JsonObject root)
+                return;
+
+            var defaultLanguage = ResolveDefaultServerLanguage();
+            var currentLanguage = root["ServerLanguage"]?.GetValue<string>()?.Trim() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(currentLanguage))
+            {
+                root["ServerLanguage"] = defaultLanguage;
+            }
+            else if (defaultLanguage.Equals("zh-cn", StringComparison.OrdinalIgnoreCase) &&
+                     currentLanguage.Equals("en", StringComparison.OrdinalIgnoreCase))
+            {
+                // `--genconfig` 在中文界面下仍会给出英文默认值，这里统一修正为中文默认。
+                root["ServerLanguage"] = defaultLanguage;
+            }
+            else
+            {
+                return;
+            }
+
+            File.WriteAllText(
+                configPath,
+                root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        }
+        catch
+        {
+            // 保持生成流程可用，修正失败时不影响主流程。
+        }
+    }
+
+    private static string ResolveDefaultServerLanguage()
+    {
+        var culture = CultureInfo.CurrentUICulture.Name;
+        return culture.StartsWith("zh", StringComparison.OrdinalIgnoreCase) ? "zh-cn" : "en";
     }
 }
