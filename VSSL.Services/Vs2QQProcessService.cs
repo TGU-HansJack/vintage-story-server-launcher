@@ -1489,6 +1489,10 @@ public sealed class Vs2QQProcessService
             var chat = chats[i];
             var sender = Safe(chat.SenderName);
             var content = NormalizeInboundServerText(chat.SenderName, chat.Message);
+            if (IsGroupRelayEchoText(sender) || IsGroupRelayEchoText(content))
+            {
+                continue;
+            }
             var timeLabel = FormatDisplayTime(chat.TimestampUtc);
             result.Add($"[服务器 {timeLabel}]{sender}：{Safe(content)}");
         }
@@ -1551,6 +1555,10 @@ public sealed class Vs2QQProcessService
         {
             var notification = notifications[i];
             var content = Safe(NormalizeInboundServerText(null, notification.Message));
+            if (IsGroupRelayEchoText(content))
+            {
+                continue;
+            }
             var timeLabel = FormatDisplayTime(notification.TimestampUtc);
             result.Add($"[服务器 {timeLabel}]{content}");
         }
@@ -1607,6 +1615,19 @@ public sealed class Vs2QQProcessService
             "disconnect" => "离开服务器",
             _ => null
         };
+    }
+
+    private static bool IsGroupRelayEchoText(string? text)
+    {
+        var normalized = NormalizeDisplayText(text);
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return false;
+        }
+
+        return normalized.StartsWith("[群聊 ", StringComparison.Ordinal)
+               || normalized.StartsWith("[group ", StringComparison.OrdinalIgnoreCase)
+               || normalized.Contains("群聊 ", StringComparison.Ordinal);
     }
 
     private static string ParseAuthorizationToken(string? authorizationHeader)
@@ -2620,9 +2641,15 @@ public sealed class Vs2QQProcessService
                 using var command = _connection.CreateCommand();
                 command.CommandText =
                     """
-                    SELECT server_host
-                    FROM remote_servers
-                    WHERE token = $token AND enabled = 1
+                    SELECT rs.server_host
+                    FROM remote_servers rs
+                    LEFT JOIN group_remote_servers grs ON grs.server_host = rs.server_host
+                    WHERE rs.token = $token AND rs.enabled = 1
+                    GROUP BY rs.server_host, rs.updated_at
+                    ORDER BY
+                        CASE WHEN COUNT(grs.group_id) > 0 THEN 1 ELSE 0 END DESC,
+                        rs.updated_at DESC,
+                        rs.server_host ASC
                     LIMIT 1;
                     """;
                 command.Parameters.AddWithValue("$token", token);

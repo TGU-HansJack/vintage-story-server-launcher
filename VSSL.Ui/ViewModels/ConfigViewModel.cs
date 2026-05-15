@@ -25,8 +25,22 @@ public partial class ConfigViewModel : ViewModelBase
 
     private static readonly HashSet<string> OnlyDuringWorldCreateRuleKeys = new(StringComparer.OrdinalIgnoreCase)
     {
+        // Keep aligned with VS 1.22.2 survival worldConfigAttributes.onlyDuringWorldCreate
+        "startingClimate",
+        "graceTimer",
+        "worldClimate",
+        "landcover",
+        "oceanscale",
+        "upheavelCommonness",
+        "geologicActivity",
+        "landformScale",
         "worldWidth",
-        "worldLength"
+        "worldLength",
+        "polarEquatorDistance",
+        "storyStructuresDistScaling",
+        "globalTemperature",
+        "globalPrecipitation",
+        "globalForestation"
     };
 
     private static readonly IReadOnlyList<(string Value, string LabelZh, string LabelEn)> BuiltInPlayStyleDefinitions =
@@ -1396,6 +1410,8 @@ public partial class ConfigViewModel : ViewModelBase
         }
 
         IsWorldGenerated = IsSaveWorldGenerated(path);
+        // Rule rows are rebuilt as editable during profile reload; re-apply lock state every time.
+        UpdateWorldRuleEditability();
     }
 
     private static bool IsSaveWorldGenerated(string? savePath)

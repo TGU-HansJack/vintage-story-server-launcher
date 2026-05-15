@@ -16,6 +16,7 @@ namespace VSSL.Services;
 /// </summary>
 public partial class ServerProcessService : IServerProcessService
 {
+    private const long PlayerCountBootstrapWindowBytes = 4L * 1024 * 1024;
     private readonly SemaphoreSlim _processGate = new(1, 1);
     private readonly IInstanceProfileService? _profileService;
     private readonly ILogger<ServerProcessService> _logger;
@@ -324,31 +325,25 @@ public partial class ServerProcessService : IServerProcessService
 
     private void TryUpdatePlayerCountByLine(string line)
     {
-        if (PlayerJoinPattern().IsMatch(line))
+        if (ServerReadyPattern().IsMatch(line))
         {
-            _onlinePlayers = Math.Max(0, _onlinePlayers + 1);
+            _onlinePlayers = 0;
             PublishPlayerCountOnly();
             return;
         }
 
-        if (PlayerLeavePattern().IsMatch(line))
+        if (TryParseAbsoluteOnlineCount(line, out var absoluteCount))
         {
-            _onlinePlayers = Math.Max(0, _onlinePlayers - 1);
+            _onlinePlayers = absoluteCount;
             PublishPlayerCountOnly();
             return;
         }
 
-        var onlineMatch = OnlineCountPattern().Match(line);
-        if (onlineMatch.Success)
-        {
-            var countCapture = onlineMatch.Groups["count"].Captures;
-            var rawCount = countCapture.Count > 0 ? countCapture[^1].Value : onlineMatch.Groups["count"].Value;
-            if (int.TryParse(rawCount, out var count))
-            {
-                _onlinePlayers = Math.Max(0, count);
-                PublishPlayerCountOnly();
-            }
-        }
+        var delta = ResolvePlayerCountDelta(line);
+        if (delta == 0) return;
+
+        _onlinePlayers = Math.Max(0, _onlinePlayers + delta);
+        PublishPlayerCountOnly();
     }
 
     private void PublishPlayerCountOnly()
@@ -386,7 +381,10 @@ public partial class ServerProcessService : IServerProcessService
         try
         {
             if (File.Exists(_playerCountLogPath))
+            {
                 _playerCountLogPosition = new FileInfo(_playerCountLogPath).Length;
+                BootstrapPlayerCountFromRecentLog();
+            }
         }
         catch
         {
@@ -420,6 +418,89 @@ public partial class ServerProcessService : IServerProcessService
         {
             // Runtime status should not flap because a log file is rotating or temporarily locked.
         }
+    }
+
+    private void BootstrapPlayerCountFromRecentLog()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(_playerCountLogPath) || !File.Exists(_playerCountLogPath))
+                return;
+
+            using var stream = new FileStream(_playerCountLogPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            var startPosition = Math.Max(0, stream.Length - PlayerCountBootstrapWindowBytes);
+            stream.Seek(startPosition, SeekOrigin.Begin);
+            using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+
+            // Skip a potential partial line when reading from the middle of the file.
+            if (startPosition > 0)
+                reader.ReadLine();
+
+            var detected = false;
+            var count = 0;
+
+            string? line;
+            while ((line = reader.ReadLine()) is not null)
+            {
+                if (string.IsNullOrWhiteSpace(line))
+                    continue;
+
+                if (ServerReadyPattern().IsMatch(line))
+                {
+                    count = 0;
+                    detected = true;
+                    continue;
+                }
+
+                if (TryParseAbsoluteOnlineCount(line, out var absoluteCount))
+                {
+                    count = absoluteCount;
+                    detected = true;
+                    continue;
+                }
+
+                var delta = ResolvePlayerCountDelta(line);
+                if (delta == 0)
+                    continue;
+
+                count = Math.Max(0, count + delta);
+                detected = true;
+            }
+
+            if (detected)
+                _onlinePlayers = count;
+        }
+        catch
+        {
+            // Keep runtime state stable if bootstrap parsing fails.
+        }
+    }
+
+    private static int ResolvePlayerCountDelta(string line)
+    {
+        if (PlayerJoinPattern().IsMatch(line))
+            return 1;
+
+        if (PlayerLeavePattern().IsMatch(line))
+            return -1;
+
+        return 0;
+    }
+
+    private static bool TryParseAbsoluteOnlineCount(string line, out int count)
+    {
+        count = 0;
+        var onlineMatch = OnlineCountPattern().Match(line);
+        if (!onlineMatch.Success)
+            return false;
+
+        var countCapture = onlineMatch.Groups["count"].Captures;
+        var rawCount = countCapture.Count > 0 ? countCapture[^1].Value : onlineMatch.Groups["count"].Value;
+        if (!int.TryParse(rawCount, out var parsed))
+            return false;
+
+        count = Math.Max(0, parsed);
+        return true;
     }
 
     private void OnProcessExited(object? sender, EventArgs e)
@@ -1349,11 +1430,14 @@ public partial class ServerProcessService : IServerProcessService
     [GeneratedRegex(@"\[(?:Server\s+)?Event\].*\s+joins\.$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex PlayerJoinPattern();
 
-    [GeneratedRegex(@"\[(?:Server\s+)?Event\].*(left\.|leaves\.)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"\[(?:Server\s+)?Event\].*(?:left\.|leaves\.|got removed(?:\.|:)|离开了游戏[。\.]?|离开了服务器[。\.]?|已被移除(?:。|\.|:|：))", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex PlayerLeavePattern();
 
-    [GeneratedRegex(@"(?:\b(?:online|players)\b\D+(?<count>\d+))|(?:(?<count>\d+)\D*player(?:s|\(s\))?\D*online)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"(?:\b(?:online|players)\b\D+(?<count>\d+))|(?:(?<count>\d+)\D*player(?:s|\(s\))?\D*online)|(?:在线\D*(?<count>\d+))|(?:(?<count>\d+)\D*人\D*在线)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex OnlineCountPattern();
+
+    [GeneratedRegex(@"\[(?:Server\s+)?Event\].*now running on Port\s+\d+", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex ServerReadyPattern();
 
     [GeneratedRegex(@"--dataPath(?:=|\s+)(?:""(?<path>[^""]+)""|(?<path>\S+))", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex DataPathArgumentPattern();

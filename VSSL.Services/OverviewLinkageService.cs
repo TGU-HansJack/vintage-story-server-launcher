@@ -23,7 +23,7 @@ public sealed class OverviewLinkageService : IOverviewLinkageService
 {
     private const string DefaultListenPrefix = "http://127.0.0.1:18089/";
     private const string ReportPath = "/api/osq/report";
-    private const int PushIntervalSec = 10;
+    private const int PushIntervalSec = 2;
     private const int MaxMarkerLayersInPayload = 32;
     private const int MaxMapMarkersPerLayerInPayload = 2048;
     private const int MaxInlineMapTilesInPayload = 48;
@@ -34,6 +34,11 @@ public sealed class OverviewLinkageService : IOverviewLinkageService
     private const int ChunkMask = 4_194_303;
     private const int MapTileSize = 512;
     private const int MapExportSignatureVersion = 2;
+    private const int MaxRecentOsqChats = 48;
+    private const int MaxRecentOsqPlayerEvents = 48;
+    private const int MaxRecentOsqNotifications = 48;
+    private const int MaxTailReadBytesPerLog = 512 * 1024;
+    private const int MaxTailReadLinesPerLog = 600;
 
     private static readonly JsonSerializerOptions JsonWriteOptions = new()
     {
@@ -55,8 +60,66 @@ public sealed class OverviewLinkageService : IOverviewLinkageService
 
     private static readonly Regex NonceRegex = new("^[a-z0-9]{8,64}$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex TokenRegex = new("^[A-Za-z0-9_-]{16,256}$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex MultiWhitespaceRegex = new(@"\s{2,}", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex HtmlTagRegex = new(@"<[^>]+>", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex NamespacedTypeLikeRegex = new(@"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*){2,}:?$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly TimeSpan NonceTtl = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan MaxClockDrift = TimeSpan.FromMinutes(10);
+
+    private static readonly string[] KnownLogTimeFormats =
+    [
+        "yyyy-MM-dd HH:mm:ss",
+        "yyyy/MM/dd HH:mm:ss",
+        "yyyy-MM-ddTHH:mm:ss",
+        "d.M.yyyy HH:mm:ss",
+        "M/d/yyyy HH:mm:ss"
+    ];
+
+    private static readonly Regex[] ChatLinePatterns =
+    [
+        new(@"^(?<time>\d{1,2}\.\d{1,2}\.\d{4}\s+\d{2}:\d{2}:\d{2})\s*\[(?:Talk|Chat)\]\s*(?:\d+\s*\|\s*)?(?<sender>[^:]{1,64}):\s*(?<content>.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+        new(@"^(?<time>\d{1,2}\.\d{1,2}\.\d{4}\s+\d{2}:\d{2}:\d{2}).*?\[(?:Talk|Chat)\]\s*(?:\d+\s*\|\s*)?(?<sender>[^:]{1,64}):\s*(?<content>.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+        new(@"^(?<time>\d{1,2}\.\d{1,2}\.\d{4}\s+\d{2}:\d{2}:\d{2}).*?Message to all in group \d+:\s*(?<sender>[^:]{1,64}):\s*(?<content>.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+        new(@"^(?<time>\d{1,2}\.\d{1,2}\.\d{4}\s+\d{2}:\d{2}:\d{2}).*?<(?<sender>[^>]{1,64})>\s*(?<content>.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+        new(@"^\[(?<time>[^\]]+)\]\s*\[(?:Talk|Chat)\]\s*(?:\d+\s*\|\s*)?(?<sender>[^:]{1,64}):\s*(?<content>.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+        new(@"^(?<time>\d{4}[-/]\d{2}[-/]\d{2}[ T]\d{2}:\d{2}:\d{2}).*?\[(?:Talk|Chat)\]\s*(?:\d+\s*\|\s*)?(?<sender>[^:]{1,64}):\s*(?<content>.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+        new(@"^(?<time>\d{4}[-/]\d{2}[-/]\d{2}[ T]\d{2}:\d{2}:\d{2}).*?<(?<sender>[^>]{1,64})>\s*(?<content>.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+        new(@"^\[(?<time>[^\]]+)\]\s*<(?<sender>[^>]{1,64})>\s*(?<content>.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
+    ];
+
+    private static readonly Regex[] JoinEventPatterns =
+    [
+        new(@"^(?<time>\d{1,2}\.\d{1,2}\.\d{4}\s+\d{2}:\d{2}:\d{2})\s*\[Event\]\s*(?<player>[^\[\]:]{1,64})\s+\[[^\]]+\](?::\d+)?\s+joins\.$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+        new(@"^(?<time>\d{1,2}\.\d{1,2}\.\d{4}\s+\d{2}:\d{2}:\d{2})\s*\[Event\]\s*(?<player>[^:]{1,64})\s+加入了服务器\.?$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+        new(@"^(?<time>\d{1,2}\.\d{1,2}\.\d{4}\s+\d{2}:\d{2}:\d{2})\s*\[Audit\]\s*(?<player>[^\.]{1,64})\s+joined\.$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
+    ];
+
+    private static readonly Regex[] LeaveEventPatterns =
+    [
+        new(@"^(?<time>\d{1,2}\.\d{1,2}\.\d{4}\s+\d{2}:\d{2}:\d{2})\s*\[Event\]\s*Player\s+(?<player>[^\.]{1,64})\s+left\.$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+        new(@"^(?<time>\d{1,2}\.\d{1,2}\.\d{4}\s+\d{2}:\d{2}:\d{2})\s*\[Event\]\s*(?<player>[^\[\]:]{1,64})\s+\[[^\]]+\](?::\d+)?\s+(?:left|leaves)\.$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+        new(@"^(?<time>\d{1,2}\.\d{1,2}\.\d{4}\s+\d{2}:\d{2}:\d{2})\s*\[Event\]\s*(?<player>[^:]{1,64})\s+离开了服务器\.?$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+        new(@"^(?<time>\d{1,2}\.\d{1,2}\.\d{4}\s+\d{2}:\d{2}:\d{2})\s*\[Audit\]\s*(?<player>[^\.]{1,64})\s+left\.$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
+    ];
+
+    private static readonly Regex[] NotificationLinePatterns =
+    [
+        new(@"^(?:\[log\]\s*)?(?<time>\d{1,2}\.\d{1,2}\.\d{4}\s+\d{2}:\d{2}:\d{2})\s*\[(?:Server\s+Notification|Notification|服务器通知)\]\s*Message to all in group \d+:\s*(?<content>.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+        new(@"^(?:\[log\]\s*)?(?<time>\d{4}[-/]\d{2}[-/]\d{2}[ T]\d{2}:\d{2}:\d{2})\s*\[(?:Server\s+Notification|Notification|服务器通知)\]\s*Message to all in group \d+:\s*(?<content>.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
+        new(@"^(?:\[log\]\s*)?\[(?<time>[^\]]+)\]\s*\[(?:Server\s+Notification|Notification|服务器通知)\]\s*Message to all in group \d+:\s*(?<content>.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
+    ];
+
+    private static readonly Regex DeathAuditPattern =
+        new(@"^(?<time>\d{1,2}\.\d{1,2}\.\d{4}\s+\d{2}:\d{2}:\d{2})\s*\[Audit\]\s*(?<player>[^\.]{1,64})\s+died(?:\.\s*Death message:\s*(?<reason>.+))?\s*$",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    private static readonly Regex ChineseDeathAuditPattern =
+        new(@"^(?<time>\d{1,2}\.\d{1,2}\.\d{4}\s+\d{2}:\d{2}:\d{2})\s*\[Audit\]\s*(?<player>[^。]{1,64})已死亡(?:。死亡消息[:：](?<reason>.+))?\s*$",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    private static readonly Regex GenericRuntimeNotificationPattern =
+        new(@"^(?<time>\d{1,2}\.\d{1,2}\.\d{4}\s+\d{2}:\d{2}:\d{2})\s*\[(?:Notification|Event)\]\s*(?<content>.+)$",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     private static readonly HashSet<string> SupportedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -634,19 +697,21 @@ public sealed class OverviewLinkageService : IOverviewLinkageService
             ];
         }
 
+        var activity = BuildRecentServerActivitySnapshot(context, now, cancellationToken);
+
         if (settings.IncludeNotifications)
         {
-            snapshot.ServerNotifications = [];
+            snapshot.ServerNotifications = activity.Notifications;
         }
 
         if (settings.IncludeChats)
         {
-            snapshot.RecentChats = [];
+            snapshot.RecentChats = activity.Chats;
         }
 
         if (settings.IncludePlayerEvents)
         {
-            snapshot.PlayerEvents = [];
+            snapshot.PlayerEvents = activity.PlayerEvents;
         }
 
         snapshot.ServerImages = settings.IncludeImages
@@ -710,6 +775,506 @@ public sealed class OverviewLinkageService : IOverviewLinkageService
             .ToList();
         snapshot.Showcase = showcase;
         return snapshot;
+    }
+
+    private static LocalServerActivitySnapshot BuildRecentServerActivitySnapshot(
+        LocalServerContext context,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var signals = new List<ParsedServerSignal>();
+        var dedup = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var logPath in EnumerateServerLogCandidates(context.Profile.DirectoryPath))
+        {
+            foreach (var line in ReadTailLines(logPath, MaxTailReadBytesPerLog, MaxTailReadLinesPerLog, cancellationToken))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!TryParseServerSignal(line, now, out var signal))
+                {
+                    continue;
+                }
+
+                var signature = BuildSignalSignature(signal);
+                if (!dedup.Add(signature))
+                {
+                    continue;
+                }
+
+                signals.Add(signal);
+            }
+        }
+
+        if (signals.Count == 0)
+        {
+            return new LocalServerActivitySnapshot();
+        }
+
+        signals.Sort(static (a, b) => a.SortTimeUtc.CompareTo(b.SortTimeUtc));
+
+        var chats = signals
+            .Where(x => x.Kind == ServerSignalKind.Chat)
+            .TakeLast(MaxRecentOsqChats)
+            .Select(x => new OsqChatInfo
+            {
+                TimestampUtc = x.TimestampUtc,
+                ChannelId = 0,
+                SenderName = x.Sender,
+                SenderUid = string.Empty,
+                Message = x.Content,
+                Data = string.Empty
+            })
+            .ToList();
+
+        var playerEvents = signals
+            .Where(x => x.Kind == ServerSignalKind.PlayerEvent)
+            .TakeLast(MaxRecentOsqPlayerEvents)
+            .Select(x => new OsqPlayerEventInfo
+            {
+                TimestampUtc = x.TimestampUtc,
+                EventType = x.EventType,
+                PlayerName = x.PlayerName,
+                PlayerUid = string.Empty,
+                ConnectionState = x.ConnectionState
+            })
+            .ToList();
+
+        var notifications = signals
+            .Where(x => x.Kind == ServerSignalKind.Notification)
+            .TakeLast(MaxRecentOsqNotifications)
+            .Select(x => new OsqServerNotificationInfo
+            {
+                TimestampUtc = x.TimestampUtc,
+                Message = x.Content
+            })
+            .ToList();
+
+        return new LocalServerActivitySnapshot
+        {
+            Chats = chats,
+            PlayerEvents = playerEvents,
+            Notifications = notifications
+        };
+    }
+
+    private static IEnumerable<string> EnumerateServerLogCandidates(string profileDirectoryPath)
+    {
+        var logsPath = WorkspacePathHelper.GetProfileLogsPath(profileDirectoryPath);
+        if (string.IsNullOrWhiteSpace(logsPath))
+        {
+            yield break;
+        }
+
+        yield return Path.Combine(logsPath, "server-main.log");
+        yield return Path.Combine(logsPath, "server-chat.log");
+        yield return Path.Combine(logsPath, "server-audit.log");
+    }
+
+    private static IReadOnlyList<string> ReadTailLines(
+        string logPath,
+        int maxBytes,
+        int maxLines,
+        CancellationToken cancellationToken)
+    {
+        if (!File.Exists(logPath))
+        {
+            return [];
+        }
+
+        try
+        {
+            using var stream = new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            if (stream.Length <= 0)
+            {
+                return [];
+            }
+
+            long start = Math.Max(0, stream.Length - Math.Max(1, maxBytes));
+            stream.Seek(start, SeekOrigin.Begin);
+
+            using var reader = new StreamReader(stream, Encoding.UTF8, true, 8192, leaveOpen: true);
+            if (start > 0)
+            {
+                // Drop potential partial line created by tail seek.
+                _ = reader.ReadLine();
+            }
+
+            var lines = new Queue<string>(Math.Max(1, maxLines));
+            while (!reader.EndOfStream)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var line = reader.ReadLine();
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    continue;
+                }
+
+                var normalized = NormalizeLogText(line);
+                if (normalized.Length == 0)
+                {
+                    continue;
+                }
+
+                if (lines.Count >= maxLines)
+                {
+                    _ = lines.Dequeue();
+                }
+
+                lines.Enqueue(normalized);
+            }
+
+            return lines.ToList();
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private static bool TryParseServerSignal(string line, DateTimeOffset fallbackUtcNow, out ParsedServerSignal signal)
+    {
+        signal = null!;
+        if (string.IsNullOrWhiteSpace(line))
+        {
+            return false;
+        }
+
+        var trimmed = line.Trim();
+
+        if (TryParseNotificationSignal(trimmed, fallbackUtcNow, out signal))
+        {
+            return true;
+        }
+
+        if (TryParsePlayerEventSignal(trimmed, fallbackUtcNow, out signal))
+        {
+            return true;
+        }
+
+        if (TryParseChatSignal(trimmed, fallbackUtcNow, out signal))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryParseChatSignal(string line, DateTimeOffset fallbackUtcNow, out ParsedServerSignal signal)
+    {
+        signal = null!;
+        foreach (var pattern in ChatLinePatterns)
+        {
+            var match = pattern.Match(line);
+            if (!match.Success)
+            {
+                continue;
+            }
+
+            var sender = NormalizeNotificationContent(match.Groups["sender"].Value);
+            var content = NormalizeNotificationContent(match.Groups["content"].Value);
+            if (sender.Length == 0 || content.Length == 0)
+            {
+                continue;
+            }
+
+            if (IsLikelyGroupRelayEcho(sender) || IsLikelyGroupRelayEcho(content))
+            {
+                continue;
+            }
+
+            var sortTime = ParseLogTime(match.Groups["time"].Value, fallbackUtcNow);
+            signal = new ParsedServerSignal
+            {
+                Kind = ServerSignalKind.Chat,
+                SortTimeUtc = sortTime,
+                TimestampUtc = sortTime.ToString("O", CultureInfo.InvariantCulture),
+                Sender = sender,
+                Content = content
+            };
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryParsePlayerEventSignal(string line, DateTimeOffset fallbackUtcNow, out ParsedServerSignal signal)
+    {
+        signal = null!;
+
+        if (TryParsePlayerEventByPatterns(line, JoinEventPatterns, "join", "Playing", fallbackUtcNow, out signal))
+        {
+            return true;
+        }
+
+        if (TryParsePlayerEventByPatterns(line, LeaveEventPatterns, "leave", "Disconnected", fallbackUtcNow, out signal))
+        {
+            return true;
+        }
+
+        var deathMatch = DeathAuditPattern.Match(line);
+        if (deathMatch.Success)
+        {
+            var player = NormalizeLogText(deathMatch.Groups["player"].Value);
+            if (player.Length == 0)
+            {
+                return false;
+            }
+
+            var reason = NormalizeLogText(deathMatch.Groups["reason"].Value);
+            var message = reason.Length == 0 ? $"玩家 {player} 死亡" : $"玩家 {player} 死亡：{reason}";
+            var sortTime = ParseLogTime(deathMatch.Groups["time"].Value, fallbackUtcNow);
+            signal = new ParsedServerSignal
+            {
+                Kind = ServerSignalKind.Notification,
+                SortTimeUtc = sortTime,
+                TimestampUtc = sortTime.ToString("O", CultureInfo.InvariantCulture),
+                Content = message
+            };
+            return true;
+        }
+
+        var chineseDeathMatch = ChineseDeathAuditPattern.Match(line);
+        if (!chineseDeathMatch.Success)
+        {
+            return false;
+        }
+
+        var cnPlayer = NormalizeLogText(chineseDeathMatch.Groups["player"].Value);
+        if (cnPlayer.Length == 0)
+        {
+            return false;
+        }
+
+        var cnReason = NormalizeLogText(chineseDeathMatch.Groups["reason"].Value);
+        var cnMessage = cnReason.Length == 0 ? $"玩家 {cnPlayer} 死亡" : $"玩家 {cnPlayer} 死亡：{cnReason}";
+        var cnSortTime = ParseLogTime(chineseDeathMatch.Groups["time"].Value, fallbackUtcNow);
+        signal = new ParsedServerSignal
+        {
+            Kind = ServerSignalKind.Notification,
+            SortTimeUtc = cnSortTime,
+            TimestampUtc = cnSortTime.ToString("O", CultureInfo.InvariantCulture),
+            Content = cnMessage
+        };
+        return true;
+    }
+
+    private static bool TryParsePlayerEventByPatterns(
+        string line,
+        IEnumerable<Regex> patterns,
+        string eventType,
+        string connectionState,
+        DateTimeOffset fallbackUtcNow,
+        out ParsedServerSignal signal)
+    {
+        signal = null!;
+        foreach (var pattern in patterns)
+        {
+            var match = pattern.Match(line);
+            if (!match.Success)
+            {
+                continue;
+            }
+
+            var player = NormalizeLogText(match.Groups["player"].Value);
+            if (player.Length == 0)
+            {
+                continue;
+            }
+
+            var sortTime = ParseLogTime(match.Groups["time"].Value, fallbackUtcNow);
+            signal = new ParsedServerSignal
+            {
+                Kind = ServerSignalKind.PlayerEvent,
+                SortTimeUtc = sortTime,
+                TimestampUtc = sortTime.ToString("O", CultureInfo.InvariantCulture),
+                EventType = eventType,
+                PlayerName = player,
+                ConnectionState = connectionState
+            };
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryParseNotificationSignal(string line, DateTimeOffset fallbackUtcNow, out ParsedServerSignal signal)
+    {
+        signal = null!;
+        foreach (var pattern in NotificationLinePatterns)
+        {
+            var match = pattern.Match(line);
+            if (!match.Success)
+            {
+                continue;
+            }
+
+            var content = NormalizeNotificationContent(match.Groups["content"].Value);
+            if (content.Length == 0)
+            {
+                continue;
+            }
+
+            if (IsLikelyGroupRelayEcho(content))
+            {
+                continue;
+            }
+
+            var sortTime = ParseLogTime(match.Groups["time"].Value, fallbackUtcNow);
+            signal = new ParsedServerSignal
+            {
+                Kind = ServerSignalKind.Notification,
+                SortTimeUtc = sortTime,
+                TimestampUtc = sortTime.ToString("O", CultureInfo.InvariantCulture),
+                Content = content
+            };
+            return true;
+        }
+
+        var genericMatch = GenericRuntimeNotificationPattern.Match(line);
+        if (!genericMatch.Success)
+        {
+            return false;
+        }
+
+        var genericContent = NormalizeLogText(genericMatch.Groups["content"].Value);
+        if (!ShouldIncludeGenericRuntimeNotification(genericContent))
+        {
+            return false;
+        }
+
+        var genericSortTime = ParseLogTime(genericMatch.Groups["time"].Value, fallbackUtcNow);
+        signal = new ParsedServerSignal
+        {
+            Kind = ServerSignalKind.Notification,
+            SortTimeUtc = genericSortTime,
+            TimestampUtc = genericSortTime.ToString("O", CultureInfo.InvariantCulture),
+            Content = genericContent
+        };
+        return true;
+    }
+
+    private static bool ShouldIncludeGenericRuntimeNotification(string content)
+    {
+        if (content.Length == 0)
+        {
+            return false;
+        }
+
+        if (IsLikelyGroupRelayEcho(content))
+        {
+            return false;
+        }
+
+        if (NamespacedTypeLikeRegex.IsMatch(content))
+        {
+            return false;
+        }
+
+        if (content.StartsWith("Mod '", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var normalized = content.ToLowerInvariant();
+        if (normalized.StartsWith("handling console command", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (normalized.StartsWith("message to all in group", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return normalized.Contains("temporal", StringComparison.Ordinal)
+               || normalized.Contains("stability", StringComparison.Ordinal)
+               || normalized.Contains("storm", StringComparison.Ordinal)
+               || normalized.Contains("rift", StringComparison.Ordinal)
+               || normalized.Contains("时空", StringComparison.Ordinal)
+               || normalized.Contains("稳态", StringComparison.Ordinal)
+               || normalized.Contains("风暴", StringComparison.Ordinal)
+               || normalized.Contains("裂隙", StringComparison.Ordinal);
+    }
+
+    private static string NormalizeNotificationContent(string content)
+    {
+        var decoded = WebUtility.HtmlDecode(content ?? string.Empty);
+        var withoutHtml = HtmlTagRegex.Replace(decoded, string.Empty);
+        return NormalizeLogText(withoutHtml);
+    }
+
+    private static bool IsLikelyGroupRelayEcho(string content)
+    {
+        var normalized = NormalizeLogText(content);
+        if (normalized.Length == 0)
+        {
+            return false;
+        }
+
+        return normalized.StartsWith("[群聊 ", StringComparison.Ordinal)
+               || normalized.StartsWith("[group ", StringComparison.OrdinalIgnoreCase)
+               || normalized.Contains("群聊 ", StringComparison.Ordinal);
+    }
+
+    private static DateTimeOffset ParseLogTime(string raw, DateTimeOffset fallbackUtcNow)
+    {
+        var value = (raw ?? string.Empty).Trim();
+        if (value.Length == 0)
+        {
+            return fallbackUtcNow;
+        }
+
+        foreach (var format in KnownLogTimeFormats)
+        {
+            if (DateTime.TryParseExact(
+                    value,
+                    format,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeLocal,
+                    out var parsed))
+            {
+                return new DateTimeOffset(DateTime.SpecifyKind(parsed, DateTimeKind.Local)).ToUniversalTime();
+            }
+        }
+
+        if (DateTimeOffset.TryParse(
+                value,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeUniversal,
+                out var parsedOffset))
+        {
+            return parsedOffset.ToUniversalTime();
+        }
+
+        if (DateTime.TryParse(
+                value,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeLocal,
+                out var parsedLocal))
+        {
+            return new DateTimeOffset(DateTime.SpecifyKind(parsedLocal, DateTimeKind.Local)).ToUniversalTime();
+        }
+
+        return fallbackUtcNow;
+    }
+
+    private static string BuildSignalSignature(ParsedServerSignal signal)
+    {
+        return $"{signal.Kind}|{signal.TimestampUtc}|{signal.Sender}|{signal.Content}|{signal.EventType}|{signal.PlayerName}|{signal.ConnectionState}";
+    }
+
+    private static string NormalizeLogText(string text)
+    {
+        var normalized = (text ?? string.Empty)
+            .Replace('\r', ' ')
+            .Replace('\n', ' ')
+            .Trim();
+        if (normalized.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        return MultiWhitespaceRegex.Replace(normalized, " ");
     }
 
     private async Task<OsqServerMapInfo> BuildServerMapSnapshotAsync(
@@ -3357,6 +3922,32 @@ public sealed class OverviewLinkageService : IOverviewLinkageService
         public required int MapSizeZ { get; init; }
         public required string SaveDatabasePath { get; init; }
         public required string Description { get; init; }
+    }
+
+    private enum ServerSignalKind
+    {
+        Chat = 1,
+        PlayerEvent = 2,
+        Notification = 3
+    }
+
+    private sealed class ParsedServerSignal
+    {
+        public ServerSignalKind Kind { get; init; }
+        public DateTimeOffset SortTimeUtc { get; init; }
+        public string TimestampUtc { get; init; } = string.Empty;
+        public string Sender { get; init; } = string.Empty;
+        public string Content { get; init; } = string.Empty;
+        public string EventType { get; init; } = string.Empty;
+        public string PlayerName { get; init; } = string.Empty;
+        public string ConnectionState { get; init; } = string.Empty;
+    }
+
+    private sealed class LocalServerActivitySnapshot
+    {
+        public List<OsqChatInfo> Chats { get; init; } = [];
+        public List<OsqPlayerEventInfo> PlayerEvents { get; init; } = [];
+        public List<OsqServerNotificationInfo> Notifications { get; init; } = [];
     }
 
     private sealed class LiveMapRootCandidate
