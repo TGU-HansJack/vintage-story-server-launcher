@@ -16,8 +16,16 @@
     </Design.DataContext>
 
     <Grid RowDefinitions="Auto,Auto,*" RowSpacing="10">
-        <Grid Grid.Row="0" Margin="12,0,12,0" ColumnDefinitions="2.3*,Auto,Auto,Auto" ColumnSpacing="8">
-            <ComboBox Grid.Column="0" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
+        <Grid Grid.Row="0" Margin="12,0,12,0" ColumnDefinitions="Auto,Auto,2.3*,Auto,Auto,Auto" ColumnSpacing="8">
+            <TextBlock VerticalAlignment="Center" Text="{Binding [RestrictionsServiceModToggleText]}" />
+            <ToggleSwitch
+                Grid.Column="1"
+                IsChecked="{Binding RestrictionServiceModEnabled}"
+                IsEnabled="{Binding HasProfiles}"
+                OnContent=""
+                OffContent=""
+                />
+            <ComboBox Grid.Column="2" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
                 <ComboBox.ItemTemplate>
                     <DataTemplate>
                         <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
@@ -25,13 +33,12 @@
                 </ComboBox.ItemTemplate>
             </ComboBox>
 
-            <Button Grid.Column="1" Command="{Binding BlockSelectedCommand}" Content="{Binding [RestrictionsBlockSelectedButtonText]}" />
-            <Button Grid.Column="2" Command="{Binding UnblockSelectedCommand}" Content="{Binding [RestrictionsUnblockSelectedButtonText]}" />
-            <Button Grid.Column="3" Command="{Binding RefreshCommand}" Content="{Binding [CommonRefreshButtonText]}" />
+            <Button Grid.Column="3" Command="{Binding BlockSelectedCommand}" Content="{Binding [RestrictionsBlockSelectedButtonText]}" />
+            <Button Grid.Column="4" Command="{Binding UnblockSelectedCommand}" Content="{Binding [RestrictionsUnblockSelectedButtonText]}" />
+            <Button Grid.Column="5" Command="{Binding RefreshCommand}" Content="{Binding [CommonRefreshButtonText]}" />
         </Grid>
 
         <StackPanel Grid.Row="1" Spacing="2">
-            <TextBlock Text="{Binding [RestrictionsDescription]}" TextWrapping="Wrap" />
             <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" />
         </StackPanel>
 

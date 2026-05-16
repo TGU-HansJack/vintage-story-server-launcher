@@ -74,4 +74,18 @@
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
     </ItemGroup>
+
+    <Target Name="CopyEmbeddedRestrictionModToAppOutput" AfterTargets="Build">
+        <ItemGroup>
+            <_RestrictionModFiles Include="$(MSBuildThisFileDirectory)..\VSSL.Services\bin\$(Configuration)\$(TargetFramework)\EmbeddedMods\vsslrestriction\**\*" />
+        </ItemGroup>
+
+        <MakeDir Directories="$(TargetDir)EmbeddedMods\vsslrestriction\" />
+
+        <Copy
+            SourceFiles="@(_RestrictionModFiles)"
+            DestinationFiles="@(_RestrictionModFiles->'$(TargetDir)EmbeddedMods\\vsslrestriction\\%(RecursiveDir)%(Filename)%(Extension)')"
+            SkipUnchangedFiles="true"
+            Condition="'@(_RestrictionModFiles)' != ''" />
+    </Target>
 </Project>

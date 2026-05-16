@@ -1,6 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
+using System.Globalization;
 using VSSL.Abstractions.Services;
 using VSSL.Domains.Models;
 
@@ -11,7 +11,12 @@ namespace VSSL.Services;
 /// </summary>
 public class ClientModRestrictionService : IClientModRestrictionService
 {
-    private const int HandshakeCaptureTtlSec = 15;
+    private const string RestrictionServiceModId = "vsslrestriction";
+    private const string RestrictionServiceModVersion = "1.1.0";
+    private const string RestrictionServiceModFolderName = "vsslrestriction";
+    private const string RestrictionServiceModZipName = "vsslrestriction.zip";
+    private const string RestrictionReportPrefix = "[VSSL-RESTRICTION-REPORT]";
+    private const string ManagedDisabledModsConfigKey = "VsslRestrictionManagedDisabledMods";
 
     private static readonly JsonSerializerOptions JsonWriteOptions = new()
     {
@@ -23,50 +28,18 @@ public class ClientModRestrictionService : IClientModRestrictionService
         PropertyNameCaseInsensitive = true
     };
 
-    private static readonly Regex HandshakeStartPattern = new(
-        @"Received identification packet from\s+(?<player>[^\r\n]+)$",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-
-    private static readonly Regex JoinBeginPattern = new(
-        @"HandleRequestJoin:\s*Begin\.\s*Player:\s*(?<player>[^\r\n]+)$",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-
-    private static readonly Regex ClientModsPayloadRegex = new(
-        @"(?:client(?:side)?\s*mods?|mods?\s*from\s*client)\s*[:=]\s*(?<payload>.+)$",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-
-    private static readonly Regex JsonClientModsPayloadRegex = new(
-        "\"clientmods?\"\\s*:\\s*(?<payload>\\[[^\\]]*\\])",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-
-    private static readonly Regex KeyValueModIdRegex = new(
-        "\"?(?:modid|id)\"?\\s*[:=]\\s*\"?(?<id>[a-z0-9][a-z0-9._-]{1,63})",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-
-    private static readonly Regex ModTokenRegex = new(
-        @"(?<id>[a-z0-9][a-z0-9._-]{1,63})(?:@(?<version>[0-9a-z._-]+))?",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-
-    private static readonly HashSet<string> ExcludedTokens =
-    [
-        "client", "clients", "mod", "mods", "modid", "id", "server", "servers", "notification", "event",
-        "warning", "error", "name", "uid", "true", "false", "null", "version", "versions", "world",
-        "sorted", "dependency", "dependencies", "disabled", "enabled", "game", "creative", "survival",
-        "json", "payload"
-    ];
-
     private static readonly HashSet<string> BuiltInModIds =
     [
         "game",
         "creative",
-        "survival"
+        "survival",
+        RestrictionServiceModId
     ];
 
     private readonly IInstanceServerConfigService _serverConfigService;
     private readonly IServerProcessService? _serverProcessService;
     private readonly IInstanceProfileService? _profileService;
     private readonly object _sync = new();
-    private readonly Dictionary<string, HandshakeCaptureState> _captureByProfileId = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Dictionary<string, MutableHistoryEntry>> _historyCache = new(StringComparer.OrdinalIgnoreCase);
 
     public ClientModRestrictionService(IInstanceServerConfigService serverConfigService)
@@ -93,23 +66,94 @@ public class ClientModRestrictionService : IClientModRestrictionService
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        var list = BuildHistoryFromProfileLogs(profile, cancellationToken);
+        return Task.FromResult<IReadOnlyList<ClientModHistoryEntry>>(list);
+    }
+
+    private IReadOnlyList<ClientModHistoryEntry> BuildHistoryFromProfileLogs(
+        InstanceProfile profile,
+        CancellationToken cancellationToken)
+    {
+        var parsedFromLogs = new Dictionary<string, MutableHistoryEntry>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var logPath in EnumerateProfileLogFiles(profile.DirectoryPath))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                foreach (var line in ReadLinesShared(logPath))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (string.IsNullOrWhiteSpace(line)) continue;
+                    if (!line.Contains(RestrictionReportPrefix, StringComparison.OrdinalIgnoreCase)) continue;
+                    if (!TryParseRestrictionReportLine(line, out var report)) continue;
+
+                    var whenUtc = report.ReportedAtUtc ?? DateTimeOffset.UtcNow;
+                    foreach (var modId in report.ModIds
+                                 .Select(NormalizeModId)
+                                 .Where(static id => !string.IsNullOrWhiteSpace(id))
+                                 .Where(id => !BuiltInModIds.Contains(id))
+                                 .Distinct(StringComparer.OrdinalIgnoreCase))
+                    {
+                        IncrementHistorySeen(parsedFromLogs, modId, whenUtc);
+                    }
+                }
+            }
+            catch
+            {
+                // 单个日志文件读取失败不阻断整体加载
+            }
+        }
+
         var profileId = NormalizeProfileId(profile.Id);
-        Dictionary<string, MutableHistoryEntry> map;
         lock (_sync)
         {
-            map = EnsureHistoryLoadedUnsafe(profileId);
-            var list = map.Values
-                .Select(static entry => new ClientModHistoryEntry
-                {
-                    ModId = entry.ModId,
-                    SeenCount = entry.SeenCount,
-                    LastSeenUtc = entry.LastSeenUtc
-                })
-                .OrderByDescending(static x => x.SeenCount)
-                .ThenBy(static x => x.ModId, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-            return Task.FromResult<IReadOnlyList<ClientModHistoryEntry>>(list);
+            var history = EnsureHistoryLoadedUnsafe(profileId);
+            var changed = false;
+            foreach (var entry in parsedFromLogs.Values)
+                changed |= MergeHistoryEntry(history, entry.ModId, entry.SeenCount, entry.LastSeenUtc);
+
+            if (changed)
+                SaveHistoryFileUnsafe(profileId, history);
+
+            return ToHistoryEntries(history);
         }
+    }
+
+    private static IEnumerable<string> EnumerateProfileLogFiles(string profileDirectoryPath)
+    {
+        var logsRoot = WorkspacePathHelper.GetProfileLogsPath(profileDirectoryPath);
+        var mainLog = WorkspacePathHelper.GetServerMainLogPath(profileDirectoryPath);
+        if (File.Exists(mainLog))
+            yield return mainLog;
+
+        var archiveRoot = Path.Combine(logsRoot, "Archive");
+        if (!Directory.Exists(archiveRoot))
+            yield break;
+
+        IEnumerable<string> files;
+        try
+        {
+            files = Directory.EnumerateFiles(archiveRoot, "server-main.log", SearchOption.AllDirectories);
+        }
+        catch
+        {
+            yield break;
+        }
+
+        foreach (var file in files)
+            yield return file;
+    }
+
+    private static IEnumerable<string> ReadLinesShared(string filePath)
+    {
+        using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = new StreamReader(stream);
+
+        string? line;
+        while ((line = reader.ReadLine()) is not null)
+            yield return line;
     }
 
     /// <inheritdoc />
@@ -118,7 +162,11 @@ public class ClientModRestrictionService : IClientModRestrictionService
         CancellationToken cancellationToken = default)
     {
         var root = await LoadConfigRootAsync(profile, cancellationToken);
-        return ReadBlacklist(root);
+        var blacklist = ReadBlacklist(root);
+        if (SyncServerSideDisabledModsFromBlacklist(root, blacklist))
+            await SaveConfigRootAsync(profile, root, cancellationToken);
+
+        return blacklist;
     }
 
     /// <inheritdoc />
@@ -133,19 +181,25 @@ public class ClientModRestrictionService : IClientModRestrictionService
         var blacklist = ReadBlacklist(root);
 
         var changed = 0;
+        var changedModIds = new List<string>();
         foreach (var modId in modIds)
         {
             var normalized = NormalizeModId(modId);
             if (string.IsNullOrWhiteSpace(normalized)) continue;
 
             if (blacklist.Add(normalized))
+            {
                 changed++;
+                changedModIds.Add(normalized);
+            }
         }
 
         if (changed == 0) return 0;
 
         root["ModIdBlackList"] = BuildBlacklistArray(blacklist);
+        SyncServerSideDisabledModsFromBlacklist(root, blacklist);
         await SaveConfigRootAsync(profile, root, cancellationToken);
+        RememberKnownMods(profile, changedModIds);
         return changed;
     }
 
@@ -161,20 +215,72 @@ public class ClientModRestrictionService : IClientModRestrictionService
         var blacklist = ReadBlacklist(root);
 
         var changed = 0;
+        var changedModIds = new List<string>();
         foreach (var modId in modIds)
         {
             var normalized = NormalizeModId(modId);
             if (string.IsNullOrWhiteSpace(normalized)) continue;
 
             if (blacklist.Remove(normalized))
+            {
                 changed++;
+                changedModIds.Add(normalized);
+            }
         }
 
         if (changed == 0) return 0;
 
         root["ModIdBlackList"] = BuildBlacklistArray(blacklist);
+        SyncServerSideDisabledModsFromBlacklist(root, blacklist);
         await SaveConfigRootAsync(profile, root, cancellationToken);
+        RememberKnownMods(profile, changedModIds);
         return changed;
+    }
+
+    /// <inheritdoc />
+    public Task<bool> GetRestrictionServiceModEnabledAsync(
+        InstanceProfile profile,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var modsPath = WorkspacePathHelper.GetProfileModsPath(profile.DirectoryPath);
+        var folderPath = Path.Combine(modsPath, RestrictionServiceModFolderName);
+        var zipPath = Path.Combine(modsPath, RestrictionServiceModZipName);
+        var enabled = Directory.Exists(folderPath) || File.Exists(zipPath);
+        return Task.FromResult(enabled);
+    }
+
+    /// <inheritdoc />
+    public async Task SetRestrictionServiceModEnabledAsync(
+        InstanceProfile profile,
+        bool enabled,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var modsPath = WorkspacePathHelper.GetProfileModsPath(profile.DirectoryPath);
+        Directory.CreateDirectory(modsPath);
+
+        var folderPath = Path.Combine(modsPath, RestrictionServiceModFolderName);
+        var zipPath = Path.Combine(modsPath, RestrictionServiceModZipName);
+
+        if (enabled)
+        {
+            if (File.Exists(zipPath))
+                File.Delete(zipPath);
+
+            DeployEmbeddedRestrictionMod(folderPath);
+            await RemoveRestrictionServiceModFromDisabledListAsync(profile, cancellationToken);
+            return;
+        }
+
+        if (File.Exists(zipPath))
+            File.Delete(zipPath);
+
+        if (Directory.Exists(folderPath))
+            Directory.Delete(folderPath, recursive: true);
+
+        await RemoveRestrictionServiceModFromDisabledListAsync(profile, cancellationToken);
     }
 
     private async Task<JsonObject> LoadConfigRootAsync(InstanceProfile profile, CancellationToken cancellationToken)
@@ -192,6 +298,80 @@ public class ClientModRestrictionService : IClientModRestrictionService
             cancellationToken);
     }
 
+    private async Task RemoveRestrictionServiceModFromDisabledListAsync(
+        InstanceProfile profile,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var root = await LoadConfigRootAsync(profile, cancellationToken);
+            if (root["WorldConfig"] is not JsonObject worldConfig)
+                return;
+
+            if (worldConfig["DisabledMods"] is not JsonArray disabledMods)
+                return;
+
+            var beforeCount = disabledMods.Count;
+            var cleanupSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                RestrictionServiceModId,
+                $"{RestrictionServiceModId}@{RestrictionServiceModVersion}"
+            };
+
+            var remain = disabledMods
+                .Where(static item => item is not null)
+                .Select(static item => item!.GetValue<string>())
+                .Where(value => !cleanupSet.Contains(value))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (remain.Count == beforeCount)
+                return;
+
+            disabledMods.Clear();
+            foreach (var value in remain)
+                disabledMods.Add(value);
+
+            await SaveConfigRootAsync(profile, root, cancellationToken);
+        }
+        catch
+        {
+            // 该步骤仅用于清理禁用项，不阻断主流程
+        }
+    }
+
+    private static void DeployEmbeddedRestrictionMod(string destinationFolderPath)
+    {
+        var sourceRoot = Path.Combine(AppContext.BaseDirectory, "EmbeddedMods", RestrictionServiceModFolderName);
+        if (!Directory.Exists(sourceRoot))
+            throw new InvalidOperationException("未找到内置限制模组文件，请先重新构建启动器。");
+
+        if (Directory.Exists(destinationFolderPath))
+            Directory.Delete(destinationFolderPath, recursive: true);
+
+        CopyDirectory(sourceRoot, destinationFolderPath);
+    }
+
+    private static void CopyDirectory(string sourcePath, string destinationPath)
+    {
+        Directory.CreateDirectory(destinationPath);
+
+        foreach (var directory in Directory.EnumerateDirectories(sourcePath, "*", SearchOption.AllDirectories))
+        {
+            var relative = Path.GetRelativePath(sourcePath, directory);
+            var target = Path.Combine(destinationPath, relative);
+            Directory.CreateDirectory(target);
+        }
+
+        foreach (var file in Directory.EnumerateFiles(sourcePath, "*", SearchOption.AllDirectories))
+        {
+            var relative = Path.GetRelativePath(sourcePath, file);
+            var target = Path.Combine(destinationPath, relative);
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(file, target, overwrite: true);
+        }
+    }
+
     private static HashSet<string> ReadBlacklist(JsonObject root)
     {
         if (root["ModIdBlackList"] is not JsonArray array)
@@ -202,6 +382,124 @@ public class ClientModRestrictionService : IClientModRestrictionService
             .Select(static item => NormalizeModId(item!.GetValue<string>()))
             .Where(static value => !string.IsNullOrWhiteSpace(value))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static bool SyncServerSideDisabledModsFromBlacklist(JsonObject root, HashSet<string> blacklist)
+    {
+        var changed = false;
+        var disabledMods = GetOrCreateWorldDisabledModsArray(root);
+        var managedDisabledMods = ReadManagedDisabledMods(root);
+
+        foreach (var modId in blacklist)
+        {
+            if (!ContainsExactDisabledModEntry(disabledMods, modId))
+            {
+                disabledMods.Add(modId);
+                changed = true;
+            }
+
+            if (managedDisabledMods.Add(modId))
+                changed = true;
+        }
+
+        var staleManaged = managedDisabledMods
+            .Where(managedId => !blacklist.Contains(managedId))
+            .ToList();
+        foreach (var managedId in staleManaged)
+        {
+            if (RemoveExactDisabledModEntry(disabledMods, managedId))
+                changed = true;
+
+            if (managedDisabledMods.Remove(managedId))
+                changed = true;
+        }
+
+        if (WriteManagedDisabledMods(root, managedDisabledMods))
+            changed = true;
+
+        return changed;
+    }
+
+    private static JsonArray GetOrCreateWorldDisabledModsArray(JsonObject root)
+    {
+        if (root["WorldConfig"] is not JsonObject worldConfig)
+        {
+            worldConfig = new JsonObject();
+            root["WorldConfig"] = worldConfig;
+        }
+
+        if (worldConfig["DisabledMods"] is JsonArray disabledMods)
+            return disabledMods;
+
+        disabledMods = new JsonArray();
+        worldConfig["DisabledMods"] = disabledMods;
+        return disabledMods;
+    }
+
+    private static HashSet<string> ReadManagedDisabledMods(JsonObject root)
+    {
+        if (root[ManagedDisabledModsConfigKey] is not JsonArray array)
+            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        return array
+            .Where(static item => item is not null)
+            .Select(static item => NormalizeModId(item!.GetValue<string>()))
+            .Where(static value => !string.IsNullOrWhiteSpace(value))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static bool WriteManagedDisabledMods(JsonObject root, HashSet<string> managedDisabledMods)
+    {
+        if (managedDisabledMods.Count == 0)
+            return root.Remove(ManagedDisabledModsConfigKey);
+
+        var serialized = managedDisabledMods
+            .OrderBy(static x => x, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (root[ManagedDisabledModsConfigKey] is JsonArray currentArray)
+        {
+            var current = currentArray
+                .Where(static item => item is not null)
+                .Select(static item => NormalizeModId(item!.GetValue<string>()))
+                .Where(static value => !string.IsNullOrWhiteSpace(value))
+                .OrderBy(static x => x, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (current.SequenceEqual(serialized, StringComparer.OrdinalIgnoreCase))
+                return false;
+        }
+
+        var next = new JsonArray();
+        foreach (var modId in serialized)
+            next.Add(modId);
+
+        root[ManagedDisabledModsConfigKey] = next;
+        return true;
+    }
+
+    private static bool ContainsExactDisabledModEntry(JsonArray disabledMods, string modId)
+    {
+        return disabledMods
+            .Where(static item => item is not null)
+            .Select(static item => item!.GetValue<string>().Trim())
+            .Any(value => value.Equals(modId, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool RemoveExactDisabledModEntry(JsonArray disabledMods, string modId)
+    {
+        var removed = false;
+        for (var index = disabledMods.Count - 1; index >= 0; index--)
+        {
+            if (disabledMods[index] is null) continue;
+            var value = disabledMods[index]!.GetValue<string>().Trim();
+            if (!value.Equals(modId, StringComparison.OrdinalIgnoreCase)) continue;
+
+            disabledMods.RemoveAt(index);
+            removed = true;
+        }
+
+        return removed;
     }
 
     private static JsonArray BuildBlacklistArray(HashSet<string> blacklist)
@@ -216,6 +514,7 @@ public class ClientModRestrictionService : IClientModRestrictionService
     private void OnServerOutputReceived(object? sender, string line)
     {
         if (string.IsNullOrWhiteSpace(line)) return;
+        if (!line.Contains(RestrictionReportPrefix, StringComparison.OrdinalIgnoreCase)) return;
 
         var profile = TryResolveRunningProfile();
         if (profile is null) return;
@@ -225,24 +524,24 @@ public class ClientModRestrictionService : IClientModRestrictionService
 
         lock (_sync)
         {
-            CleanupExpiredCapturesUnsafe(nowUtc);
-            EnsureHistoryLoadedUnsafe(profileId);
-
-            if (TryBeginHandshakeCaptureUnsafe(profileId, line, nowUtc))
-            {
-                RecordModIdsFromLineUnsafe(profileId, line, nowUtc);
+            var history = EnsureHistoryLoadedUnsafe(profileId);
+            if (!TryExtractReportedModIds(line, out var modIds))
                 return;
-            }
 
-            if (!_captureByProfileId.TryGetValue(profileId, out var capture)) return;
-            if (capture.ExpiresAtUtc <= nowUtc)
-            {
-                _captureByProfileId.Remove(profileId);
+            var normalizedModIds = modIds
+                .Select(NormalizeModId)
+                .Where(static id => !string.IsNullOrWhiteSpace(id))
+                .Where(id => !BuiltInModIds.Contains(id))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (normalizedModIds.Count == 0)
                 return;
-            }
 
-            RecordModIdsFromLineUnsafe(profileId, line, nowUtc);
-            TryCloseHandshakeCaptureUnsafe(profileId, line, capture.PlayerName);
+            foreach (var modId in normalizedModIds)
+                IncrementHistorySeen(history, modId, nowUtc);
+
+            SaveHistoryFileUnsafe(profileId, history);
         }
     }
 
@@ -268,122 +567,125 @@ public class ClientModRestrictionService : IClientModRestrictionService
         }
     }
 
-    private bool TryBeginHandshakeCaptureUnsafe(string profileId, string line, DateTimeOffset nowUtc)
+    private static bool TryExtractReportedModIds(string line, out IReadOnlyList<string> modIds)
     {
-        var match = HandshakeStartPattern.Match(line);
-        if (!match.Success) return false;
+        modIds = [];
 
-        var playerName = match.Groups["player"].Value.Trim();
-        _captureByProfileId[profileId] = new HandshakeCaptureState
+        var prefixIndex = line.IndexOf(RestrictionReportPrefix, StringComparison.OrdinalIgnoreCase);
+        if (prefixIndex < 0) return false;
+
+        var payload = line[(prefixIndex + RestrictionReportPrefix.Length)..].Trim();
+        if (string.IsNullOrWhiteSpace(payload)) return false;
+
+        try
         {
-            PlayerName = playerName,
-            ExpiresAtUtc = nowUtc.AddSeconds(HandshakeCaptureTtlSec)
-        };
-        return true;
-    }
-
-    private void TryCloseHandshakeCaptureUnsafe(string profileId, string line, string expectedPlayer)
-    {
-        var match = JoinBeginPattern.Match(line);
-        if (!match.Success) return;
-
-        var playerName = match.Groups["player"].Value.Trim();
-        if (!playerName.Equals(expectedPlayer, StringComparison.OrdinalIgnoreCase))
-            return;
-
-        _captureByProfileId.Remove(profileId);
-    }
-
-    private void CleanupExpiredCapturesUnsafe(DateTimeOffset nowUtc)
-    {
-        var expired = _captureByProfileId
-            .Where(x => x.Value.ExpiresAtUtc <= nowUtc)
-            .Select(x => x.Key)
-            .ToList();
-
-        foreach (var key in expired)
-            _captureByProfileId.Remove(key);
-    }
-
-    private void RecordModIdsFromLineUnsafe(string profileId, string line, DateTimeOffset seenUtc)
-    {
-        if (!MayContainClientModPayload(line))
-            return;
-
-        var modIds = ExtractClientModIdsFromHandshakeLine(line)
-            .Where(IsLikelyModId)
-            .Where(static id => !BuiltInModIds.Contains(id))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        if (modIds.Count == 0)
-            return;
-
-        var history = EnsureHistoryLoadedUnsafe(profileId);
-        foreach (var modId in modIds)
-        {
-            if (!history.TryGetValue(modId, out var existing))
+            using var document = JsonDocument.Parse(payload);
+            if (!document.RootElement.TryGetProperty("mods", out var modsElement) ||
+                modsElement.ValueKind != JsonValueKind.Array)
             {
-                history[modId] = new MutableHistoryEntry
+                return false;
+            }
+
+            var list = new List<string>();
+            foreach (var item in modsElement.EnumerateArray())
+            {
+                if (item.ValueKind == JsonValueKind.String)
                 {
-                    ModId = modId,
-                    SeenCount = 1,
-                    LastSeenUtc = seenUtc
-                };
-                continue;
+                    var value = item.GetString();
+                    if (!string.IsNullOrWhiteSpace(value))
+                        list.Add(value);
+                    continue;
+                }
+
+                if (item.ValueKind == JsonValueKind.Object &&
+                    item.TryGetProperty("id", out var idElement) &&
+                    idElement.ValueKind == JsonValueKind.String)
+                {
+                    var id = idElement.GetString();
+                    if (!string.IsNullOrWhiteSpace(id))
+                        list.Add(id);
+                }
             }
 
-            existing.SeenCount = Math.Max(0, existing.SeenCount) + 1;
-            if (!existing.LastSeenUtc.HasValue || existing.LastSeenUtc.Value < seenUtc)
-                existing.LastSeenUtc = seenUtc;
+            modIds = list;
+            return list.Count > 0;
         }
-
-        SaveHistoryFileUnsafe(profileId, history);
+        catch
+        {
+            return false;
+        }
     }
 
-    private static bool MayContainClientModPayload(string line)
+    private static bool TryParseRestrictionReportLine(string line, out ParsedRestrictionReport report)
     {
-        return line.Contains("mod", StringComparison.OrdinalIgnoreCase)
-               || line.Contains("clientmods", StringComparison.OrdinalIgnoreCase)
-               || line.Contains("modid", StringComparison.OrdinalIgnoreCase);
+        report = ParsedRestrictionReport.Empty;
+        if (!TryExtractReportPayload(line, out var payload))
+            return false;
+
+        try
+        {
+            using var document = JsonDocument.Parse(payload);
+            var root = document.RootElement;
+            if (!root.TryGetProperty("mods", out var modsElement) || modsElement.ValueKind != JsonValueKind.Array)
+                return false;
+
+            DateTimeOffset? reportedAtUtc = null;
+            if (root.TryGetProperty("reportedAtUtc", out var reportedAtElement) &&
+                reportedAtElement.ValueKind == JsonValueKind.String &&
+                DateTimeOffset.TryParse(
+                    reportedAtElement.GetString(),
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.RoundtripKind,
+                    out var parsedTime))
+            {
+                reportedAtUtc = parsedTime.ToUniversalTime();
+            }
+
+            var modIds = new List<string>();
+            foreach (var item in modsElement.EnumerateArray())
+            {
+                if (item.ValueKind == JsonValueKind.String)
+                {
+                    var value = item.GetString();
+                    if (!string.IsNullOrWhiteSpace(value))
+                        modIds.Add(value);
+                    continue;
+                }
+
+                if (item.ValueKind == JsonValueKind.Object &&
+                    item.TryGetProperty("id", out var idElement) &&
+                    idElement.ValueKind == JsonValueKind.String)
+                {
+                    var id = idElement.GetString();
+                    if (!string.IsNullOrWhiteSpace(id))
+                        modIds.Add(id);
+                }
+            }
+
+            if (modIds.Count == 0)
+                return false;
+
+            report = new ParsedRestrictionReport
+            {
+                ModIds = modIds,
+                ReportedAtUtc = reportedAtUtc
+            };
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
-    private static IEnumerable<string> ExtractClientModIdsFromHandshakeLine(string line)
+    private static bool TryExtractReportPayload(string line, out string payload)
     {
-        var candidates = new List<string>();
+        payload = string.Empty;
+        var prefixIndex = line.IndexOf(RestrictionReportPrefix, StringComparison.OrdinalIgnoreCase);
+        if (prefixIndex < 0) return false;
 
-        foreach (Match match in JsonClientModsPayloadRegex.Matches(line))
-        {
-            if (match.Groups["payload"].Success)
-                candidates.Add(match.Groups["payload"].Value);
-        }
-
-        foreach (Match match in ClientModsPayloadRegex.Matches(line))
-        {
-            if (match.Groups["payload"].Success)
-                candidates.Add(match.Groups["payload"].Value);
-        }
-
-        if (candidates.Count == 0 && KeyValueModIdRegex.IsMatch(line))
-            candidates.Add(line);
-
-        var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var text in candidates)
-        {
-            foreach (Match match in KeyValueModIdRegex.Matches(text))
-            {
-                var id = NormalizeModId(match.Groups["id"].Value);
-                if (IsLikelyModId(id)) result.Add(id);
-            }
-
-            foreach (Match match in ModTokenRegex.Matches(text))
-            {
-                var id = NormalizeModId(match.Groups["id"].Value);
-                if (IsLikelyModId(id)) result.Add(id);
-            }
-        }
-
-        return result;
+        payload = line[(prefixIndex + RestrictionReportPrefix.Length)..].Trim();
+        return !string.IsNullOrWhiteSpace(payload);
     }
 
     private static string NormalizeModId(string? value)
@@ -397,16 +699,113 @@ public class ClientModRestrictionService : IClientModRestrictionService
         return candidate.Trim().ToLowerInvariant();
     }
 
-    private static bool IsLikelyModId(string candidate)
+    private void RememberKnownMods(InstanceProfile profile, IEnumerable<string> modIds)
     {
-        if (string.IsNullOrWhiteSpace(candidate)) return false;
-        if (candidate.Length < 2 || candidate.Length > 64) return false;
-        if (ExcludedTokens.Contains(candidate)) return false;
-        if (candidate.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)) return false;
-        if (candidate.StartsWith("vintagestory.", StringComparison.OrdinalIgnoreCase)) return false;
-        if (candidate.Contains('\\') || candidate.Contains('/')) return false;
+        var profileId = NormalizeProfileId(profile.Id);
+        var normalizedModIds = modIds
+            .Select(NormalizeModId)
+            .Where(static id => !string.IsNullOrWhiteSpace(id))
+            .Where(id => !BuiltInModIds.Contains(id))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
-        return true;
+        if (normalizedModIds.Count == 0)
+            return;
+
+        lock (_sync)
+        {
+            var history = EnsureHistoryLoadedUnsafe(profileId);
+            var changed = false;
+            foreach (var modId in normalizedModIds)
+                changed |= EnsureHistoryEntry(history, modId);
+
+            if (changed)
+                SaveHistoryFileUnsafe(profileId, history);
+        }
+    }
+
+    private static bool EnsureHistoryEntry(Dictionary<string, MutableHistoryEntry> map, string modId)
+    {
+        return MergeHistoryEntry(map, modId, 0, null);
+    }
+
+    private static void IncrementHistorySeen(
+        Dictionary<string, MutableHistoryEntry> map,
+        string modId,
+        DateTimeOffset seenAtUtc)
+    {
+        MergeHistoryEntry(map, modId, 1, seenAtUtc, incrementSeen: true);
+    }
+
+    private static bool MergeHistoryEntry(
+        Dictionary<string, MutableHistoryEntry> map,
+        string modId,
+        int seenCount,
+        DateTimeOffset? lastSeenUtc,
+        bool incrementSeen = false)
+    {
+        if (string.IsNullOrWhiteSpace(modId))
+            return false;
+
+        var normalized = NormalizeModId(modId);
+        if (string.IsNullOrWhiteSpace(normalized))
+            return false;
+        if (BuiltInModIds.Contains(normalized))
+            return false;
+
+        if (!map.TryGetValue(normalized, out var existing))
+        {
+            map[normalized] = new MutableHistoryEntry
+            {
+                ModId = normalized,
+                SeenCount = Math.Max(0, seenCount),
+                LastSeenUtc = lastSeenUtc
+            };
+            return true;
+        }
+
+        var changed = false;
+
+        if (incrementSeen)
+        {
+            var updated = Math.Max(0, existing.SeenCount) + Math.Max(0, seenCount);
+            if (updated != existing.SeenCount)
+            {
+                existing.SeenCount = updated;
+                changed = true;
+            }
+        }
+        else
+        {
+            var updated = Math.Max(existing.SeenCount, Math.Max(0, seenCount));
+            if (updated != existing.SeenCount)
+            {
+                existing.SeenCount = updated;
+                changed = true;
+            }
+        }
+
+        if (lastSeenUtc.HasValue && (!existing.LastSeenUtc.HasValue || existing.LastSeenUtc.Value < lastSeenUtc.Value))
+        {
+            existing.LastSeenUtc = lastSeenUtc;
+            changed = true;
+        }
+
+        return changed;
+    }
+
+    private static List<ClientModHistoryEntry> ToHistoryEntries(Dictionary<string, MutableHistoryEntry> map)
+    {
+        return map.Values
+            .Select(static entry => new ClientModHistoryEntry
+            {
+                ModId = entry.ModId,
+                SeenCount = entry.SeenCount,
+                LastSeenUtc = entry.LastSeenUtc
+            })
+            .OrderByDescending(static item => item.SeenCount)
+            .ThenBy(static item => item.ModId, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private Dictionary<string, MutableHistoryEntry> EnsureHistoryLoadedUnsafe(string profileId)
@@ -453,7 +852,7 @@ public class ClientModRestrictionService : IClientModRestrictionService
             foreach (var item in store.Entries)
             {
                 var modId = NormalizeModId(item.ModId);
-                if (!IsLikelyModId(modId)) continue;
+                if (string.IsNullOrWhiteSpace(modId)) continue;
                 if (BuiltInModIds.Contains(modId)) continue;
 
                 if (!map.TryGetValue(modId, out var existing))
@@ -510,12 +909,6 @@ public class ClientModRestrictionService : IClientModRestrictionService
         }
     }
 
-    private sealed class HandshakeCaptureState
-    {
-        public string PlayerName { get; init; } = string.Empty;
-        public DateTimeOffset ExpiresAtUtc { get; init; }
-    }
-
     private sealed class MutableHistoryEntry
     {
         public string ModId { get; init; } = string.Empty;
@@ -533,5 +926,12 @@ public class ClientModRestrictionService : IClientModRestrictionService
         public string ModId { get; init; } = string.Empty;
         public int SeenCount { get; init; }
         public DateTimeOffset? LastSeenUtc { get; init; }
+    }
+
+    private sealed class ParsedRestrictionReport
+    {
+        public static ParsedRestrictionReport Empty { get; } = new();
+        public List<string> ModIds { get; init; } = [];
+        public DateTimeOffset? ReportedAtUtc { get; init; }
     }
 }

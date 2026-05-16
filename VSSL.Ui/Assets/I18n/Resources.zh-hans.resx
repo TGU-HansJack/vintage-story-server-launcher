@@ -387,7 +387,9 @@
   <data name="ModStatusDeletedFormat" xml:space="preserve"><value>已删除 {0} 个模组。</value></data>
   <data name="ModStatusNoDeletes" xml:space="preserve"><value>未删除任何模组。</value></data>
   <data name="ModStatusDeleteFailedFormat" xml:space="preserve"><value>删除模组失败：{0}</value></data>
-  <data name="RestrictionsDescription" xml:space="preserve"><value>仅在玩家进服握手阶段采集客户端模组，并将选中项写入 ModIdBlackList 进行限制。</value></data>
+  <data name="RestrictionsDescription" xml:space="preserve"><value>上报到的客户端模组可写入 ModIdBlackList。</value></data>
+  <data name="RestrictionsServiceModToggleText" xml:space="preserve"><value>限制模组</value></data>
+  <data name="RestrictionsServiceModHintText" xml:space="preserve"><value>开：部署并上报；关：移除。</value></data>
   <data name="RestrictionsBlockSelectedButtonText" xml:space="preserve"><value>禁用选中</value></data>
   <data name="RestrictionsUnblockSelectedButtonText" xml:space="preserve"><value>解除禁用</value></data>
   <data name="RestrictionsHeaderModId" xml:space="preserve"><value>模组ID</value></data>
@@ -395,7 +397,7 @@
   <data name="RestrictionsHeaderLastSeen" xml:space="preserve"><value>最近出现</value></data>
   <data name="RestrictionsHeaderBlocked" xml:space="preserve"><value>已禁用</value></data>
   <data name="RestrictionsNoModsText" xml:space="preserve"><value>暂无历史客户端模组记录。</value></data>
-  <data name="RestrictionsStatusNoHistory" xml:space="preserve"><value>尚未采集到进服握手模组记录。</value></data>
+  <data name="RestrictionsStatusNoHistory" xml:space="preserve"><value>暂无客户端模组上报记录。</value></data>
   <data name="RestrictionsStatusLoadedFormat" xml:space="preserve"><value>已加载 {0} 个模组，已禁用 {1} 个。</value></data>
   <data name="RestrictionsStatusLoadFailedFormat" xml:space="preserve"><value>加载限制数据失败：{0}</value></data>
   <data name="RestrictionsStatusSelectModsToBlock" xml:space="preserve"><value>请选择要禁用的模组。</value></data>
@@ -405,6 +407,10 @@
   <data name="RestrictionsStatusUnblockedFormat" xml:space="preserve"><value>已解除禁用 {0} 个模组。</value></data>
   <data name="RestrictionsStatusUnblockFailedFormat" xml:space="preserve"><value>解除禁用失败：{0}</value></data>
   <data name="RestrictionsStatusNoChanges" xml:space="preserve"><value>没有产生任何变更。</value></data>
+  <data name="RestrictionsStatusServiceModEnabled" xml:space="preserve"><value>已向当前档案部署限制模组。</value></data>
+  <data name="RestrictionsStatusServiceModDisabled" xml:space="preserve"><value>已从当前档案移除限制模组。</value></data>
+  <data name="RestrictionsStatusServiceModEnableFailedFormat" xml:space="preserve"><value>部署限制模组失败：{0}</value></data>
+  <data name="RestrictionsStatusServiceModDisableFailedFormat" xml:space="preserve"><value>移除限制模组失败：{0}</value></data>
 </root>
 
 

@@ -24,4 +24,13 @@ public interface IClientModRestrictionService
         InstanceProfile profile,
         IReadOnlyCollection<string> modIds,
         CancellationToken cancellationToken = default);
+
+    Task<bool> GetRestrictionServiceModEnabledAsync(
+        InstanceProfile profile,
+        CancellationToken cancellationToken = default);
+
+    Task SetRestrictionServiceModEnabledAsync(
+        InstanceProfile profile,
+        bool enabled,
+        CancellationToken cancellationToken = default);
 }

@@ -4,11 +4,18 @@
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <VsslRestrictionModProject>$(MSBuildThisFileDirectory)EmbeddedMods\VsslRestrictionMod\VsslRestrictionMod.csproj</VsslRestrictionModProject>
+        <VsslRestrictionModBuildOutput>$(MSBuildThisFileDirectory)EmbeddedMods\VsslRestrictionMod\bin\$(Configuration)\net10.0\</VsslRestrictionModBuildOutput>
+        <VsslRestrictionEmbeddedRoot>$(MSBuildThisFileDirectory)EmbeddedMods\vsslrestriction\</VsslRestrictionEmbeddedRoot>
     </PropertyGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\VSSL.Abstractions\VSSL.Abstractions.csproj" />
         <ProjectReference Include="..\VSSL.Common\VSSL.Common.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Remove="EmbeddedMods\VsslRestrictionMod\**\*.cs" />
     </ItemGroup>
 
     <ItemGroup>
@@ -31,5 +38,30 @@
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
     </ItemGroup>
+
+    <Target Name="BuildVsslRestrictionMod" BeforeTargets="BeforeBuild">
+        <MSBuild
+            Projects="$(VsslRestrictionModProject)"
+            Targets="Build"
+            Properties="Configuration=$(Configuration);VINTAGE_STORY=$(VINTAGE_STORY)" />
+    </Target>
+
+    <Target Name="CopyVsslRestrictionModToOutput" AfterTargets="Build">
+        <PropertyGroup>
+            <_VsslRestrictionOutputDir>$(TargetDir)EmbeddedMods\vsslrestriction\</_VsslRestrictionOutputDir>
+        </PropertyGroup>
+
+        <MakeDir Directories="$(_VsslRestrictionOutputDir)" />
+
+        <Copy
+            SourceFiles="$(VsslRestrictionModBuildOutput)vsslrestriction.dll"
+            DestinationFiles="$(_VsslRestrictionOutputDir)vsslrestriction.dll"
+            SkipUnchangedFiles="true" />
+
+        <Copy
+            SourceFiles="$(VsslRestrictionEmbeddedRoot)modinfo.json;$(VsslRestrictionEmbeddedRoot)README.txt"
+            DestinationFolder="$(_VsslRestrictionOutputDir)"
+            SkipUnchangedFiles="true" />
+    </Target>
 
 </Project>

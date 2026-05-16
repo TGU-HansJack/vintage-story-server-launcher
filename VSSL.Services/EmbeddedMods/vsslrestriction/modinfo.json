@@ -1,0 +1,16 @@
+{
+  "type": "code",
+  "modid": "vsslrestriction",
+  "name": "VSSL Restriction",
+  "description": "Built-in VSSL restriction reporter. Sends client-side mod list to server on world join.",
+  "authors": [
+    "VSSL"
+  ],
+  "version": "1.1.0",
+  "side": "universal",
+  "requiredOnClient": true,
+  "requiredOnServer": true,
+  "dependencies": {
+    "game": "1.22.0"
+  }
+}

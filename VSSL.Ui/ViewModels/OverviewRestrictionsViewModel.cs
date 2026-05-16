@@ -15,9 +15,11 @@ public partial class OverviewRestrictionsViewModel : ViewModelBase
     private readonly IInstanceProfileService? _instanceProfileService;
     private readonly IClientModRestrictionService? _clientModRestrictionService;
     private bool _syncingSelectAll;
+    private bool _syncingRestrictionServiceModEnabled;
 
     [ObservableProperty] private InstanceProfile? _selectedProfile;
     [ObservableProperty] private bool _selectAll;
+    [ObservableProperty] private bool _restrictionServiceModEnabled;
     [ObservableProperty] private string _statusMessage = string.Empty;
     [ObservableProperty] private bool _isBusy;
 
@@ -50,6 +52,14 @@ public partial class OverviewRestrictionsViewModel : ViewModelBase
         _syncingSelectAll = false;
 
         OnPropertyChanged(nameof(HasSelectedMods));
+    }
+
+    partial void OnRestrictionServiceModEnabledChanged(bool value)
+    {
+        if (_syncingRestrictionServiceModEnabled) return;
+        var profile = SelectedProfile;
+        if (profile is null || _clientModRestrictionService is null) return;
+        _ = SetRestrictionServiceModEnabledAsync(profile, value);
     }
 
     [RelayCommand]
@@ -198,11 +208,16 @@ public partial class OverviewRestrictionsViewModel : ViewModelBase
         if (_clientModRestrictionService is null || profile is null)
         {
             ClearMods();
+            _syncingRestrictionServiceModEnabled = true;
+            RestrictionServiceModEnabled = false;
+            _syncingRestrictionServiceModEnabled = false;
             return;
         }
 
         try
         {
+            var serviceModEnabled =
+                await _clientModRestrictionService.GetRestrictionServiceModEnabledAsync(profile);
             var history = await _clientModRestrictionService.GetHistoricalClientModsAsync(profile);
             var blacklist = await _clientModRestrictionService.GetBlacklistedModIdsAsync(profile);
 
@@ -244,6 +259,9 @@ public partial class OverviewRestrictionsViewModel : ViewModelBase
             }
 
             SyncSelectAllByRows();
+            _syncingRestrictionServiceModEnabled = true;
+            RestrictionServiceModEnabled = serviceModEnabled;
+            _syncingRestrictionServiceModEnabled = false;
             OnPropertyChanged(nameof(HasMods));
             OnPropertyChanged(nameof(HasNoMods));
             OnPropertyChanged(nameof(HasSelectedMods));
@@ -255,6 +273,42 @@ public partial class OverviewRestrictionsViewModel : ViewModelBase
         catch (Exception ex)
         {
             StatusMessage = LF("RestrictionsStatusLoadFailedFormat", ex.Message);
+        }
+    }
+
+    private async Task SetRestrictionServiceModEnabledAsync(InstanceProfile profile, bool enabled)
+    {
+        if (_clientModRestrictionService is null) return;
+
+        try
+        {
+            IsBusy = true;
+            await _clientModRestrictionService.SetRestrictionServiceModEnabledAsync(profile, enabled);
+            StatusMessage = enabled
+                ? L("RestrictionsStatusServiceModEnabled")
+                : L("RestrictionsStatusServiceModDisabled");
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                var actual = await _clientModRestrictionService.GetRestrictionServiceModEnabledAsync(profile);
+                _syncingRestrictionServiceModEnabled = true;
+                RestrictionServiceModEnabled = actual;
+                _syncingRestrictionServiceModEnabled = false;
+            }
+            catch
+            {
+                // ignore rollback failures
+            }
+
+            StatusMessage = enabled
+                ? LF("RestrictionsStatusServiceModEnableFailedFormat", ex.Message)
+                : LF("RestrictionsStatusServiceModDisableFailedFormat", ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
         }
     }
 

@@ -41,6 +41,7 @@ public class App : Application
         var localizationService = ServiceLocator.GetRequiredService<ILocalizationService>();
         var themeService = ServiceLocator.GetRequiredService<IThemeService>();
         var launcherTrayViewModel = ServiceLocator.GetRequiredService<LauncherTrayViewModel>();
+        _ = ServiceLocator.GetRequiredService<IClientModRestrictionService>();
 
         DataContext = launcherTrayViewModel;
 
