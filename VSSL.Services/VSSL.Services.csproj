@@ -42,8 +42,12 @@
     <Target Name="BuildVsslRestrictionMod" BeforeTargets="BeforeBuild">
         <MSBuild
             Projects="$(VsslRestrictionModProject)"
-            Targets="Build"
+            Targets="Restore"
             Properties="Configuration=$(Configuration);VINTAGE_STORY=$(VINTAGE_STORY)" />
+        <MSBuild
+            Projects="$(VsslRestrictionModProject)"
+            Targets="Build"
+            Properties="Configuration=$(Configuration);VINTAGE_STORY=$(VINTAGE_STORY);NoRestore=true" />
     </Target>
 
     <Target Name="CopyVsslRestrictionModToOutput" AfterTargets="Build">

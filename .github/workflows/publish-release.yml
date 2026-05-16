@@ -140,6 +140,9 @@ jobs:
       - name: Restore
         run: dotnet restore VSSL.sln
 
+      - name: Restore embedded restriction mod project
+        run: dotnet restore VSSL.Services/EmbeddedMods/VsslRestrictionMod/VsslRestrictionMod.csproj
+
       - name: Publish installer payload
         run: dotnet publish $env:PROJECT_PATH -c $env:CONFIGURATION -r $env:RUNTIME --self-contained true -p:Version=${{ steps.meta.outputs.version }} -o artifacts/publish/win-x64
 

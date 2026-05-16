@@ -94,6 +94,9 @@ jobs:
       - name: Restore
         run: dotnet restore VSSL.sln
 
+      - name: Restore embedded restriction mod project
+        run: dotnet restore VSSL.Services/EmbeddedMods/VsslRestrictionMod/VsslRestrictionMod.csproj
+
       - name: Resolve package version
         id: resolve_version
         shell: powershell
