@@ -1,79 +1,34 @@
 # VSSL · Vintage Story Server Launcher
 
-VSSL 是一个面向《Vintage Story》独立服的桌面启动与运维工具，核心目标是把版本下载、实例创建、配置维护、日志控制台、存档管理、模组管理、地图预览和 QQ 机器人联动集中到同一套界面里。
+VSSL 是面向《Vintage Story》服务器玩家和服主的桌面启动器。它把版本下载、档案管理、配置编辑、存档维护、模组维护、控制台日志和 QQ 机器人联结放到同一个工作区中，目的是把开服与运维流程从多窗口切换变成单界面闭环。
 
-## 项目状态
+## 面向玩家
 
-项目处于持续开发阶段，界面和功能仍在迭代，部分页面已经可用，个别页面仍为占位实现。
+VSSL 的日常使用路径很直接。你先在实例下载页面获取服务端版本，再在档案页面创建对应档案，然后在配置页面设置世界参数和规则。准备完成后，去总览控制台选择存档并启动服务器。服务器开始运行后，你可以继续在存档页面管理存档文件，在模组页面管理模组包，在联结页面配置机器人互通。
 
-## 界面预览
+下载页面只负责下载服务端文件。档案页面负责组织服务器实例。配置页面负责定义新世界生成时使用的参数。总览控制台负责启动、停止、发命令和查看实时输出。限制页面负责在玩家进服握手阶段采集客户端模组信息，并将选中模组写入 `ModIdBlackList`。
 
-| 预览类型 | 图像 |
-| --- | --- |
-| 动态演示 | ![VSSL Demo](Screenshots/VSSL.gif) |
-| 深色主题 | ![Dark Theme](Screenshots/Dark.png) |
-| 浅色主题 | ![Light Theme](Screenshots/Light.png) |
-
-## 面向用户
-
-应用采用三段式布局，顶部为窗口控制和仓库入口，左侧为一级导航，中间为二级菜单与业务页面。首次启动会弹出引导窗口选择默认主题和默认语言，当前支持简体中文与英文。
-
-| 模块 | 用户价值 | 当前行为 |
-| --- | --- | --- |
-| 总览 | 统一查看服务器与机器人状态。 | 展示运行状态、内存占用、运行时长、在线人数和最近采样趋势图。 |
-| 控制台 | 快速开服与日常控制。 | 支持快速创建并启动档案、切换当前存档、启动停止服务端、发送命令、日志跟随、日志导出。 |
-| 地图预览 | 不进游戏查看地形与坐标。 | 直接读取 `.vcdbs`，生成彩色图和灰度图，支持缩放、拖拽、坐标悬停。 |
-| 实例下载 | 获取服务端包。 | 从官方 `stable-unstable.json` 读取条目，筛选 Windows Server 包并下载到本地工作区。 |
-| 实例创建 | 管理档案生命周期。 | 按已下载版本创建档案，维护档案列表，支持批量删除。 |
-| 配置 | 可视化编辑 `serverconfig.json`。 | 编辑服务端基础项、世界参数、世界规则，支持按档案选择当前存档，并支持高级 JSON 编辑。 |
-| 存档 | 管理 `.vcdbs` 存档。 | 创建存档、切换当前存档、删除存档，自动回写当前档案配置；未启动前不会预创建空数据库文件。 |
-| 模组 | 管理 Mods 目录。 | 导入 zip 模组，识别 `modinfo.json`，切换启用状态并提示依赖缺失。 |
-| 机器人配置 | 配置 VS2QQ。 | 配置 OneBot WebSocket、令牌、轮询、编码、超级管理员与数据库路径。 |
-| 机器人控制台 | 管理 VS2QQ 运行态。 | 启停机器人、刷新与清空日志、查看运行状态和连接地址。 |
-| 关于 | 版本与链接入口。 | 显示当前版本、检查 GitHub Releases 更新、打开仓库与社区链接。 |
-| 反馈 | 问题上报入口。 | 一键跳转 Issue 页面。 |
-
-| 典型使用路径 | 说明 |
-| --- | --- |
-| 下载服务端包 | 在“实例/下载”页面拉取并下载 `vs_server_win-x64_*.zip`。 |
-| 创建档案 | 在“实例/创建”页面选择版本并创建档案。 |
-| 检查配置 | 在“实例/配置”页面确认端口、世界规则和当前存档。 |
-| 启动服务器 | 在“总览/控制台”页面启动并观察输出。 |
-| 维护资源 | 在“实例/存档”和“实例/模组”页面完成日常维护。 |
-| 机器人联动 | 在“机器人/配置”和“机器人/控制台”页面启用 VS2QQ。 |
-| 地图核对 | 在“总览/地图预览”页面加载并查看地图和坐标。 |
+如果你启用了 QQ 机器人联结，推荐先完成 OneBot 连接，再绑定服务器和群。服务器到群、群到服务器的消息桥接都依赖这一步。
 
 ## 数据目录
 
-默认工作区位于 `%LOCALAPPDATA%\VSSL\workspace`。
+默认工作区位于 `%LOCALAPPDATA%\VSSL\workspace`。常见目录与文件如下。
 
 | 路径 | 用途 |
 | --- | --- |
-| `launcher-preferences.json` | 启动器偏好设置，记录首启状态、主题和语言。 |
-| `profiles.json` | 档案索引，维护所有实例档案元数据。 |
-| `packages` | 下载得到的服务端压缩包。 |
-| `servers\windows\<version>` | 解压后的服务端程序目录，包含 `VintagestoryServer.exe`。 |
-| `data\<profileId>` | 档案数据目录，包含 `serverconfig.json`、`Logs`、`Mods`。 |
-| `saves\<profileId>` | 档案存档目录，保存 `.vcdbs` 文件。 |
-| `robot\vs2qq-settings.json` | VS2QQ 的本地配置文件。 |
-| `exports` | 控制台导出日志输出目录。 |
-| `.tmp` | 安装与中间流程使用的临时目录。 |
+| `profiles.json` | 保存档案索引 |
+| `packages` | 保存下载后的服务端压缩包 |
+| `servers\windows\<version>` | 保存解压后的服务端程序 |
+| `data\<profileId>` | 保存档案配置、日志和模组目录 |
+| `saves\<profileId>` | 保存档案关联的 `.vcdbs` 存档 |
+| `robot\vs2qq-settings.json` | 保存机器人配置 |
+| `.runtime` | 保存运行时状态和临时采集数据 |
 
 ## 面向开发者
 
-项目使用 .NET 10 与 Avalonia 11，采用 `VSSL.App` 启动层 + `VSSL.Ui` 界面层 + `VSSL.Services` 业务层 + `VSSL.Domains` 领域模型的分层结构，并通过依赖注入进行装配。
+项目采用 .NET 10 与 Avalonia 11。`VSSL.App` 负责启动与宿主装配，`VSSL.Ui` 负责界面与交互，`VSSL.Services` 负责业务实现，`VSSL.Domains` 与 `VSSL.Abstractions` 负责模型和接口边界，`VSSL.Tests` 提供测试。
 
-| 项目 | 作用 |
-| --- | --- |
-| `VSSL.App` | 进程入口、Host 构建、配置加载、日志初始化、首启引导触发。 |
-| `VSSL.Ui` | Avalonia 视图、ViewModel、导航、主题与本地化服务。 |
-| `VSSL.Services` | 下载、档案、配置、存档、模组、服务端进程、地图预览、机器人、更新检查等核心业务。 |
-| `VSSL.Domains` | DTO、配置模型、运行状态、世界规则和菜单模型。 |
-| `VSSL.Abstractions` | 业务与 UI 服务接口定义。 |
-| `VSSL.Common` | 通用常量与工具。 |
-| `VSSL.Tests` | xUnit 测试工程。 |
-
-### 本地开发
+本地开发可以直接使用下面的命令。
 
 ```bash
 dotnet restore VSSL.sln
@@ -82,49 +37,33 @@ dotnet run --project VSSL.App/VSSL.App.csproj
 dotnet test VSSL.Tests/VSSL.Tests.csproj -c Debug
 ```
 
-### 发布与打包
+发布与打包可使用下面的命令。
 
 ```bash
 dotnet publish VSSL.App/VSSL.App.csproj -c Release -r win-x64 --self-contained true -p:Version=0.0.0-local -o artifacts/publish/win-x64
 dotnet publish VSSL.App/VSSL.App.csproj -c Release -r win-x64 --self-contained true -p:Version=0.0.0-local -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/publish/portable
 ```
 
-Windows 安装包流程由 `.github/workflows/windows-packages.yml` 驱动，Inno Setup 脚本位于 `installer/VSSL.iss`。
+如果要新增页面，请同步更新 `VSSL.Domains/Enums/ViewName.cs`、`VSSL.Ui/Services/Ui/DefaultNavigationService.cs`、`VSSL.Services/Configs/menus.json` 和对应的 ViewModel 与 View。  
+如果要新增服务，请在 `VSSL.Services` 中添加 `*Service` 类与接口定义，并保持现有依赖注入约定。  
+如果要更新文案，请修改 `VSSL.Ui/Assets/I18n/Resources*.resx`。  
 
-### 扩展入口
+## 机器人命令
 
-| 扩展场景 | 入口位置 |
+| 命令 | 说明 |
 | --- | --- |
-| 新增页面 | `VSSL.Domains/Enums/ViewName.cs`、`VSSL.Ui/Services/Ui/DefaultNavigationService.cs`、`VSSL.Services/Configs/menus.json`、对应 `View` 与 `ViewModel`。 |
-| 新增服务 | 在 `VSSL.Services` 新增 `*Service` 类和接口，DI 会按命名约定自动注册。 |
-| 菜单结构调整 | 修改 `VSSL.Services/Configs/menus.json`。 |
-| 文案本地化 | 修改 `VSSL.Ui/Assets/I18n/Resources*.resx`。 |
-| 主题行为 | 修改 `VSSL.Ui/Services/Ui/ThemeService.cs` 与主题资源文件。 |
-
-### 机器人命令
-
-内置 VS2QQ 使用英文命令（附中文说明）：
-
-- `/help`（命令帮助）
-- `/bindqq <player_name>`（绑定QQ到玩家名）
-- `/unbindqq`（解绑当前QQ）
-- `/mybind`（查看当前QQ绑定）
-- `/bindserver <host_or_ip_port_or_domain> <token> <qq_group_id>`（绑定远程服务器/云服务器）
-- `/unbindserver <host_or_ip_port_or_domain> <qq_group_id>`（解绑远程服务器）
-- `/listserver`（查看远程服务器绑定）
-- `/server status [n]`（按需查询最近第 n 条状态，默认 1）
-- `/bindlogserver <server_id> <log_path>`（绑定本机日志服务器，群管理/群主）
-- `/unbindlogserver <server_id>`（解绑本机日志服务器，群管理/群主）
-- `/listlogserver`（查看本机日志服务器绑定）
-- `/bindlogregex <server_id> <regex>`（设置日志匹配正则，群管理/群主）
-
-## 平台与限制
-
-| 主题 | 说明 |
-| --- | --- |
-| 服务端下载源 | 当前下载流程聚焦 Windows Server 包，文件名模式为 `vs_server_win-x64_*.zip`。 |
-| 实例管理页 | `Instance / Manage` 页面目前为占位内容。 |
-| 工作区依赖 | 默认流程依赖本地工作区结构，手工移动文件后建议回到页面执行一次刷新。 |
+| `/help` | 命令帮助 |
+| `/bindqq <player_name>` | 绑定 QQ 到玩家名 |
+| `/unbindqq` | 解绑当前 QQ |
+| `/mybind` | 查看当前 QQ 绑定 |
+| `/bindserver <host_or_ip_port_or_domain> <token> <qq_group_id>` | 绑定远程服务器 |
+| `/unbindserver <host_or_ip_port_or_domain> <qq_group_id>` | 解绑远程服务器 |
+| `/listserver` | 查看远程服务器绑定 |
+| `/server status [n]` | 查询最近状态 |
+| `/bindlogserver <server_id> <log_path>` | 绑定本机日志服务器 |
+| `/unbindlogserver <server_id>` | 解绑本机日志服务器 |
+| `/listlogserver` | 查看本机日志服务器绑定 |
+| `/bindlogregex <server_id> <regex>` | 设置日志匹配正则 |
 
 ## 许可证
 
@@ -132,4 +71,6 @@ Windows 安装包流程由 `.github/workflows/windows-packages.yml` 驱动，Inn
 
 ## 链接
 
-项目仓库地址为 <https://github.com/TGU-HansJack/vintage-story-server-launcher>，问题反馈地址为 <https://github.com/TGU-HansJack/vintage-story-server-launcher/issues>，中文社区地址为 <https://vintagestory.top/>。
+项目仓库地址为 <https://github.com/TGU-HansJack/vintage-story-server-launcher>。  
+问题反馈地址为 <https://github.com/TGU-HansJack/vintage-story-server-launcher/issues>。  
+中文社区地址为 <https://vintagestory.top/>。

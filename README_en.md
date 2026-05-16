@@ -1,79 +1,34 @@
 # VSSL · Vintage Story Server Launcher
 
-VSSL is a desktop launcher and operations tool for Vintage Story dedicated servers. Its goal is to unify package download, instance creation, configuration, console control, save management, mod management, map preview, and QQ-bot integration in one UI.
+VSSL is a desktop launcher for Vintage Story server players, hosts, and maintainers. It brings server download, profile management, config editing, save maintenance, mod maintenance, live console logs, and QQ bot linkage into one workspace so daily server operations can stay in a single flow.
 
-## Project Status
+## For Players
 
-This project is under active development. The UI and features are still evolving. Most core pages are available, while a few pages are currently placeholders.
+The common workflow is straightforward. You download a server build on the Download page, create a profile on the Profile page, set world parameters and rules on the Config page, then choose a save in Overview Console and start the server. After startup, you can continue to manage save files on the Saves page, mods on the Mods page, and message linkage on the Linkage page.
 
-## UI Preview
+The Download page is only for server package download. The Profile page manages server instances. The Config page defines settings used when a new world is generated. The Overview Console page handles start, stop, command input, and real-time output. The Restrictions page captures client mod information only during player join handshake, then writes selected entries to `ModIdBlackList`.
 
-| Preview Type | Image |
-| --- | --- |
-| Animated Demo | ![VSSL Demo](Screenshots/VSSL.gif) |
-| Dark Theme | ![Dark Theme](Screenshots/Dark.png) |
-| Light Theme | ![Light Theme](Screenshots/Light.png) |
+If you use QQ bot linkage, it is best to finish OneBot connectivity first, then bind server and group. Message relay in both directions depends on that setup.
 
-## For Users
+## Workspace Data
 
-The application uses a three-zone layout. The top area contains window controls and project links, the left side is the primary navigation, and the center area contains submenus and business pages. On first launch, an onboarding dialog asks for default theme and language. Current locales are Simplified Chinese and English.
-
-| Module | User Value | Current Behavior |
-| --- | --- | --- |
-| Dashboard | Unified status view for server and robot runtime. | Shows runtime state, memory usage, uptime, online player count, and recent trend charts. |
-| Workspace Console | Fast server startup and daily operations. | Supports quick create-and-start, active save switching, start/stop, command input, log tailing, and log export. |
-| Map Preview | Inspect terrain and coordinates without launching the game. | Reads `.vcdbs` directly, renders color and grayscale maps, supports zoom, drag, and coordinate hover. |
-| Instance Download | Fetch server packages. | Loads official entries from `stable-unstable.json`, filters Windows server builds, and downloads to local workspace. |
-| Instance Create | Manage profile lifecycle. | Creates profiles by installed version, manages profile list, and supports bulk delete. |
-| Config | Visual configuration for `serverconfig.json`. | Edits server basics, world parameters, world rules, supports active save selection per profile, and supports advanced JSON editing. |
-| Save | Manage `.vcdbs` save files. | Creates saves, switches active save, deletes saves, and writes changes back to profile config; no empty database file is pre-created before first start. |
-| Mod | Manage the Mods directory. | Imports zip mods, parses `modinfo.json`, toggles enable state, and reports missing dependencies. |
-| Robot Config | Configure VS2QQ integration. | Configures OneBot WebSocket, token, polling, encoding, super admins, and database path. |
-| Robot Console | Operate VS2QQ runtime. | Starts and stops robot service, refreshes and clears logs, and shows runtime connection state. |
-| About | Version and project links. | Displays current version, checks GitHub Releases updates, and opens repository or community links. |
-| Feedback | Issue reporting entry. | One-click jump to the issue tracker page. |
-
-| Typical Workflow | Description |
-| --- | --- |
-| Download Package | Download `vs_server_win-x64_*.zip` from the Instance Download page. |
-| Create Profile | Select a version and create a profile in Instance Create. |
-| Check Config | Verify port, world rules, and active save in Config. |
-| Start Server | Start the server and monitor output in Workspace Console. |
-| Maintain Assets | Maintain saves and mods in the Save and Mod pages. |
-| Bridge to QQ | Enable VS2QQ in Robot Config and Robot Console. |
-| Inspect Map | Load and inspect map previews and coordinates in Map Preview. |
-
-## Data Layout
-
-The default workspace root is `%LOCALAPPDATA%\VSSL\workspace`.
+The default workspace path is `%LOCALAPPDATA%\VSSL\workspace`. Common paths are shown below.
 
 | Path | Purpose |
 | --- | --- |
-| `launcher-preferences.json` | Launcher preferences including onboarding state, theme, and language. |
-| `profiles.json` | Profile index storing metadata for all instances. |
-| `packages` | Downloaded server package files. |
-| `servers\windows\<version>` | Extracted server runtime directory containing `VintagestoryServer.exe`. |
-| `data\<profileId>` | Profile data directory containing `serverconfig.json`, `Logs`, and `Mods`. |
-| `saves\<profileId>` | Profile save directory containing `.vcdbs` files. |
-| `robot\vs2qq-settings.json` | Local VS2QQ settings file. |
-| `exports` | Export folder for console log files. |
-| `.tmp` | Temporary directory for install and intermediate operations. |
+| `profiles.json` | Stores the profile index |
+| `packages` | Stores downloaded server archives |
+| `servers\windows\<version>` | Stores extracted server binaries |
+| `data\<profileId>` | Stores per-profile config, logs, and mods |
+| `saves\<profileId>` | Stores `.vcdbs` save files for each profile |
+| `robot\vs2qq-settings.json` | Stores bot linkage settings |
+| `.runtime` | Stores runtime state and temporary capture data |
 
 ## For Developers
 
-The project targets .NET 10 and Avalonia 11, with a layered design of bootstrap (`VSSL.App`), UI (`VSSL.Ui`), services (`VSSL.Services`), and domain models (`VSSL.Domains`), all wired through dependency injection.
+The solution uses .NET 10 and Avalonia 11. `VSSL.App` is the application entry and host composition layer. `VSSL.Ui` contains UI and interaction logic. `VSSL.Services` contains business logic. `VSSL.Domains` and `VSSL.Abstractions` define models and service contracts. `VSSL.Tests` contains automated tests.
 
-| Project | Responsibility |
-| --- | --- |
-| `VSSL.App` | Entry point, host composition, configuration loading, logging bootstrap, onboarding trigger. |
-| `VSSL.Ui` | Avalonia views, view models, navigation, theming, and localization services. |
-| `VSSL.Services` | Core services for download, profiles, config, saves, mods, server process, map preview, robot, and update checks. |
-| `VSSL.Domains` | DTOs, config models, runtime state models, world rules, and menu models. |
-| `VSSL.Abstractions` | Interfaces for business and UI services. |
-| `VSSL.Common` | Shared constants and helper utilities. |
-| `VSSL.Tests` | xUnit test project. |
-
-### Local Development
+Use the following commands for local development.
 
 ```bash
 dotnet restore VSSL.sln
@@ -82,56 +37,40 @@ dotnet run --project VSSL.App/VSSL.App.csproj
 dotnet test VSSL.Tests/VSSL.Tests.csproj -c Debug
 ```
 
-### Publish and Packaging
+Use the following commands for release output.
 
 ```bash
 dotnet publish VSSL.App/VSSL.App.csproj -c Release -r win-x64 --self-contained true -p:Version=0.0.0-local -o artifacts/publish/win-x64
 dotnet publish VSSL.App/VSSL.App.csproj -c Release -r win-x64 --self-contained true -p:Version=0.0.0-local -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/publish/portable
 ```
 
-Windows installer packaging is defined in `.github/workflows/windows-packages.yml`, with Inno Setup script at `installer/VSSL.iss`.
+When adding a new page, update `VSSL.Domains/Enums/ViewName.cs`, `VSSL.Ui/Services/Ui/DefaultNavigationService.cs`, `VSSL.Services/Configs/menus.json`, and the matching ViewModel and View implementation.  
+When adding a new service, add the `*Service` implementation in `VSSL.Services` and keep the existing dependency injection convention.  
+When updating localization text, edit `VSSL.Ui/Assets/I18n/Resources*.resx`.  
 
-### Extension Points
+## Bot Commands
 
-| Extension Scenario | Entry Point |
+| Command | Description |
 | --- | --- |
-| Add a Page | Update `VSSL.Domains/Enums/ViewName.cs`, `VSSL.Ui/Services/Ui/DefaultNavigationService.cs`, `VSSL.Services/Configs/menus.json`, and related view or viewmodel files. |
-| Add a Service | Add a `*Service` class and interface in `VSSL.Services`. DI auto-registration follows naming convention. |
-| Adjust Menu | Edit `VSSL.Services/Configs/menus.json`. |
-| Localization | Edit `VSSL.Ui/Assets/I18n/Resources*.resx`. |
-| Theme Behavior | Adjust `VSSL.Ui/Services/Ui/ThemeService.cs` and theme resource files. |
-
-### Robot Commands
-
-Built-in VS2QQ uses English commands with Chinese descriptions:
-
-- `/help` (command help)
-- `/bindqq <player_name>` (bind QQ to player name)
-- `/unbindqq` (unbind current QQ)
-- `/mybind` (show current QQ binding)
-- `/bindserver <host_or_ip_port_or_domain> <token> <qq_group_id>` (bind remote/cloud server)
-- `/unbindserver <host_or_ip_port_or_domain> <qq_group_id>` (unbind remote server)
-- `/listserver` (list remote server bindings)
-- `/server status [n]` (query on-demand status snapshot #n, default 1)
-- `/bindlogserver <server_id> <log_path>` (bind local log server, group admin/owner)
-- `/unbindlogserver <server_id>` (unbind local log server, group admin/owner)
-- `/listlogserver` (list local log server bindings)
-- `/bindlogregex <server_id> <regex>` (set log regex, group admin/owner)
-
-## Platform Notes and Limitations
-
-| Topic | Notes |
-| --- | --- |
-| Download Source | Current download flow focuses on Windows server builds named `vs_server_win-x64_*.zip`. |
-| Instance Manage Page | `Instance / Manage` is currently a placeholder page. |
-| Workspace Dependency | The default flow depends on workspace structure. Refresh pages after manual file moves. |
+| `/help` | Command help |
+| `/bindqq <player_name>` | Bind QQ to a player name |
+| `/unbindqq` | Unbind current QQ |
+| `/mybind` | Show current QQ binding |
+| `/bindserver <host_or_ip_port_or_domain> <token> <qq_group_id>` | Bind remote server |
+| `/unbindserver <host_or_ip_port_or_domain> <qq_group_id>` | Unbind remote server |
+| `/listserver` | Show remote server bindings |
+| `/server status [n]` | Query recent status |
+| `/bindlogserver <server_id> <log_path>` | Bind local log server |
+| `/unbindlogserver <server_id>` | Unbind local log server |
+| `/listlogserver` | Show local log server bindings |
+| `/bindlogregex <server_id> <regex>` | Set log matching regex |
 
 ## License
 
-This project is licensed under GPLv3 (GNU General Public License v3.0). See [LICENSE](LICENSE) for details.
+This project is licensed under GPLv3 (GNU General Public License v3.0). See [LICENSE](LICENSE).
 
 ## Links
 
 Repository: <https://github.com/TGU-HansJack/vintage-story-server-launcher>  
-Issues: <https://github.com/TGU-HansJack/vintage-story-server-launcher/issues>  
-Community: <https://vintagestory.top/>
+Issue Tracker: <https://github.com/TGU-HansJack/vintage-story-server-launcher/issues>  
+Chinese Community: <https://vintagestory.top/>

@@ -387,7 +387,7 @@
   <data name="ModStatusDeletedFormat" xml:space="preserve"><value>Deleted {0} mod(s).</value></data>
   <data name="ModStatusNoDeletes" xml:space="preserve"><value>No mods were deleted.</value></data>
   <data name="ModStatusDeleteFailedFormat" xml:space="preserve"><value>Failed to delete mod(s): {0}</value></data>
-  <data name="RestrictionsDescription" xml:space="preserve"><value>Reads historical client-side mods from server logs and applies blocking to ModIdBlackList.</value></data>
+  <data name="RestrictionsDescription" xml:space="preserve"><value>Captures client-side mods only during player join handshake and applies blocking to ModIdBlackList.</value></data>
   <data name="RestrictionsBlockSelectedButtonText" xml:space="preserve"><value>Block Selected</value></data>
   <data name="RestrictionsUnblockSelectedButtonText" xml:space="preserve"><value>Unblock Selected</value></data>
   <data name="RestrictionsHeaderModId" xml:space="preserve"><value>Mod ID</value></data>
@@ -395,7 +395,7 @@
   <data name="RestrictionsHeaderLastSeen" xml:space="preserve"><value>Last Seen</value></data>
   <data name="RestrictionsHeaderBlocked" xml:space="preserve"><value>Blocked</value></data>
   <data name="RestrictionsNoModsText" xml:space="preserve"><value>No historical client mods.</value></data>
-  <data name="RestrictionsStatusNoHistory" xml:space="preserve"><value>No historical client-side mods were found in logs.</value></data>
+  <data name="RestrictionsStatusNoHistory" xml:space="preserve"><value>No client-side mods captured from join handshake yet.</value></data>
   <data name="RestrictionsStatusLoadedFormat" xml:space="preserve"><value>Loaded {0} mod(s), blocked {1}.</value></data>
   <data name="RestrictionsStatusLoadFailedFormat" xml:space="preserve"><value>Failed to load restrictions data: {0}</value></data>
   <data name="RestrictionsStatusSelectModsToBlock" xml:space="preserve"><value>Please select mod(s) to block.</value></data>

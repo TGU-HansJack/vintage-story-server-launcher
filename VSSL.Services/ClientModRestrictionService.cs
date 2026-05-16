@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -10,24 +9,27 @@ namespace VSSL.Services;
 /// <summary>
 ///     客户端模组限制服务默认实现
 /// </summary>
-public class ClientModRestrictionService(IInstanceServerConfigService serverConfigService) : IClientModRestrictionService
+public class ClientModRestrictionService : IClientModRestrictionService
 {
+    private const int HandshakeCaptureTtlSec = 15;
+
     private static readonly JsonSerializerOptions JsonWriteOptions = new()
     {
         WriteIndented = true
     };
 
-    private static readonly string[] TimestampFormats =
-    [
-        "d.M.yyyy H:mm:ss",
-        "d.M.yyyy HH:mm:ss",
-        "dd.MM.yyyy H:mm:ss",
-        "dd.MM.yyyy HH:mm:ss"
-    ];
+    private static readonly JsonSerializerOptions JsonReadOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
 
-    private static readonly Regex TimestampRegex = new(
-        @"^(?<ts>\d{1,2}\.\d{1,2}\.\d{4}\s+\d{1,2}:\d{2}:\d{2})",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex HandshakeStartPattern = new(
+        @"Received identification packet from\s+(?<player>[^\r\n]+)$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    private static readonly Regex JoinBeginPattern = new(
+        @"HandleRequestJoin:\s*Begin\.\s*Player:\s*(?<player>[^\r\n]+)$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     private static readonly Regex ClientModsPayloadRegex = new(
         @"(?:client(?:side)?\s*mods?|mods?\s*from\s*client)\s*[:=]\s*(?<payload>.+)$",
@@ -53,62 +55,61 @@ public class ClientModRestrictionService(IInstanceServerConfigService serverConf
         "json", "payload"
     ];
 
+    private static readonly HashSet<string> BuiltInModIds =
+    [
+        "game",
+        "creative",
+        "survival"
+    ];
+
+    private readonly IInstanceServerConfigService _serverConfigService;
+    private readonly IServerProcessService? _serverProcessService;
+    private readonly IInstanceProfileService? _profileService;
+    private readonly object _sync = new();
+    private readonly Dictionary<string, HandshakeCaptureState> _captureByProfileId = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Dictionary<string, MutableHistoryEntry>> _historyCache = new(StringComparer.OrdinalIgnoreCase);
+
+    public ClientModRestrictionService(IInstanceServerConfigService serverConfigService)
+        : this(serverConfigService, null, null)
+    {
+    }
+
+    public ClientModRestrictionService(
+        IInstanceServerConfigService serverConfigService,
+        IServerProcessService? serverProcessService,
+        IInstanceProfileService? profileService)
+    {
+        _serverConfigService = serverConfigService;
+        _serverProcessService = serverProcessService;
+        _profileService = profileService;
+
+        if (_serverProcessService is not null)
+            _serverProcessService.OutputReceived += OnServerOutputReceived;
+    }
+
     /// <inheritdoc />
     public Task<IReadOnlyList<ClientModHistoryEntry>> GetHistoricalClientModsAsync(
         InstanceProfile profile,
         CancellationToken cancellationToken = default)
     {
-        var logsPath = WorkspacePathHelper.GetProfileLogsPath(profile.DirectoryPath);
-        if (!Directory.Exists(logsPath))
-            return Task.FromResult<IReadOnlyList<ClientModHistoryEntry>>([]);
-
-        var seenCounters = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        var lastSeenByModId = new Dictionary<string, DateTimeOffset?>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var logFile in EnumerateServerMainLogs(logsPath))
+        cancellationToken.ThrowIfCancellationRequested();
+        var profileId = NormalizeProfileId(profile.Id);
+        Dictionary<string, MutableHistoryEntry> map;
+        lock (_sync)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            foreach (var line in ReadLinesWithSharing(logFile, cancellationToken))
-            {
-                if (string.IsNullOrWhiteSpace(line)) continue;
-                var hasModId = ContainsIgnoreCase(line, "modid");
-                var hasClientAndMod = ContainsIgnoreCase(line, "client") && ContainsIgnoreCase(line, "mod");
-                if (!hasClientAndMod && !hasModId) continue;
-                if (!ClientModsPayloadRegex.IsMatch(line)
-                    && !JsonClientModsPayloadRegex.IsMatch(line)
-                    && !hasModId)
+            map = EnsureHistoryLoadedUnsafe(profileId);
+            var list = map.Values
+                .Select(static entry => new ClientModHistoryEntry
                 {
-                    continue;
-                }
-
-                var lastSeenUtc = TryParseLogTimestamp(line)?.ToUniversalTime();
-                foreach (var modId in ExtractClientModIdsFromLine(line))
-                {
-                    if (!seenCounters.TryAdd(modId, 1))
-                        seenCounters[modId]++;
-
-                    if (!lastSeenByModId.TryGetValue(modId, out var existing) ||
-                        (lastSeenUtc.HasValue && (!existing.HasValue || existing.Value < lastSeenUtc.Value)))
-                    {
-                        lastSeenByModId[modId] = lastSeenUtc;
-                    }
-                }
-            }
+                    ModId = entry.ModId,
+                    SeenCount = entry.SeenCount,
+                    LastSeenUtc = entry.LastSeenUtc
+                })
+                .OrderByDescending(static x => x.SeenCount)
+                .ThenBy(static x => x.ModId, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            return Task.FromResult<IReadOnlyList<ClientModHistoryEntry>>(list);
         }
-
-        IReadOnlyList<ClientModHistoryEntry> result = seenCounters
-            .Select(pair => new ClientModHistoryEntry
-            {
-                ModId = pair.Key,
-                SeenCount = pair.Value,
-                LastSeenUtc = lastSeenByModId.GetValueOrDefault(pair.Key)
-            })
-            .OrderByDescending(static x => x.SeenCount)
-            .ThenBy(static x => x.ModId, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        return Task.FromResult(result);
     }
 
     /// <inheritdoc />
@@ -178,14 +179,14 @@ public class ClientModRestrictionService(IInstanceServerConfigService serverConf
 
     private async Task<JsonObject> LoadConfigRootAsync(InstanceProfile profile, CancellationToken cancellationToken)
     {
-        var rawJson = await serverConfigService.LoadRawJsonAsync(profile, cancellationToken);
+        var rawJson = await _serverConfigService.LoadRawJsonAsync(profile, cancellationToken);
         return JsonNode.Parse(rawJson) as JsonObject
                ?? throw new InvalidOperationException("配置格式错误。");
     }
 
     private async Task SaveConfigRootAsync(InstanceProfile profile, JsonObject root, CancellationToken cancellationToken)
     {
-        await serverConfigService.SaveRawJsonAsync(
+        await _serverConfigService.SaveRawJsonAsync(
             profile,
             root.ToJsonString(JsonWriteOptions),
             cancellationToken);
@@ -212,37 +213,142 @@ public class ClientModRestrictionService(IInstanceServerConfigService serverConf
         return array;
     }
 
-    private static IEnumerable<string> EnumerateServerMainLogs(string logsPath)
+    private void OnServerOutputReceived(object? sender, string line)
     {
-        var primary = Path.Combine(logsPath, "server-main.log");
-        if (File.Exists(primary))
-            yield return primary;
+        if (string.IsNullOrWhiteSpace(line)) return;
 
-        if (!Directory.Exists(logsPath)) yield break;
+        var profile = TryResolveRunningProfile();
+        if (profile is null) return;
 
-        foreach (var file in Directory.EnumerateFiles(logsPath, "server-main*.log", SearchOption.TopDirectoryOnly)
-                     .Where(path => !path.Equals(primary, StringComparison.OrdinalIgnoreCase))
-                     .OrderByDescending(static path => File.GetLastWriteTimeUtc(path)))
+        var profileId = NormalizeProfileId(profile.Id);
+        var nowUtc = DateTimeOffset.UtcNow;
+
+        lock (_sync)
         {
-            yield return file;
+            CleanupExpiredCapturesUnsafe(nowUtc);
+            EnsureHistoryLoadedUnsafe(profileId);
+
+            if (TryBeginHandshakeCaptureUnsafe(profileId, line, nowUtc))
+            {
+                RecordModIdsFromLineUnsafe(profileId, line, nowUtc);
+                return;
+            }
+
+            if (!_captureByProfileId.TryGetValue(profileId, out var capture)) return;
+            if (capture.ExpiresAtUtc <= nowUtc)
+            {
+                _captureByProfileId.Remove(profileId);
+                return;
+            }
+
+            RecordModIdsFromLineUnsafe(profileId, line, nowUtc);
+            TryCloseHandshakeCaptureUnsafe(profileId, line, capture.PlayerName);
         }
     }
 
-    private static IEnumerable<string> ReadLinesWithSharing(string filePath, CancellationToken cancellationToken)
+    private InstanceProfile? TryResolveRunningProfile()
     {
-        using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        using var reader = new StreamReader(stream);
+        if (_serverProcessService is null || _profileService is null)
+            return null;
 
-        while (!reader.EndOfStream)
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var line = reader.ReadLine();
-            if (line is null) continue;
-            yield return line;
+            var status = _serverProcessService.GetCurrentStatus();
+            var profileId = status.ProfileId?.Trim();
+            if (string.IsNullOrWhiteSpace(profileId))
+                return null;
+
+            return _profileService.GetProfileById(profileId) ??
+                   _profileService.GetProfiles()
+                       .FirstOrDefault(profile => profile.Id.Equals(profileId, StringComparison.OrdinalIgnoreCase));
+        }
+        catch
+        {
+            return null;
         }
     }
 
-    private static IEnumerable<string> ExtractClientModIdsFromLine(string line)
+    private bool TryBeginHandshakeCaptureUnsafe(string profileId, string line, DateTimeOffset nowUtc)
+    {
+        var match = HandshakeStartPattern.Match(line);
+        if (!match.Success) return false;
+
+        var playerName = match.Groups["player"].Value.Trim();
+        _captureByProfileId[profileId] = new HandshakeCaptureState
+        {
+            PlayerName = playerName,
+            ExpiresAtUtc = nowUtc.AddSeconds(HandshakeCaptureTtlSec)
+        };
+        return true;
+    }
+
+    private void TryCloseHandshakeCaptureUnsafe(string profileId, string line, string expectedPlayer)
+    {
+        var match = JoinBeginPattern.Match(line);
+        if (!match.Success) return;
+
+        var playerName = match.Groups["player"].Value.Trim();
+        if (!playerName.Equals(expectedPlayer, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        _captureByProfileId.Remove(profileId);
+    }
+
+    private void CleanupExpiredCapturesUnsafe(DateTimeOffset nowUtc)
+    {
+        var expired = _captureByProfileId
+            .Where(x => x.Value.ExpiresAtUtc <= nowUtc)
+            .Select(x => x.Key)
+            .ToList();
+
+        foreach (var key in expired)
+            _captureByProfileId.Remove(key);
+    }
+
+    private void RecordModIdsFromLineUnsafe(string profileId, string line, DateTimeOffset seenUtc)
+    {
+        if (!MayContainClientModPayload(line))
+            return;
+
+        var modIds = ExtractClientModIdsFromHandshakeLine(line)
+            .Where(IsLikelyModId)
+            .Where(static id => !BuiltInModIds.Contains(id))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (modIds.Count == 0)
+            return;
+
+        var history = EnsureHistoryLoadedUnsafe(profileId);
+        foreach (var modId in modIds)
+        {
+            if (!history.TryGetValue(modId, out var existing))
+            {
+                history[modId] = new MutableHistoryEntry
+                {
+                    ModId = modId,
+                    SeenCount = 1,
+                    LastSeenUtc = seenUtc
+                };
+                continue;
+            }
+
+            existing.SeenCount = Math.Max(0, existing.SeenCount) + 1;
+            if (!existing.LastSeenUtc.HasValue || existing.LastSeenUtc.Value < seenUtc)
+                existing.LastSeenUtc = seenUtc;
+        }
+
+        SaveHistoryFileUnsafe(profileId, history);
+    }
+
+    private static bool MayContainClientModPayload(string line)
+    {
+        return line.Contains("mod", StringComparison.OrdinalIgnoreCase)
+               || line.Contains("clientmods", StringComparison.OrdinalIgnoreCase)
+               || line.Contains("modid", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static IEnumerable<string> ExtractClientModIdsFromHandshakeLine(string line)
     {
         var candidates = new List<string>();
 
@@ -258,12 +364,8 @@ public class ClientModRestrictionService(IInstanceServerConfigService serverConf
                 candidates.Add(match.Groups["payload"].Value);
         }
 
-        if (candidates.Count == 0)
-        {
-            if (!KeyValueModIdRegex.IsMatch(line))
-                return [];
+        if (candidates.Count == 0 && KeyValueModIdRegex.IsMatch(line))
             candidates.Add(line);
-        }
 
         var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var text in candidates)
@@ -307,27 +409,129 @@ public class ClientModRestrictionService(IInstanceServerConfigService serverConf
         return true;
     }
 
-    private static bool ContainsIgnoreCase(string source, string value)
+    private Dictionary<string, MutableHistoryEntry> EnsureHistoryLoadedUnsafe(string profileId)
     {
-        return source.Contains(value, StringComparison.OrdinalIgnoreCase);
+        if (_historyCache.TryGetValue(profileId, out var cached))
+            return cached;
+
+        var loaded = LoadHistoryFileUnsafe(profileId);
+        _historyCache[profileId] = loaded;
+        return loaded;
     }
 
-    private static DateTimeOffset? TryParseLogTimestamp(string line)
+    private static string NormalizeProfileId(string? profileId)
     {
-        var match = TimestampRegex.Match(line);
-        if (!match.Success) return null;
+        var value = profileId?.Trim();
+        return string.IsNullOrWhiteSpace(value) ? "unknown" : value;
+    }
 
-        var text = match.Groups["ts"].Value;
-        if (!DateTimeOffset.TryParseExact(
-                text,
-                TimestampFormats,
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.AssumeLocal,
-                out var parsed))
+    private static string HistoryRootPath => Path.Combine(WorkspacePathHelper.RuntimeRoot, "client-mod-history");
+
+    private static string GetHistoryFilePath(string profileId)
+    {
+        return Path.Combine(
+            HistoryRootPath,
+            $"{WorkspacePathHelper.SanitizeFileName(profileId)}.json");
+    }
+
+    private static Dictionary<string, MutableHistoryEntry> LoadHistoryFileUnsafe(string profileId)
+    {
+        try
         {
-            return null;
-        }
+            WorkspacePathHelper.EnsureWorkspace();
+            Directory.CreateDirectory(HistoryRootPath);
+            var path = GetHistoryFilePath(profileId);
+            if (!File.Exists(path))
+                return new Dictionary<string, MutableHistoryEntry>(StringComparer.OrdinalIgnoreCase);
 
-        return parsed;
+            var json = File.ReadAllText(path);
+            var store = JsonSerializer.Deserialize<ClientModHistoryStore>(json, JsonReadOptions);
+            if (store?.Entries is null || store.Entries.Count == 0)
+                return new Dictionary<string, MutableHistoryEntry>(StringComparer.OrdinalIgnoreCase);
+
+            var map = new Dictionary<string, MutableHistoryEntry>(StringComparer.OrdinalIgnoreCase);
+            foreach (var item in store.Entries)
+            {
+                var modId = NormalizeModId(item.ModId);
+                if (!IsLikelyModId(modId)) continue;
+                if (BuiltInModIds.Contains(modId)) continue;
+
+                if (!map.TryGetValue(modId, out var existing))
+                {
+                    map[modId] = new MutableHistoryEntry
+                    {
+                        ModId = modId,
+                        SeenCount = Math.Max(0, item.SeenCount),
+                        LastSeenUtc = item.LastSeenUtc
+                    };
+                    continue;
+                }
+
+                existing.SeenCount = Math.Max(existing.SeenCount, Math.Max(0, item.SeenCount));
+                if (!existing.LastSeenUtc.HasValue || (item.LastSeenUtc.HasValue && item.LastSeenUtc > existing.LastSeenUtc))
+                    existing.LastSeenUtc = item.LastSeenUtc;
+            }
+
+            return map;
+        }
+        catch
+        {
+            return new Dictionary<string, MutableHistoryEntry>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private static void SaveHistoryFileUnsafe(string profileId, Dictionary<string, MutableHistoryEntry> map)
+    {
+        try
+        {
+            WorkspacePathHelper.EnsureWorkspace();
+            Directory.CreateDirectory(HistoryRootPath);
+            var path = GetHistoryFilePath(profileId);
+            var store = new ClientModHistoryStore
+            {
+                Entries = map.Values
+                    .OrderByDescending(static x => x.SeenCount)
+                    .ThenBy(static x => x.ModId, StringComparer.OrdinalIgnoreCase)
+                    .Select(static x => new ClientModHistoryStoreEntry
+                    {
+                        ModId = x.ModId,
+                        SeenCount = Math.Max(0, x.SeenCount),
+                        LastSeenUtc = x.LastSeenUtc
+                    })
+                    .ToList()
+            };
+
+            var json = JsonSerializer.Serialize(store, JsonWriteOptions);
+            File.WriteAllText(path, json);
+        }
+        catch
+        {
+            // 采集失败不影响主流程
+        }
+    }
+
+    private sealed class HandshakeCaptureState
+    {
+        public string PlayerName { get; init; } = string.Empty;
+        public DateTimeOffset ExpiresAtUtc { get; init; }
+    }
+
+    private sealed class MutableHistoryEntry
+    {
+        public string ModId { get; init; } = string.Empty;
+        public int SeenCount { get; set; }
+        public DateTimeOffset? LastSeenUtc { get; set; }
+    }
+
+    private sealed class ClientModHistoryStore
+    {
+        public List<ClientModHistoryStoreEntry> Entries { get; init; } = [];
+    }
+
+    private sealed class ClientModHistoryStoreEntry
+    {
+        public string ModId { get; init; } = string.Empty;
+        public int SeenCount { get; init; }
+        public DateTimeOffset? LastSeenUtc { get; init; }
     }
 }
