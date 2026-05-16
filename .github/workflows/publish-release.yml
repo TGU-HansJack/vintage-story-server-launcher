@@ -30,6 +30,7 @@ jobs:
       PROJECT_PATH: VSSL.App/VSSL.App.csproj
       CONFIGURATION: Release
       RUNTIME: win-x64
+      VINTAGE_STORY_VERSION: 1.22.2
 
     steps:
       - name: Checkout
@@ -41,6 +42,67 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+
+      - name: Prepare Vintage Story API refs
+        shell: powershell
+        run: |
+          $vsVersion = $env:VINTAGE_STORY_VERSION
+          if ([string]::IsNullOrWhiteSpace($vsVersion)) { throw "VINTAGE_STORY_VERSION is empty." }
+
+          $vsRoot = Join-Path $pwd ".vintagestory-runtime"
+          $apiDll = Join-Path $vsRoot "VintagestoryAPI.dll"
+          $libDll = Join-Path $vsRoot "VintagestoryLib.dll"
+          $protobufDll = Join-Path $vsRoot "Lib/protobuf-net.dll"
+
+          if (!(Test-Path $apiDll) -or !(Test-Path $libDll) -or !(Test-Path $protobufDll)) {
+            New-Item -ItemType Directory -Force -Path $vsRoot | Out-Null
+            $zipPath = Join-Path $vsRoot "vs_server_win-x64_$vsVersion.zip"
+            $downloadUrl = "https://cdn.vintagestory.at/gamefiles/stable/vs_server_win-x64_$vsVersion.zip"
+
+            Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            $zip = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
+            try {
+              $requiredEntries = @(
+                "VintagestoryAPI.dll",
+                "VintagestoryLib.dll",
+                "Lib/protobuf-net.dll"
+              )
+
+              foreach ($entryName in $requiredEntries) {
+                $entry = $zip.GetEntry($entryName)
+                if ($null -eq $entry) {
+                  throw "Missing required file '$entryName' in $downloadUrl"
+                }
+
+                $targetPath = Join-Path $vsRoot $entryName
+                $targetDir = Split-Path -Parent $targetPath
+                if (!(Test-Path $targetDir)) {
+                  New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
+                }
+
+                $entryStream = $entry.Open()
+                $fileStream = [System.IO.File]::Open($targetPath, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write, [System.IO.FileShare]::Read)
+                try {
+                  $entryStream.CopyTo($fileStream)
+                }
+                finally {
+                  $entryStream.Dispose()
+                  $fileStream.Dispose()
+                }
+              }
+            }
+            finally {
+              $zip.Dispose()
+            }
+
+            if (Test-Path $zipPath) {
+              Remove-Item -LiteralPath $zipPath -Force
+            }
+          }
+
+          "VINTAGE_STORY=$vsRoot" >> $env:GITHUB_ENV
+          Write-Host "Using VINTAGE_STORY=$vsRoot"
 
       - name: Resolve release metadata
         id: meta
